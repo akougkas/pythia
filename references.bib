@@ -1,0 +1,362 @@
+% ============================================================
+% Speculative Dispatch — SC26 Bibliography
+% ============================================================
+
+% --- LLM Speculative Decoding ---
+
+@inproceedings{leviathan2023fast,
+  title     = {Fast Inference from Transformers via Speculative Decoding},
+  author    = {Leviathan, Yaniv and Kalman, Matan and Matias, Yossi},
+  booktitle = {Proceedings of the 40th International Conference on Machine Learning (ICML)},
+  pages     = {19274--19286},
+  year      = {2023},
+  volume    = {202},
+  series    = {Proceedings of Machine Learning Research},
+  publisher = {PMLR}
+}
+
+@article{chen2023accelerating,
+  title   = {Accelerating Large Language Model Decoding with Speculative Sampling},
+  author  = {Chen, Charlie and Borgeaud, Sebastian and Irving, Geoffrey and Lespiau, Jean-Baptiste and Sifre, Laurent and Jumper, John},
+  journal = {arXiv preprint arXiv:2302.01318},
+  year    = {2023}
+}
+
+@inproceedings{cai2024medusa,
+  title     = {Medusa: Simple {LLM} Inference Acceleration Framework with Multiple Decoding Heads},
+  author    = {Cai, Tianle and Li, Yuhong and Geng, Zhengyang and Peng, Hongwu and Lee, Jason D. and Chen, Deming and Dao, Tri},
+  booktitle = {Proceedings of the 41st International Conference on Machine Learning (ICML)},
+  pages     = {5209--5235},
+  year      = {2024},
+  volume    = {235},
+  series    = {Proceedings of Machine Learning Research},
+  publisher = {PMLR}
+}
+
+@inproceedings{li2024eagle,
+  title     = {{EAGLE}: Speculative Sampling Requires Rethinking Feature Uncertainty},
+  author    = {Li, Yuhui and Wei, Fangyun and Zhang, Chao and Zhang, Hongyang},
+  booktitle = {Proceedings of the 41st International Conference on Machine Learning (ICML)},
+  year      = {2024},
+  publisher = {PMLR}
+}
+
+@inproceedings{li2024eagle2,
+  title     = {{EAGLE-2}: Faster Inference of Language Models with Dynamic Draft Trees},
+  author    = {Li, Yuhui and Wei, Fangyun and Zhang, Chao and Zhang, Hongyang},
+  booktitle = {Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+  year      = {2024}
+}
+
+@inproceedings{miao2024specinfer,
+  title     = {{SpecInfer}: Accelerating Large Language Model Serving with Tree-based Speculative Inference and Verification},
+  author    = {Miao, Xupeng and Oliaro, Gabriele and Zhang, Zhihao and Cheng, Xinhao and Wang, Zeyu and Zhang, Zhengxin and Wong, Rae Ying Yee and Zhu, Alan and Yang, Lijie and Shi, Xiaoxiang and Shi, Chunan and Chen, Zhuoming and Arfeen, Daiyaan and Abhyankar, Reyna and Jia, Zhihao},
+  booktitle = {Proceedings of the 29th ACM International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS)},
+  year      = {2024},
+  doi       = {10.1145/3620666.3651335}
+}
+
+@article{spector2023staged,
+  title   = {Accelerating {LLM} Inference with Staged Speculative Decoding},
+  author  = {Spector, Benjamin and Re, Chris},
+  journal = {arXiv preprint arXiv:2308.04623},
+  year    = {2023}
+}
+
+@inproceedings{liu2024online,
+  title     = {Online Speculative Decoding},
+  author    = {Liu, Xiaoxuan and Hu, Lanxiang and Bailis, Peter and Cheung, Alvin and Deng, Zhijie and Stoica, Ion and Zhang, Hao},
+  booktitle = {Proceedings of the 41st International Conference on Machine Learning (ICML)},
+  pages     = {31131--31146},
+  year      = {2024},
+  volume    = {235},
+  series    = {Proceedings of Machine Learning Research},
+  publisher = {PMLR}
+}
+
+@inproceedings{xia2024survey,
+  title     = {Unlocking Efficiency in Large Language Model Inference: A Comprehensive Survey of Speculative Decoding},
+  author    = {Xia, Heming and Yang, Zhe and Dong, Qingxiu and Wang, Peiyi and Li, Yongqi and Ge, Tao and Liu, Tianyu and Li, Wenjie and Sui, Zhifang},
+  booktitle = {Findings of the Association for Computational Linguistics: ACL 2024},
+  pages     = {7655--7671},
+  year      = {2024}
+}
+
+% --- CPU Speculative Execution and Branch Prediction ---
+
+@book{hennessy2017computer,
+  title     = {Computer Architecture: A Quantitative Approach},
+  author    = {Hennessy, John L. and Patterson, David A.},
+  edition   = {6th},
+  year      = {2017},
+  publisher = {Morgan Kaufmann},
+  address   = {Cambridge, MA}
+}
+
+@inproceedings{smith1981branch,
+  title     = {A Study of Branch Prediction Strategies},
+  author    = {Smith, James E.},
+  booktitle = {Proceedings of the 8th Annual Symposium on Computer Architecture (ISCA)},
+  pages     = {135--148},
+  year      = {1981},
+  publisher = {IEEE Computer Society}
+}
+
+@inproceedings{yeh1991two,
+  title     = {Two-Level Adaptive Training Branch Prediction},
+  author    = {Yeh, Tse-Yu and Patt, Yale N.},
+  booktitle = {Proceedings of the 24th Annual International Symposium on Microarchitecture (MICRO)},
+  pages     = {51--61},
+  year      = {1991},
+  publisher = {ACM}
+}
+
+@techreport{mcfarling1993combining,
+  title       = {Combining Branch Predictors},
+  author      = {McFarling, Scott},
+  institution = {Digital Equipment Corporation Western Research Laboratory},
+  number      = {TN-36},
+  year        = {1993},
+  address     = {Palo Alto, CA}
+}
+
+@article{seznec2006tage,
+  title   = {A Case for (Partially) {TAgged GEometric} History Length Branch Prediction},
+  author  = {Seznec, Andr{\'e} and Michaud, Pierre},
+  journal = {Journal of Instruction-Level Parallelism},
+  volume  = {8},
+  pages   = {1--23},
+  year    = {2006}
+}
+
+@inproceedings{seznec2011tage,
+  title     = {A New Case for the {TAGE} Branch Predictor},
+  author    = {Seznec, Andr{\'e}},
+  booktitle = {Proceedings of the 44th Annual IEEE/ACM International Symposium on Microarchitecture (MICRO)},
+  pages     = {117--127},
+  year      = {2011}
+}
+
+@inproceedings{jimenez2001perceptron,
+  title     = {Dynamic Branch Prediction with Perceptrons},
+  author    = {Jimenez, Daniel A. and Lin, Calvin},
+  booktitle = {Proceedings of the 7th International Symposium on High-Performance Computer Architecture (HPCA)},
+  pages     = {197--206},
+  year      = {2001}
+}
+
+@inproceedings{kocher2019spectre,
+  title     = {Spectre Attacks: Exploiting Speculative Execution},
+  author    = {Kocher, Paul and Horn, Jann and Fogh, Anders and Genkin, Daniel and Gruss, Daniel and Haas, Werner and Hamburg, Mike and Lipp, Moritz and Mangard, Stefan and Prescher, Thomas and Schwarz, Michael and Yarom, Yuval},
+  booktitle = {Proceedings of the 40th IEEE Symposium on Security and Privacy (S\&P)},
+  pages     = {1--19},
+  year      = {2019}
+}
+
+@inproceedings{lipp2018meltdown,
+  title     = {Meltdown: Reading Kernel Memory from User Space},
+  author    = {Lipp, Moritz and Schwarz, Michael and Gruss, Daniel and Prescher, Thomas and Haas, Werner and Fogh, Anders and Horn, Jann and Mangard, Stefan and Kocher, Paul and Genkin, Daniel and Yarom, Yuval and Hamburg, Mike},
+  booktitle = {Proceedings of the 27th USENIX Security Symposium},
+  pages     = {973--990},
+  year      = {2018}
+}
+
+% --- HPC Job Scheduling ---
+
+@inproceedings{yoo2003slurm,
+  title     = {{SLURM}: Simple {Linux} Utility for Resource Management},
+  author    = {Yoo, Andy B. and Jette, Morris A. and Grondona, Mark},
+  booktitle = {Job Scheduling Strategies for Parallel Processing (JSSPP)},
+  series    = {LNCS},
+  volume    = {2862},
+  pages     = {44--60},
+  year      = {2003},
+  publisher = {Springer}
+}
+
+@inproceedings{feitelson1995parallel,
+  title     = {Parallel Job Scheduling: Issues and Approaches},
+  author    = {Feitelson, Dror G. and Rudolph, Larry},
+  booktitle = {Job Scheduling Strategies for Parallel Processing (JSSPP)},
+  series    = {LNCS},
+  volume    = {949},
+  year      = {1995},
+  publisher = {Springer}
+}
+
+@article{mualem2001backfill,
+  title   = {Utilization, Predictability, Workloads, and User Runtime Estimates in Scheduling the {IBM SP2} with Backfilling},
+  author  = {Mu'alem, Ahuva W. and Feitelson, Dror G.},
+  journal = {IEEE Transactions on Parallel and Distributed Systems},
+  volume  = {12},
+  number  = {6},
+  pages   = {529--543},
+  year    = {2001}
+}
+
+@inproceedings{lifka1995easy,
+  title     = {The {ANL/IBM SP} Scheduling System},
+  author    = {Lifka, David A.},
+  booktitle = {Job Scheduling Strategies for Parallel Processing (JSSPP)},
+  series    = {LNCS},
+  volume    = {949},
+  year      = {1995},
+  publisher = {Springer}
+}
+
+@inproceedings{topcuoglu2002heft,
+  title   = {Performance-Effective and Low-Complexity Task Scheduling for Heterogeneous Computing},
+  author  = {Topcuoglu, Haluk and Hariri, Salim and Wu, Min-You},
+  journal = {IEEE Transactions on Parallel and Distributed Systems},
+  volume  = {13},
+  number  = {3},
+  pages   = {260--274},
+  year    = {2002}
+}
+
+% --- RL for Systems ---
+
+@inproceedings{mao2016deeprm,
+  title     = {Resource Management with Deep Reinforcement Learning},
+  author    = {Mao, Hongzi and Alizadeh, Mohammad and Menache, Ishai and Kandula, Srikanth},
+  booktitle = {Proceedings of the 15th ACM Workshop on Hot Topics in Networks (HotNets)},
+  pages     = {50--56},
+  year      = {2016}
+}
+
+@inproceedings{mao2019decima,
+  title     = {Learning Scheduling Algorithms for Data Processing Clusters},
+  author    = {Mao, Hongzi and Schwarzkopf, Malte and Venkatakrishnan, Shaileshh Bojja and Meng, Zili and Alizadeh, Mohammad},
+  booktitle = {ACM SIGCOMM 2019},
+  year      = {2019}
+}
+
+@inproceedings{zhang2020rlscheduler,
+  title     = {{RLScheduler}: An Automated {HPC} Batch Job Scheduler Using Reinforcement Learning},
+  author    = {Zhang, Di and Dai, Dong and He, Youbiao and Bao, Forrest Sheng and Xie, Bing},
+  booktitle = {SC '20: Proceedings of the International Conference for High Performance Computing, Networking, Storage, and Analysis},
+  year      = {2020}
+}
+
+@inproceedings{fan2021dras,
+  title     = {Deep Reinforcement Agent for Scheduling in {HPC}},
+  author    = {Fan, Yuping and Lan, Zhiling and Childers, Taylor and Rich, Paul and Allcock, William and Papka, Michael E.},
+  booktitle = {IEEE International Parallel and Distributed Processing Symposium (IPDPS)},
+  year      = {2021}
+}
+
+@article{marcus2019neo,
+  title   = {Neo: A Learned Query Optimizer},
+  author  = {Marcus, Ryan and Negi, Parimarjan and Mao, Hongzi and Zhang, Chi and Alizadeh, Mohammad and Kraska, Tim and Papaemmanouil, Olga and Tatbul, Nesime},
+  journal = {Proceedings of the VLDB Endowment},
+  volume  = {12},
+  number  = {11},
+  pages   = {1705--1718},
+  year    = {2019}
+}
+
+@inproceedings{marcus2021bao,
+  title     = {Bao: Making Learned Query Optimization Practical},
+  author    = {Marcus, Ryan and Negi, Parimarjan and Mao, Hongzi and Tatbul, Nesime and Alizadeh, Mohammad and Kraska, Tim},
+  booktitle = {Proceedings of the 2021 International Conference on Management of Data (SIGMOD)},
+  year      = {2021}
+}
+
+@inproceedings{li2010contextual,
+  title     = {A Contextual-Bandit Approach to Personalized News Article Recommendation},
+  author    = {Li, Lihong and Chu, Wei and Langford, John and Schapire, Robert E.},
+  booktitle = {Proceedings of the 19th International Conference on World Wide Web (WWW)},
+  year      = {2010}
+}
+
+% --- LLM Serving Systems ---
+
+@inproceedings{kwon2023vllm,
+  title     = {Efficient Memory Management for Large Language Model Serving with {PagedAttention}},
+  author    = {Kwon, Woosuk and Li, Zhuohan and Zhuang, Siyuan and Sheng, Ying and Yu, Cody Hao and Gonzalez, Joseph E. and Zhang, Hao and Stoica, Ion},
+  booktitle = {Proceedings of the 29th ACM Symposium on Operating Systems Principles (SOSP)},
+  year      = {2023}
+}
+
+% --- Multi-Agent Orchestration ---
+
+@article{wu2023autogen,
+  title   = {{AutoGen}: Enabling Next-Gen {LLM} Applications via Multi-Agent Conversation},
+  author  = {Wu, Qingyun and Bansal, Gagan and Zhang, Jieyu and Wu, Yiran and Li, Beibin and Zhu, Erkang and Jiang, Li and Zhang, Xu and Zhang, Shaokun and Liu, Jiale and Awadallah, Ahmed Hassan and White, Ryen W. and Burger, Doug and Wang, Chi},
+  journal = {arXiv preprint arXiv:2308.08155},
+  year    = {2023}
+}
+
+@inproceedings{hong2024metagpt,
+  title     = {{MetaGPT}: Meta Programming for A Multi-Agent Collaborative Framework},
+  author    = {Hong, Sirui and Zhuge, Mingchen and Chen, Jiaqi and Zheng, Xiawu and Cheng, Yuheng and Zhang, Ceyao and Wang, Jinlin and Wang, Zili and Yau, Steven Ka Shing and Lin, Zijuan and Zhou, Liyang and Ran, Chenyu and Xiao, Lingfeng and Wu, Chenglin and Schmidhuber, J{\"u}rgen},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2024}
+}
+
+@inproceedings{qian2024chatdev,
+  title     = {{ChatDev}: Communicative Agents for Software Development},
+  author    = {Qian, Chen and Liu, Wei and Liu, Hongzhang and Chen, Nuo and Dang, Yufan and Li, Jiahao and Yang, Cheng and Chen, Weize and Su, Yusheng and Cong, Xin and Xu, Juyuan and Li, Dahai and Liu, Zhiyuan and Sun, Maosong},
+  booktitle = {Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL)},
+  pages     = {15174--15186},
+  year      = {2024}
+}
+
+@inproceedings{li2023camel,
+  title     = {{CAMEL}: Communicative Agents for ``Mind'' Exploration of Large Language Model Society},
+  author    = {Li, Guohao and Hammoud, Hasan Abed Al Kader and Itani, Hani and Khizbullin, Dmitrii and Ghanem, Bernard},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2023}
+}
+
+@article{ong2024routellm,
+  title   = {{RouteLLM}: Learning to Route {LLMs} with Preference Data},
+  author  = {Ong, Isaac and Almahairi, Amjad and Wu, Vincent and Chiang, Wei-Lin and Wu, Tianhao and Gonzalez, Joseph E. and Kadous, M Waleed and Stoica, Ion},
+  journal = {arXiv preprint arXiv:2406.18665},
+  year    = {2024}
+}
+
+@article{wang2024moa,
+  title   = {Mixture-of-Agents Enhances Large Language Model Capabilities},
+  author  = {Wang, Junlin and Wang, Jue and Athiwaratkun, Ben and Zhang, Ce and Zou, James},
+  journal = {arXiv preprint arXiv:2406.04692},
+  year    = {2024}
+}
+
+@inproceedings{yao2023react,
+  title     = {{ReAct}: Synergizing Reasoning and Acting in Language Models},
+  author    = {Yao, Shunyu and Zhao, Jeffrey and Yu, Dian and Du, Nan and Shafran, Izhak and Narasimhan, Karthik and Cao, Yuan},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023}
+}
+
+@article{shinn2023reflexion,
+  title   = {Reflexion: Language Agents with Verbal Reinforcement Learning},
+  author  = {Shinn, Noah and Cassano, Federico and Gopinath, Ashwin and Narasimhan, Karthik and Yao, Shunyu},
+  journal = {Advances in Neural Information Processing Systems},
+  volume  = {36},
+  year    = {2023}
+}
+
+@article{wang2024agents_survey,
+  title   = {A Survey on Large Language Model based Autonomous Agents},
+  author  = {Wang, Lei and Ma, Chen and Feng, Xueyang and Zhang, Zeyu and Yang, Hao and Zhang, Jingsen and Chen, Zhiyuan and Tang, Jiakai and Chen, Xu and Lin, Yankai and Zhao, Wayne Xin and Wei, Zhewei and Wen, Ji-Rong},
+  journal = {Frontiers of Computer Science},
+  year    = {2024}
+}
+
+@inproceedings{schick2023toolformer,
+  title     = {Toolformer: Language Models Can Teach Themselves to Use Tools},
+  author    = {Schick, Timo and Dwivedi-Yu, Jane and Dessi, Roberto and Raileanu, Roberta and Lomeli, Maria and Zettlemoyer, Luke and Cancedda, Nicola and Scialom, Thomas},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2023}
+}
+
+% --- Contextual Bandits / Online Learning Theory ---
+
+@inproceedings{agarwal2014taming,
+  title     = {Taming the Monster: A Fast and Simple Algorithm for Contextual Bandits},
+  author    = {Agarwal, Alekh and Hsu, Daniel and Kale, Satyen and Langford, John and Li, Lihong and Schapire, Robert E.},
+  booktitle = {Proceedings of the 31st International Conference on Machine Learning (ICML)},
+  year      = {2014}
+}
