@@ -1,0 +1,472 @@
+\documentclass[conference,10pt]{IEEEtran}
+
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{url}
+\usepackage{cite}
+\usepackage[hidelinks]{hyperref}
+
+% Placeholder command for missing data
+\newcommand{\placeholder}[1]{\textcolor{red}{\textbf{[#1]}}}
+
+\begin{document}
+
+\title{Pythia: Speculative Dispatch for Autonomous Agent\\Orchestration in Scientific Computing}
+
+\author{\IEEEauthorblockN{[Double-Blind Review --- Authors Omitted]}
+\IEEEauthorblockA{[Affiliations Omitted]}}
+
+\maketitle
+
+\begin{abstract}
+Multi-agent AI systems are becoming integral to scientific computing workflows, yet their orchestration layers --- which decide what agents to dispatch, where, and with what context --- remain a significant performance bottleneck.
+We observe that this bottleneck is structurally identical to latency problems solved by CPU speculative execution and LLM speculative decoding: dispatch decisions are predictable, and verification is cheaper than stalling.
+We introduce \textbf{Pythia}, a speculative dispatch framework that adapts the draft-target speculation paradigm to multi-agent orchestration.
+Pythia overlaps dispatch planning with speculative pre-execution across three progressive modes --- context preparation, agent pre-dispatch, and draft execution with verification --- each with formally derived break-even accuracy thresholds.
+A reinforcement learning component improves speculation accuracy over time by learning user-specific dispatch patterns, creating an orchestration system whose latency decreases with usage.
+We implement Pythia within an NSF-funded scientific computing platform and evaluate it on four HPC-adjacent workload suites.
+Results demonstrate \placeholder{X\%} dispatch latency reduction under mature speculation, with the learner achieving \placeholder{Y\%} speculation accuracy after \placeholder{N} interactions and a wasted compute ratio below \placeholder{W\%} at optimal confidence thresholds.
+\end{abstract}
+
+\begin{IEEEkeywords}
+multi-agent orchestration, speculative execution, reinforcement learning, HPC scheduling, scientific computing, LLM agents
+\end{IEEEkeywords}
+
+%% ============================================================
+%% SECTION 1: INTRODUCTION
+%% ============================================================
+
+\section{Introduction}
+
+Scientific computing stands at an inflection point.
+Autonomous AI agents are no longer peripheral tools but active participants in research workflows --- generating MPI code, constructing data processing pipelines, orchestrating experiments across heterogeneous infrastructure, and analyzing results at scales that exceed manual human effort.
+National cyberinfrastructure initiatives are integrating these agents into platforms that span GPU-accelerated clusters, multi-tier storage hierarchies, and cloud computing resources, creating distributed multi-agent systems that must coordinate dozens of specialized agents across heterogeneous hardware and multiple AI providers simultaneously.
+
+This coordination --- the \emph{orchestration layer} --- has become a critical performance bottleneck.
+When a researcher issues a natural-language request to a multi-agent scientific computing platform, the orchestrator must classify the intent, decompose the task, select appropriate agents, match them to available resources, assemble context from scientific datasets (HDF5, NetCDF, Zarr, and others), construct prompts, and dispatch execution --- all before any productive computation begins.
+We observe that this dispatch overhead constitutes \placeholder{X}\% of end-to-end response latency for typical scientific computing tasks, and that the problem compounds in heterogeneous environments where the dispatch solver must navigate provider-specific constraints: API rate limits, token budgets, GPU memory availability, and cost ceilings across multiple AI providers and compute tiers.
+
+Yet dispatch decisions are not random.
+A computational scientist who spends mornings on code review and afternoons on data analysis exhibits strong temporal regularity.
+A materials science pipeline that repeatedly invokes the same sequence of agents for structure optimization, property prediction, and visualization follows a predictable dispatch pattern.
+We find that for the top-$K$ intent classes --- which cover \placeholder{Z}\% of all requests in our evaluation --- the dispatch plan has low conditional entropy given the classified intent, making prediction tractable.
+
+This combination of bottleneck and predictability is structurally identical to latency problems that have been solved in two domains well known to the HPC community.
+
+In processor microarchitecture, \emph{speculative execution} predicts branch outcomes and executes instructions along the predicted path before the branch is resolved; if correct, results commit at zero additional cost~\cite{hennessy2017computer}.
+Modern TAGE-class predictors achieve accuracy exceeding 95\%~\cite{seznec2011tage}.
+In large language model inference, \emph{speculative decoding} uses a small draft model to generate candidate tokens that a larger target model verifies in a single forward pass, achieving 2--3$\times$ throughput improvements~\cite{leviathan2023fast, chen2023accelerating}.
+Both paradigms share a principle that generalizes: \emph{when verification is cheaper than stalling, and prediction accuracy improves with observation, speculative execution amortizes latency}.
+
+We introduce \textbf{Pythia}, a speculative dispatch framework that transfers the draft-target speculation paradigm to multi-agent orchestration for scientific computing.
+When a request arrives, Pythia's lightweight speculative dispatcher predicts the likely dispatch plan and immediately begins pre-execution --- context assembly, agent warm-up, resource reservation, and even draft task execution --- while the full dispatch solver computes the optimal plan in parallel.
+The solver's output either \emph{commits} the speculative work, \emph{partially commits} it, or \emph{flushes} the speculation entirely.
+A reinforcement learning component --- the \emph{Learner} --- observes dispatch outcomes and continuously refines prediction accuracy, creating an orchestration system whose latency \emph{decreases the more it is used} by a given researcher on a given infrastructure.
+
+We formalize speculation as a three-mode progressive hierarchy.
+\textbf{Mode~1} (Speculative Context Preparation) prefetches context and warms caches --- the dispatch analog of hardware cache prefetching --- with near-zero misprediction cost.
+\textbf{Mode~2} (Speculative Agent Pre-dispatch) predicts which agents are needed and begins provisioning --- the dispatch analog of speculative execution past a branch --- gated by a learned confidence threshold.
+\textbf{Mode~3} (Speculative Execution with Verification) deploys a fast draft agent that begins producing output verified by the target agent upon arrival --- the direct analog of LLM speculative decoding applied to multi-agent task execution.
+For each mode, we derive a formal cost model establishing the break-even speculation accuracy --- the same cost structure that governs branch prediction profitability, now applied to agent dispatch.
+
+This paper makes the following contributions:
+\begin{enumerate}
+    \item \textbf{The Speculative Dispatch abstraction.} A formal framework adapting the draft-target speculation paradigm from CPU architecture and LLM inference to multi-agent orchestration, including a three-mode speculation hierarchy and a commit/partial-commit/flush reconciliation protocol.
+    \item \textbf{A learner-augmented speculation model.} A reinforcement learning system that improves speculation accuracy over time by learning user-specific dispatch patterns, with progressive mode activation as the natural exploration-exploitation tradeoff.
+    \item \textbf{A resource-aware dispatch solver.} An optimization engine that treats heterogeneous infrastructure constraints as first-class scheduling parameters, connecting multi-agent dispatch to the HPC scheduling literature.
+    \item \textbf{Implementation and evaluation.} A prototype integrated into an NSF-funded scientific computing platform, evaluated on four HPC-adjacent workload suites.
+\end{enumerate}
+
+Section~\ref{sec:background} provides background on speculative execution and characterizes the dispatch bottleneck.
+Section~\ref{sec:design} presents the Pythia architecture, speculation modes, and formal cost model.
+Section~\ref{sec:learner} describes the Learner's reinforcement learning formulation.
+Section~\ref{sec:implementation} details the implementation.
+Section~\ref{sec:evaluation} presents the evaluation.
+Section~\ref{sec:discussion} discusses limitations and future directions.
+Section~\ref{sec:conclusion} concludes.
+
+
+%% ============================================================
+%% SECTION 2: BACKGROUND AND MOTIVATION
+%% ============================================================
+
+\section{Background and Motivation}
+\label{sec:background}
+
+This section establishes the technical foundations for speculative dispatch by reviewing speculation in CPU architecture and LLM inference, surveying the multi-agent orchestration landscape, and presenting empirical evidence that dispatch planning is both a bottleneck and predictable.
+
+\subsection{Speculative Execution in CPU Architecture}
+
+Modern out-of-order processors routinely execute instructions before all dependencies are resolved.
+When the processor encounters a conditional branch, rather than stalling the pipeline, a branch predictor predicts the outcome and the processor speculatively executes along the predicted path~\cite{hennessy2017computer}.
+If correct, speculative results commit; if wrong, the work is flushed, incurring a penalty of 10--20 cycles on modern microarchitectures.
+
+Branch prediction has evolved through four generations.
+Static heuristics gave way to two-level adaptive predictors~\cite{yeh1991two}, then to tournament predictors combining multiple strategies~\cite{mcfarling1993combining}, and finally to TAGE predictors using tagged geometric history lengths that achieve accuracy exceeding 95\%~\cite{seznec2006tage, seznec2011tage}.
+Neural branch prediction introduced perceptrons as an alternative, enabling linear scaling with history length~\cite{jimenez2001perceptron}.
+
+The cost model is fundamental: speculation is net-positive when prediction accuracy exceeds $\frac{C_{flush}}{L_{saved} + C_{flush}}$, where $C_{flush}$ is the misprediction penalty and $L_{saved}$ is the latency avoided.
+For typical pipeline depths, the break-even accuracy is approximately 70--75\% --- well below modern predictor performance.
+
+The security implications are equally instructive.
+Spectre demonstrated that speculative memory accesses, even when architecturally rolled back, leave observable traces that can leak data across security boundaries~\cite{kocher2019spectre}.
+This lesson transfers directly: speculative resource access at the dispatch layer may similarly leak context in multi-tenant deployments (Section~\ref{sec:discussion}).
+
+\subsection{Speculative Decoding in LLM Inference}
+
+Speculative decoding adapts the draft-verify paradigm to autoregressive language model inference.
+A small draft model generates $\gamma$ candidate tokens, then the larger target model scores all candidates in a single forward pass --- exploiting the asymmetry between generation ($O(\gamma)$ passes) and verification ($O(1)$ pass)~\cite{leviathan2023fast, chen2023accelerating}.
+
+A modified rejection sampling scheme ensures the output distribution is identical to the target model alone~\cite{leviathan2023fast}.
+The field has diversified: SpecInfer uses tree-based speculation with model ensembles~\cite{miao2024specinfer}; Medusa adds lightweight MLP heads for self-drafting~\cite{cai2024medusa}; EAGLE conditions drafting on the target's hidden states~\cite{li2024eagle, li2024eagle2}; and online speculative decoding continuously updates the draft from observed queries~\cite{liu2024online} --- a direct precedent for our Learner's online adaptation.
+
+Speedup is governed by the acceptance rate $\alpha$, speculation depth $\gamma$, and cost ratio $c$; practical systems achieve 2--3$\times$ throughput with $\alpha$ in the range 0.6--0.85~\cite{xia2024survey}.
+
+\subsection{Multi-Agent Orchestration}
+
+Multi-agent LLM systems assign specialized roles to agents that collaborate through structured communication.
+AutoGen organizes conversable agent groups~\cite{wu2023autogen}; MetaGPT encodes standardized procedures into assembly-line workflows~\cite{hong2024metagpt}; ChatDev decomposes software development into chat chains~\cite{qian2024chatdev}.
+Patterns such as ReAct interleave reasoning with tool use~\cite{yao2023react}, while Reflexion adds verbal self-reflection~\cite{shinn2023reflexion}.
+
+All existing frameworks follow the same sequential pipeline: intent recognition $\rightarrow$ task decomposition $\rightarrow$ agent assignment $\rightarrow$ execution.
+Recent work on LLM routing~\cite{ong2024routellm} and mixture-of-agents~\cite{wang2024moa} improves selection quality but remains reactive --- classify \emph{then} route, with no speculation, no pre-execution, and no learning from dispatch history.
+
+The gap is clear: the multi-agent orchestration layer lacks the predictive, speculative, and adaptive capabilities that have proven transformative in CPU architecture and LLM inference.
+
+\subsection{Empirical Motivation}
+
+\placeholder{Profiling methodology: instrument the dispatch pipeline of a production multi-agent scientific computing platform handling HPC-adjacent workloads over N requests.}
+
+\placeholder{Table or figure: dispatch latency breakdown by stage --- intent classification, task decomposition, agent selection, context assembly, agent initialization. Show dispatch overhead as \% of end-to-end latency.}
+
+\placeholder{Predictability analysis: conditional entropy of dispatch plans given intent class for top-K intent classes covering Z\% of requests.}
+
+The profiling reveals two findings: (1) dispatch overhead is a substantial fraction of end-to-end latency, particularly for shorter tasks; and (2) dispatch decisions exhibit strong temporal locality --- recurring patterns map to consistent plans, making prediction tractable.
+
+\subsection{Positioning}
+
+Table~\ref{tab:parallel} summarizes the structural parallel across domains.
+
+\begin{table}[t]
+\centering
+\caption{Speculation paradigm across three domains.}
+\label{tab:parallel}
+\footnotesize
+\begin{tabular}{@{}p{1.4cm}p{1.8cm}p{1.8cm}p{1.8cm}@{}}
+\toprule
+& \textbf{CPU} & \textbf{LLM Decoding} & \textbf{Pythia (Ours)} \\
+\midrule
+Draft & Branch predictor & Small draft model & Dispatch predictor \\
+Target & Branch resolution & Large target model & Full dispatch solver \\
+Unit & Instructions & Tokens & Dispatch plans \\
+Commit & Correct prediction & Token accepted & Plan matches \\
+Flush & Misprediction & Token rejected & Plan mismatch \\
+Cost & Flush cycles & Draft compute & Agent init waste \\
+Learning & TAGE~\cite{seznec2011tage} & Online SD~\cite{liu2024online} & RL Learner \\
+Break-even & $\sim$70--75\% & $\sim$50--60\% & Per mode (\S\ref{sec:costmodel}) \\
+Security & Spectre~\cite{kocher2019spectre} & N/A & \S\ref{sec:discussion} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The draft-target-verify-commit/flush pattern is domain-independent.
+It applies wherever (a)~an expensive optimization can be approximated cheaply, (b)~verification is cheaper than computing the exact solution, and (c)~prediction accuracy improves with observation.
+Multi-agent dispatch satisfies all three conditions.
+To our knowledge, this is the first work to formalize and evaluate this transfer.
+
+
+%% ============================================================
+%% SECTION 3: SPECULATIVE DISPATCH
+%% ============================================================
+
+\section{Pythia: Speculative Dispatch}
+\label{sec:design}
+
+This section presents the Pythia framework: the five-layer architecture, three progressive speculation modes, reconciliation protocol, formal cost model, and resource-aware dispatch formulation.
+
+\subsection{Architecture Overview}
+
+The Pythia pipeline consists of five components with well-defined data contracts (Figure~\ref{fig:architecture}).
+
+\textbf{Intent Detector.}
+A lightweight classifier that transforms a natural-language request into a structured intent: task type, complexity estimate, domain tags, decomposability score, and constraint annotations.
+The Intent Detector is deliberately shallow --- fast classification, not planning.
+
+\textbf{Dispatch Solver (Target).}
+The full optimization engine computing the optimal dispatch plan given complete system state: all intents, the agent pool, fleet configuration, resource availability, and cost constraints.
+Solver latency is the bottleneck that speculation aims to hide.
+
+\textbf{Speculative Dispatcher (Draft).}
+A lightweight prediction model running in parallel with the Solver, producing a draft plan using intent pattern matching, a historical dispatch cache, and a learned user fingerprint maintained by the Learner.
+
+\textbf{Orchestrator (Reconciliation Engine).}
+Receives both plans, compares element-by-element, and issues COMMIT, PARTIAL COMMIT, or FLUSH before executing the final dispatch.
+
+\textbf{Learner.}
+A reinforcement learning component observing the full dispatch lifecycle and continuously updating the Speculative Dispatcher (Section~\ref{sec:learner}).
+
+\begin{figure}[t]
+\centering
+\fbox{\parbox{0.95\columnwidth}{\centering\vspace{2em}\placeholder{Architecture diagram: 5-layer pipeline.\\Request $\rightarrow$ Intent Detector $\rightarrow$ parallel split to Solver \& Speculative Dispatcher $\rightarrow$ Orchestrator reconciliation $\rightarrow$ Agent Execution $\rightarrow$ Learner feedback loop.}\vspace{2em}}}
+\caption{Pythia's five-layer speculative dispatch architecture. The Speculative Dispatcher races ahead of the Solver, and the Orchestrator reconciles their outputs.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Speculation Modes}
+
+We define three progressive modes, each subsumes the previous with higher reward and greater misprediction cost.
+
+\textbf{Mode~1: Speculative Context Preparation.}
+\emph{Analogy: CPU cache prefetching.}
+Upon intent classification, Pythia fetches relevant context, warms tool configurations, and pre-assembles prompt templates.
+This work is useful regardless of the final plan --- context is agent-agnostic.
+Let $C_{prep}^{waste} \approx 0$; Mode~1 is activated unconditionally.
+
+\textbf{Mode~2: Speculative Agent Pre-dispatch.}
+\emph{Analogy: speculative execution past a branch.}
+Pythia predicts which agents are needed and begins provisioning: allocating resources, initializing runtimes, establishing connections.
+Gated by confidence threshold $\tau_2$.
+The expected cost is $(1-p) \cdot C_{init}$ and expected benefit is $p \cdot L_{init}$; Mode~2 is profitable when:
+\begin{equation}
+p > \frac{C_{init}}{L_{init} + C_{init}} = \tau_2^*
+\label{eq:mode2}
+\end{equation}
+This is structurally identical to the break-even condition in CPU branch prediction.
+
+\textbf{Mode~3: Speculative Execution with Verification.}
+\emph{Analogy: LLM speculative decoding.}
+A fast draft agent begins producing task output while the target agent is provisioned with the Solver's optimal plan.
+If aligned, draft output is accepted; if not, discarded.
+Mode~3 is profitable when the output acceptance probability $q$ exceeds:
+\begin{equation}
+q > \frac{C_{draft} + C_{flush}^{M3}}{L_{target} + C_{flush}^{M3}} = \tau_3^*
+\label{eq:mode3}
+\end{equation}
+mirroring the acceptance rate threshold in speculative decoding.
+
+\subsection{Reconciliation Protocol}
+
+When the Solver's optimal plan $P^*$ arrives and speculative plan $\hat{P}$ is in progress:
+
+\textbf{COMMIT} ($P^* = \hat{P}$): All pre-executed work accepted. Zero additional dispatch latency.
+
+\textbf{PARTIAL COMMIT} ($P^* \cap \hat{P} \neq \emptyset$, $P^* \neq \hat{P}$): Correctly speculated work retained; mismatched agents redirected.
+The \emph{salvage ratio} $\sigma = |P^* \cap \hat{P}| / |\hat{P}|$ governs the cost: $(1 - \sigma) \cdot C_{redirect}$.
+
+\textbf{FLUSH} ($P^* \cap \hat{P} = \emptyset$): All speculation discarded. Solver's plan executes from scratch.
+
+\subsection{Cost Model}
+\label{sec:costmodel}
+
+Let $L_s$ be Solver latency, $p_c$, $p_{pc}$, $p_f$ be COMMIT, PARTIAL COMMIT, and FLUSH probabilities ($p_c + p_{pc} + p_f = 1$), and $\bar{\sigma}$ be the mean salvage ratio.
+
+\textbf{Baseline latency:} $L_{baseline} = L_s + L_{exec}$
+
+\textbf{Speculative latency:}
+\begin{equation}
+L_{pythia} = L_s + p_{pc}(1 - \bar{\sigma})L_{redirect} + p_f \cdot L_{exec}
+\end{equation}
+
+\textbf{Latency reduction:}
+\begin{equation}
+\Delta L = L_{exec} - \left[p_{pc}(1 - \bar{\sigma})L_{redirect} + p_f \cdot L_{exec}\right]
+\end{equation}
+
+Speculation is net-positive when $\Delta L > 0$: the weighted probability of usable pre-execution exceeds the relative cost of wasted work.
+
+\textbf{Wasted compute ratio:}
+\begin{equation}
+W = \frac{p_f \cdot C_{spec} + p_{pc}(1 - \bar{\sigma}) \cdot C_{spec}}{C_{total}}
+\end{equation}
+directly comparable to the wasted instruction ratio in CPU speculation.
+
+\subsection{Resource-Aware Dispatch}
+
+The Solver operates over a heterogeneous fleet $\mathcal{F} = \{f_1, \ldots, f_n\}$ with capability vectors $f_i = (\text{compute}_i, \text{memory}_i, \text{rate\_limit}_i, \text{token\_budget}_i, \text{cost\_rate}_i, \text{latency}_i)$, optimizing subject to capacity, budget, rate-limit, and affinity constraints.
+This formulation connects directly to HPC scheduling~\cite{feitelson1995parallel, yoo2003slurm}, extending classical constraint satisfaction with AI-specific dimensions --- token budgets and API rate limits --- that have no analog in traditional job scheduling.
+
+
+%% ============================================================
+%% SECTION 4: LEARNER
+%% ============================================================
+
+\section{Learner-Augmented Speculation}
+\label{sec:learner}
+
+The Learner transforms Pythia from static prediction into an adaptive system.
+
+\subsection{Reinforcement Learning Formulation}
+
+We formulate the speculation policy as a contextual bandit.
+
+\textbf{State:} $s_t = (\mathbf{i}_t, \mathbf{f}_t, \mathbf{h}_t)$ --- intent features, fleet state, and dispatch fingerprint (compressed recent history).
+
+\textbf{Action:} $a_t = \hat{P}_t$ --- the speculative dispatch plan, including mode selection and resource allocations.
+
+\textbf{Reward:}
+\begin{equation}
+r_t = \begin{cases}
++L_{saved} & \text{COMMIT} \\
++\sigma_t L_{saved} - (1-\sigma_t)C_{redirect} & \text{PARTIAL} \\
+-C_{flush} & \text{FLUSH}
+\end{cases}
+\end{equation}
+
+The Learner maintains policy $\pi_\theta(a|s)$ maximizing $J(\theta) = \mathbb{E}[r(s,a)]$.
+The confidence score maps directly to mode selection: above $\tau_3^*$ activates Mode~3; above $\tau_2^*$ activates Mode~2; otherwise Mode~1.
+
+The dispatch fingerprint $\mathbf{h}_t$ encodes the $k$ most recent (intent, plan, outcome) triples via a small recurrent network, capturing temporal patterns in a researcher's workflow.
+
+\subsection{Progressive Activation}
+
+The Learner governs staged activation mirroring CPU predictor evolution:
+
+\textbf{Cold start} ($< N_1$ interactions): Mode~1 only. Pure observation. Optional Bayesian priors from aggregate patterns.
+
+\textbf{Early learning} ($N_1$--$N_2$): High-frequency intent classes exceed $\tau_2^*$, enabling Mode~2 for predictable requests.
+Analogous to two-level adaptive prediction~\cite{yeh1991two}.
+
+\textbf{Mature operation} ($> N_2$): Top-$k$ intent classes reach $\tau_3^*$ accuracy, enabling Mode~3.
+Analogous to TAGE-class neural prediction~\cite{seznec2011tage}.
+
+The thresholds $N_1$, $N_2$ are emergent --- they depend on workload predictability, not fixed hyperparameters.
+
+\subsection{Convergence and Adaptation}
+
+For the contextual bandit with finite intent classes, speculation accuracy converges at $O(\sqrt{T \log |\mathcal{A}| / T})$~\cite{agarwal2014taming}.
+Convergence is fast in practice because effective action spaces are small --- most researchers invoke a handful of intent patterns repeatedly.
+
+Non-stationarity (concept drift) is handled via: (1)~windowed history with natural decay of stale patterns, and (2)~drift detection triggering mode regression and accelerated relearning when accuracy drops below $\tau_2^*$.
+
+
+%% ============================================================
+%% SECTION 5: IMPLEMENTATION
+%% ============================================================
+
+\section{Implementation}
+\label{sec:implementation}
+
+\subsection{Prototype}
+
+We implement Pythia within Clio Coder, the multi-agent orchestration component of an NSF-funded scientific computing platform.
+The platform deploys autonomous AI agents across heterogeneous infrastructure --- GPU-accelerated nodes, cloud instances, and multi-tier storage hierarchies --- to enable natural-language interaction with scientific datasets and HPC workflows.
+Agents access 14+ scientific data formats through a Model Context Protocol (MCP) server ecosystem.
+
+\placeholder{Describe the non-speculative baseline dispatch pipeline in Clio Coder --- how requests currently flow through intent parsing, planning, agent selection, context assembly, and execution.}
+
+Pythia adds four components. \placeholder{Intent Detector implementation: model type, latency, input/output schema.} \placeholder{Speculative Dispatcher: prediction model (lookup table, neural net, or small LLM), confidence scoring.} \placeholder{Reconciliation Engine: COMMIT/PARTIAL/FLUSH logic, state salvage for partial commits.} \placeholder{Learner: RL framework, policy network architecture, online vs.\ batch updates, fingerprint encoding.}
+
+Components communicate via structured contracts: \texttt{Intent}, \texttt{DispatchPlan}, \texttt{SpeculationResult}, \texttt{ReconciliationOutcome}, and \texttt{DispatchOutcome}.
+
+\subsection{Deployment}
+
+\placeholder{Infrastructure: local nodes, cloud instances, HPC cluster. AI providers and rate limits. Fleet capability vectors.}
+
+Data-format awareness enables domain-specific speculation signals --- HDF5 requests trigger different dispatch patterns than source code analysis --- improving prediction for scientific workflows.
+
+
+%% ============================================================
+%% SECTION 6: EVALUATION
+%% ============================================================
+
+\section{Evaluation}
+\label{sec:evaluation}
+
+We evaluate Pythia across four workloads, four baselines, and seven metrics, answering: (1)~Does speculation reduce dispatch latency? (2)~Does the Learner improve accuracy? (3)~What is the misprediction cost? (4)~Parameter sensitivity? (5)~Scalability?
+
+\subsection{Experimental Setup}
+
+\textbf{Workloads:} (1)~HPC Code Generation --- MPI, Slurm scripts, parallel debugging; (2)~Scientific Data Pipelines --- HDF5/NetCDF processing, format conversion; (3)~Research Workflow Automation --- end-to-end literature-to-analysis workflows; (4)~Dispatch Micro-benchmarks --- isolated mode characterization.
+
+\textbf{Baselines:} No Speculation (sequential pipeline), Static Heuristic (rule-based), Speculation without Learning (fixed heuristics), Oracle (perfect prediction upper bound).
+
+\textbf{Metrics:} Dispatch latency, speculation hit rate, wasted compute ratio, dispatch quality, learner convergence, cost efficiency, scalability.
+
+\placeholder{Hardware/software specs. Repeat counts. Statistical methodology.}
+
+\subsection{Dispatch Latency}
+
+\placeholder{Primary result figure: dispatch latency across workloads $\times$ baselines $\times$ modes. Mode~1 provides modest, consistent reduction. Mode~2 substantial for predictable intents. Mode~3 maximum reduction. Improvement grows with workload predictability.}
+
+\subsection{Speculation Accuracy}
+
+\placeholder{Learning curves: hit rate over interactions per workload. Cold start $\rightarrow$ Mode~2 activation $\rightarrow$ Mode~3 activation. SwoL ceiling comparison. Regular patterns converge faster.}
+
+\subsection{Cost Analysis}
+
+\placeholder{Pareto frontier: wasted compute vs.\ confidence threshold per mode. Mode~1 near-zero waste. Optimal thresholds. Net cost efficiency despite mispredictions.}
+
+\subsection{Ablation Studies}
+
+\placeholder{Table: mode combinations, threshold sensitivity, history window size, single vs.\ multi-user, homogeneous vs.\ heterogeneous infrastructure.}
+
+\subsection{Scalability}
+
+\placeholder{Fleet size, agent diversity, search space complexity. Solver latency increases with fleet size; speculation benefit increases proportionally.}
+
+
+%% ============================================================
+%% SECTION 7: DISCUSSION
+%% ============================================================
+
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Limitations}
+
+\textbf{Cold start.}
+The Learner requires history to move beyond Mode~1.
+Mode~2 activation requires approximately \placeholder{$N_1$} interactions for common intents.
+Bayesian priors from aggregate behavior could reduce this, but we have not evaluated this approach.
+
+\textbf{Unpredictable workloads.}
+Speculative dispatch assumes temporal locality in dispatch decisions.
+For exploratory tasks with high dispatch entropy, the system correctly regresses to Mode~1 via drift detection, limiting benefit to context preparation.
+
+\textbf{Single-user scope.}
+Our evaluation focuses on single-user scenarios.
+Multi-user deployments introduce resource contention for speculative pre-execution --- extending the framework with fair-share speculative scheduling is future work.
+
+\subsection{Security Implications}
+
+Speculative dispatch raises concerns directly analogous to Spectre~\cite{kocher2019spectre}.
+Speculative context prefetching may access resources based on a \emph{predicted} plan differing from the \emph{authorized} optimal plan, creating a potential information channel in multi-tenant deployments.
+We identify three mitigations: speculative isolation, deferred context binding, and speculative access auditing --- but defer full analysis to future work.
+
+\subsection{Future Directions}
+
+\textbf{HPC scheduler integration.} The Solver's constraint formulation maps naturally to Slurm's resource model, enabling agent orchestration across managed cluster resources.
+\textbf{Federated learning.} Cross-user dispatch patterns could reduce cold-start times with privacy guarantees.
+\textbf{Transfer learning.} Preserving generalizable patterns across project transitions while rapidly adapting to new dispatch requirements.
+
+
+%% ============================================================
+%% SECTION 8: CONCLUSION
+%% ============================================================
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+Multi-agent AI systems are increasingly central to scientific computing, yet their orchestration layers remain a performance bottleneck.
+This paper introduced \emph{Pythia}, a speculative dispatch framework adapting the draft-target paradigm --- proven in CPU branch prediction and LLM speculative decoding --- to multi-agent orchestration.
+
+We formalized a three-mode speculation hierarchy with cost models deriving break-even accuracy thresholds for each mode, a learner-augmented speculation model that improves dispatch prediction through reinforcement learning, and a resource-aware solver connecting multi-agent dispatch to HPC scheduling.
+Our prototype, integrated into an NSF-funded scientific computing platform, demonstrates \placeholder{X\%} dispatch latency reduction and learner convergence within \placeholder{N} interactions.
+
+The convergence of HPC systems expertise and AI agent orchestration presents an opportunity for the scientific computing community.
+The scheduling, resource management, and performance optimization principles that underpin decades of HPC research apply directly to the emerging challenge of orchestrating autonomous agents across heterogeneous infrastructure.
+Pythia demonstrates one instance of this transfer; we anticipate that further HPC-inspired optimizations will prove equally productive as multi-agent systems scale.
+
+
+%% ============================================================
+%% BIBLIOGRAPHY
+%% ============================================================
+
+\bibliographystyle{IEEEtran}
+\bibliography{../references}
+
+\end{document}
