@@ -7,7 +7,7 @@ The draft-target speculation paradigm generalizes from CPU architecture and LLM 
 ## Supporting Claims
 
 ### C1: Dispatch planning is a latency bottleneck in multi-agent systems
-- **Evidence needed**: Profiling data from Cleo Coder showing dispatch planning + setup as fraction of end-to-end latency
+- **Evidence needed**: Profiling data from Clio Coder showing dispatch planning + setup as fraction of end-to-end latency
 - **Supports**: Motivation for speculation — you can't optimize what isn't a bottleneck
 - **Section**: §2 (Background & Motivation)
 

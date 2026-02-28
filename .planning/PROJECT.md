@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A research paper targeting SC26 (IEEE proceedings, 10-page two-column). Introduces speculative dispatch — adapting the draft-target speculation paradigm from CPU speculative execution and LLM speculative decoding to the orchestration layer of multi-agent AI systems. Evaluated on a working prototype (Cleo Coder) with HPC-adjacent workloads.
+A research paper targeting SC26 (IEEE proceedings, 10-page two-column). Introduces speculative dispatch — adapting the draft-target speculation paradigm from CPU speculative execution and LLM speculative decoding to the orchestration layer of multi-agent AI systems. Part of the IOWarp project (iowarp.ai). Evaluated on a working prototype built on Clio Coder, the multi-agent orchestration component of the Clio monorepo, with HPC-adjacent workloads.
 
 ## Core Argument
 
@@ -17,7 +17,7 @@ The draft-target speculation paradigm — proven in CPU branch prediction and LL
 - [ ] Speculation cost model with break-even accuracy threshold derivation
 - [ ] RL formulation for the Learner (state/action/reward)
 - [ ] Resource-aware dispatch solver treating heterogeneous infrastructure constraints as first-class parameters
-- [ ] Working prototype on Cleo Coder evaluated on realistic workloads
+- [ ] Working prototype on Clio Coder (IOWarp/Clio) evaluated on realistic workloads
 - [ ] End-to-end dispatch latency measurements across all three modes
 - [ ] Speculation hit rate and wasted compute ratio analysis
 - [ ] Learner convergence curves
@@ -58,7 +58,7 @@ Secondary audience: AI systems researchers interested in multi-agent orchestrati
 - **Format**: Double-anonymous. Self-cite in third person. IEEE proceedings LaTeX template.
 - **Review**: SC26 primary area "System Software & Cloud Computing"; secondary "Data Analytics, Visualization, & Storage"
 - **AI Policy**: SC26 permits AI tools with disclosure in acknowledgments + citation
-- **Data**: Prototype built on Cleo Coder. HPC-adjacent workloads (code gen, data pipelines, research workflows, micro-benchmarks).
+- **Data**: Prototype built on Clio Coder (IOWarp/Clio monorepo). HPC-adjacent workloads (code gen, data pipelines, research workflows, micro-benchmarks).
 
 ## Key Decisions
 

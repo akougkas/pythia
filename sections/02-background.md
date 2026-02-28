@@ -59,8 +59,8 @@ The gap is clear: the multi-agent orchestration layer lacks the predictive, spec
 
 ## 2.4 Empirical Motivation
 
-To quantify the dispatch bottleneck, we profiled a production multi-agent coding system handling realistic HPC-adjacent workloads.
-[PLACEHOLDER: Insert Cleo Coder profiling methodology — instrument dispatch pipeline stages, collect timing data across N requests over M days]
+To quantify the dispatch bottleneck, we profiled Clio Coder — the multi-agent orchestration component of the IOWarp scientific computing platform — handling realistic HPC-adjacent workloads including MPI code generation, scientific data pipeline construction, and research workflow automation.
+[PLACEHOLDER: Insert Clio Coder profiling methodology — instrument dispatch pipeline stages, collect timing data across N requests over M days]
 
 [PLACEHOLDER: Figure or table showing dispatch latency breakdown:
 - Intent classification: ~X ms (Y% of total)

@@ -35,7 +35,7 @@
 - **2.1 Speculative Execution in CPU Architecture** — Brief primer: branch prediction, speculative execution, commit/flush, cost model. Leverage SC audience's familiarity. (~200 words)
 - **2.2 Speculative Decoding in LLM Inference** — Draft model generates, target model verifies in one forward pass. Key papers. Acceptance rate. Cost model parallel. (~300 words)
 - **2.3 Multi-Agent Orchestration** — Current frameworks (CrewAI, AutoGen, LangGraph). Dispatch problem. No speculation in existing systems. (~250 words)
-- **2.4 Empirical Motivation** — Profiling data from Cleo Coder: dispatch latency breakdown, predictability of dispatch decisions for recurring intents. (~250 words)
+- **2.4 Empirical Motivation** — Profiling data from Clio Coder: dispatch latency breakdown, predictability of dispatch decisions for recurring intents. (~250 words)
 - **2.5 Positioning** — Table showing CPU speculation / LLM speculation / our speculation side-by-side. Novelty gap. (~125 words)
 
 ### §3 Speculative Dispatch (1,500 words)
@@ -54,7 +54,7 @@
 
 ### §5 Implementation (600 words)
 
-- **5.1 Prototype** — Built on Cleo Coder. Component interfaces. Models and agents used. Languages, libraries, infrastructure. (~350 words)
+- **5.1 Prototype** — Built on Clio Coder. Component interfaces. Models and agents used. Languages, libraries, infrastructure. (~350 words)
 - **5.2 Deployment** — Heterogeneous setup: local workstations, cloud instances, HPC nodes. Provider constraints as first-class parameters. (~250 words)
 
 ### §6 Evaluation (1,500 words)
