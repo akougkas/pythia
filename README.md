@@ -8,17 +8,11 @@ The oracle at Delphi didn't wait for the question to finish before she started s
 
 ## Quickstart
 
-One-liner (fetches and runs the onboarding script from the private repo):
-
 ```bash
-bash <(gh api /repos/akougkas/pythia/contents/onboard.sh -q .content | base64 -d)
+curl -fsSL https://raw.githubusercontent.com/akougkas/pythia/main/onboard.sh | bash
 ```
 
-This checks your tools, clones the repo, verifies project state, and launches Claude Code with WTF-P in mentor mode. If you already have the repo cloned:
-
-```bash
-cd pythia && ./onboard.sh
-```
+Checks your tools, clones the repo, verifies project state, launches Claude Code in mentor mode. Already cloned? Just `./onboard.sh`.
 
 See `CLAUDE.md` for project rules and development doctrine.
 

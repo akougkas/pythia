@@ -4,13 +4,11 @@
 # Onboarding script for team members
 # ──────────────────────────────────────────────────────────────
 #
-# One-liner (fetches this script from private repo via gh CLI):
-#
-#   bash <(gh api /repos/akougkas/pythia/contents/onboard.sh -q .content | base64 -d)
+#   curl -fsSL https://raw.githubusercontent.com/akougkas/pythia/main/onboard.sh | bash
 #
 # Or if you already cloned:
 #
-#   cd pythia && ./onboard.sh
+#   ./onboard.sh
 #
 set -euo pipefail
 
