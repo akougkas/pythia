@@ -1,2 +1,44 @@
-# pythia
-Pythia Speculative Dispatch for Multi-Agent Orchestration Systems  The Oracle at Delphi didn't wait for the question to finish before she started seeing the answer. a cheap prediction running in parallel with an expensive optimization amortizes dispatch latency when alignment is high, and a learning system makes alignment increase over time. 
+# Pythia
+
+Speculative Dispatch for Autonomous Agent Orchestration in Scientific Computing.
+
+SC26 paper + implementation. Deadline: April 8, 2026.
+
+The oracle at Delphi didn't wait for the question to finish before she started seeing the answer. A cheap prediction running in parallel with an expensive optimization amortizes dispatch latency when alignment is high, and a learning system makes alignment increase over time.
+
+## Quickstart
+
+One-liner (fetches and runs the onboarding script from the private repo):
+
+```bash
+bash <(gh api /repos/akougkas/pythia/contents/onboard.sh -q .content | base64 -d)
+```
+
+This checks your tools, clones the repo, verifies project state, and launches Claude Code with WTF-P in mentor mode. If you already have the repo cloned:
+
+```bash
+cd pythia && ./onboard.sh
+```
+
+See `CLAUDE.md` for project rules and development doctrine.
+
+## Structure
+
+```
+├── CLAUDE.md           # Project rules for Claude Code (read this first)
+├── sections/           # Paper source (8 markdown files)
+├── paper/              # LaTeX compilation (main.tex → pdflatex)
+├── src/                # Implementation (TDD, co-developed with paper)
+├── references.bib      # Shared bibliography
+└── .planning/          # WTF-P state, sprint plan, project docs
+    ├── PROJECT.md      # Requirements, scope, team
+    ├── SPRINT.md       # 5-week timeline and assignments
+    ├── config.json     # WTF-P configuration
+    └── structure/      # Outline, argument map, narrative arc
+```
+
+## Compile Paper
+
+```bash
+cd paper && pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
+```

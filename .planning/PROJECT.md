@@ -60,14 +60,35 @@ Secondary audience: AI systems researchers interested in multi-agent orchestrati
 - **AI Policy**: SC26 permits AI tools with disclosure in acknowledgments + citation
 - **Data**: Prototype built on Clio Coder (IOWarp/Clio monorepo). HPC-adjacent workloads (code gen, data pipelines, research workflows, micro-benchmarks).
 
+## Team
+
+| Role | Person | Primary Responsibility |
+|------|--------|-----------------------|
+| PI | Prof. Kougkas | Architecture, narrative, final review |
+| Senior PhD | Jie | Formal methods (§3–§4), implementation architecture (§5), profiling (§2.4) |
+| PhD (agents) | Shazzadul | Learner RL (§4), agent integration (§5), evaluation pipeline (§6) |
+
+See `SPRINT.md` for detailed assignments and timeline.
+
+## Co-Development Approach
+
+This repo co-hosts the paper and its implementation. They are developed together:
+- Paper claims drive test specifications → tests drive implementation → experiments fill PLACEHOLDERs → data updates the paper
+- Source code lives in `src/`, paper in `sections/` + `paper/`
+- Test-driven development: every code module traces to a paper section
+- If experimental results diverge from paper claims, reposition honestly (see SPRINT.md risk register)
+
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Core contribution = paradigm transfer (not results alone) | SC audience values new abstractions; results support the abstraction's validity | — Pending |
-| 8-section structure (split Design from Learning, add Discussion) | The three-mode hierarchy + RL learner each deserve dedicated treatment; Discussion needed for limitations/security | — Pending |
-| IEEE CS venue template adapted | SC26 uses IEEE proceedings format; standard IEEE CS structure expanded for paper's needs | — Pending |
+| Core contribution = paradigm transfer (not results alone) | SC audience values new abstractions; results support the abstraction's validity | ✓ Confirmed |
+| 8-section structure (split Design from Learning, add Discussion) | The three-mode hierarchy + RL learner each deserve dedicated treatment; Discussion needed for limitations/security | ✓ Confirmed |
+| IEEE CS venue template adapted | SC26 uses IEEE proceedings format; standard IEEE CS structure expanded for paper's needs | ✓ Confirmed |
 | Citation style: IEEE numeric | Required by venue | ✓ Good |
+| Paper + code co-development in single repo | Sprint timeline demands tight coupling; paper claims must be testable | ✓ Confirmed |
+| TDD from paper claims | Forces precision in paper writing; ensures implementation matches claims | ✓ Confirmed |
+| WTF-P scaffold mode with all gates on | Students learn by doing; Claude mentors, doesn't write autonomously | ✓ Confirmed |
 
 ---
-*Last updated: 2026-02-28 after paper initialization*
+*Last updated: 2026-03-02 — team handoff preparation*
