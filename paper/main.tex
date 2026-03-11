@@ -127,19 +127,48 @@ This lesson transfers directly: speculative resource access at the dispatch laye
 Speculative decoding adapts the draft-verify paradigm to autoregressive language model inference.
 A small draft model generates $\gamma$ candidate tokens, then the larger target model scores all candidates in a single forward pass --- exploiting the asymmetry between generation ($O(\gamma)$ passes) and verification ($O(1)$ pass)~\cite{leviathan2023fast, chen2023accelerating}.
 
-A modified rejection sampling scheme ensures the output distribution is identical to the target model alone~\cite{leviathan2023fast}.
-The field has diversified: SpecInfer uses tree-based speculation with model ensembles~\cite{miao2024specinfer}; Medusa adds lightweight MLP heads for self-drafting~\cite{cai2024medusa}; EAGLE conditions drafting on the target's hidden states~\cite{li2024eagle, li2024eagle2}; and online speculative decoding continuously updates the draft from observed queries~\cite{liu2024online} --- a direct precedent for our Learner's online adaptation.
+% A modified rejection sampling scheme ensures the output distribution is identical to the target model alone~\cite{leviathan2023fast}.
+% The field has diversified: SpecInfer uses tree-based speculation with model ensembles~\cite{miao2024specinfer}; Medusa adds lightweight MLP heads for self-drafting~\cite{cai2024medusa}; EAGLE conditions drafting on the target's hidden states~\cite{li2024eagle, li2024eagle2}; and online speculative decoding continuously updates the draft from observed queries~\cite{liu2024online} --- a direct precedent for our Learner's online adaptation.
 
-Speedup is governed by the acceptance rate $\alpha$, speculation depth $\gamma$, and cost ratio $c$; practical systems achieve 2--3$\times$ throughput with $\alpha$ in the range 0.6--0.85~\cite{xia2024survey}.
+% The speedup is governed by three parameters: the mean acceptance rate $\alpha$, the speculation depth $\gamma$ (i.e., the number of draft tokens), and the cost ratio $c$ between draft and target forward passes. Leviathan et al.~\cite{leviathan2023fast} derived the closed-form expected walltime speedup (Theorem 3.8): $E(\text{Speedup}) = \frac{1 - \alpha^{\gamma+1}}{(1-\alpha)(\gamma c + 1)}$. Note that as $c \to 0$ (negligible draft cost), it approaches $1/(1-\alpha)$, demonstrating the theoretical upper bound on speedup. Increasing $\gamma$ raises tokens per cycle but increases wasted computation when $\alpha$ is low (early rejection invalidates all subsequent draft tokens). \placeholder{Confirm source and metric for practical speedup range, likely 2--3$\times$ walltime improvement.}
+
+A modified rejection sampling scheme ensures the output distribution is identical to the target model alone~\cite{leviathan2023fast}.
+The field has diversified rapidly.
+SpecInfer and Sequoia employ tree-based speculation with hardware-aware optimal tree construction, generating candidate trees from multiple drafts and verifying them in a single pass~\cite{miao2024specinfer, chen2024sequoia}.
+Medusa eliminates the separate draft model entirely, adding lightweight MLP heads to the target model for multi-position prediction~\cite{cai2024medusa}.
+The EAGLE family conditions drafting on the target model's hidden states, with EAGLE-3 simulating inference conditions during training to close the train-inference gap and achieve up to 6.5$\times$ speedup~\cite{li2024eagle, li2025eagle3}.
+Online speculative decoding continuously updates the draft model from observed query distributions, improving acceptance rates without offline retraining~\cite{liu2024online}.
+Recent analysis reveals that verification --- not drafting --- dominates speculative decoding cost~\cite{liu2025verification}, while TurboSpec formalizes ``goodput'' as a unifying metric for adaptive runtime tuning~\cite{liu2024turbospec}.
+These three developments --- online adaptation, verification-centric cost analysis, and adaptive parameter control --- directly inform our Learner design (Section~\ref{sec:learner}).
+
+
+The speedup is governed by three parameters: the mean acceptance rate $\alpha$, the speculation depth $\gamma$ (i.e., the number of draft tokens), and the cost ratio $c$ between draft and target forward passes. Leviathan et al. \cite{leviathan2023fast} derived the closed-form expected walltime speedup (Theorem 3.8): $E(\text{Speedup}) = \frac{1 - \alpha^{\gamma+1}}{(1-\alpha)(\gamma c + 1)}$. Note that as $c \to 0$ (negligible draft cost), it approaches $1/(1-\alpha)$, demonstrating the theoretical upper bound on speedup. Increasing $\gamma$ raises tokens per cycle but increases wasted computation when $\alpha$ is low (early rejection invalidates all subsequent draft tokens). Practical systems achieve 2--3$\times$ walltime improvement with acceptance rates in the range 0.6--0.85 \cite{xia2024survey}.
 
 \subsection{Multi-Agent Orchestration}
 
 Multi-agent LLM systems assign specialized roles to agents that collaborate through structured communication.
 AutoGen organizes conversable agent groups~\cite{wu2023autogen}; MetaGPT encodes standardized procedures into assembly-line workflows~\cite{hong2024metagpt}; ChatDev decomposes software development into chat chains~\cite{qian2024chatdev}.
 Patterns such as ReAct interleave reasoning with tool use~\cite{yao2023react}, while Reflexion adds verbal self-reflection~\cite{shinn2023reflexion}.
+Beyond these centralized designs, AgentNet enables agents to self-organize into dynamic DAGs without a central controller, using retrieval-augmented memory for continual specialization~\cite{yang2025agentnet}.
+A controlled evaluation across 180 configurations and five canonical architectures found that centralized designs outperform independent and decentralized alternatives on decomposition-heavy tasks while incurring $O(k)$ LLM calls~\cite{qian2025scaling}.
 
 All existing frameworks follow the same sequential pipeline: intent recognition $\rightarrow$ task decomposition $\rightarrow$ agent assignment $\rightarrow$ execution.
-Recent work on LLM routing~\cite{ong2024routellm} and mixture-of-agents~\cite{wang2024moa} improves selection quality but remains reactive --- classify \emph{then} route, with no speculation, no pre-execution, and no learning from dispatch history.
+CrewAI organizes agents into role-based ``crews'' with sequential or parallel execution.
+LangGraph models workflows as directed state machines.
+OpenAI's Swarm (and its successor Agents SDK) introduced lightweight handoff primitives.
+
+Task allocation within this pipeline has grown increasingly dynamic.
+TDAG dynamically generates task-specific subagents on the fly rather than relying on pre-defined roles~\cite{qiao2024tdag}.
+COLA combines a planner for coarse decomposition with a scenario-aware task scheduler and decision agents for fine-grained refinement~\cite{zhang2025cola}.
+MasRouter jointly optimizes collaboration mode, role allocation, and LLM backbone selection, reducing orchestration overhead by up to 52\%~\cite{li2025masrouter}.
+Yet even the most dynamic allocation systems trigger a fresh planning cycle for every request, regardless of how similar it is to prior requests; none predict or pre-execute.
+
+Routing efficiency has evolved through four generations.
+FrugalGPT introduced simple cascading across models to minimize cost~\cite{chen2023frugalgpt}.
+RouteLLM advanced to binary strong/weak model selection using preference data~\cite{ong2024routellm}.
+Difficulty-aware orchestration routes across heterogeneous LLMs, achieving 11\% accuracy improvement at 64\% cost~\cite{huang2024diffrouting}.
+Most recently, OI-MAS introduced confidence-aware routing that dynamically selects agent roles and model scales as reasoning unfolds~\cite{wang2026oimas}.
+Yet even OI-MAS --- the most adaptive router to date --- reroutes based on observed state; it never predicts or pre-executes future dispatch decisions.
 
 The gap is clear: the multi-agent orchestration layer lacks the predictive, speculative, and adaptive capabilities that have proven transformative in CPU architecture and LLM inference.
 

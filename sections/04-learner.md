@@ -86,3 +86,5 @@ We handle non-stationarity through two mechanisms:
 
 This adaptive mechanism ensures that the system degrades gracefully under distribution shift rather than persisting with a stale model.
 The parallel to CPU branch prediction is direct: modern predictors use tagged geometric history lengths (TAGE) that naturally weight recent history more heavily, and misprediction recovery mechanisms flush stale branch history entries [CITE:seznec2011].
+Recent hardware research has validated RL-based adaptive strategy selection in a closely related setting: Janus dynamically switches between speculation defense policies per execution phase using a reinforcement learning agent, outperforming any single static policy by 2–5\% [aimoniotis2024janus].
+Our Learner's mode regression mechanism is structurally analogous — adapting the speculation strategy to the observed workload phase rather than committing to a fixed policy.

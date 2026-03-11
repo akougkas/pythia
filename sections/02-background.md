@@ -12,9 +12,15 @@ If wrong, the speculative work is flushed and execution restarts on the correct 
 Branch prediction has evolved through four generations.
 Static heuristics (e.g., "backward branches taken") gave way to two-level adaptive predictors that correlate branch outcomes with recent history [yeh1991two], then to tournament predictors combining multiple strategies [mcfarling1993combining], and finally to TAGE predictors using tagged geometric history lengths that achieve accuracy exceeding 95% on realistic workloads [seznec2006tage, seznec2011tage].
 Neural branch prediction introduced perceptrons as an alternative to table-based predictors, enabling linear scaling with history length [jimenez2001perceptron].
+<!-- Branch prediction has evolved from static heuristics through two-level adaptive [yeh1991two] and tournament predictors [mcfarling1993combining] to TAGE designs that achieve accuracy exceeding 95% on realistic workloads [seznec2006tage, seznec2011tage], with neural approaches enabling linear scaling with history length [jimenez2001perceptron]. -->
+
+Critically, speculation in modern processors extends well beyond branch outcomes.
+Recent microarchitectural analyses have uncovered speculative predictors for load addresses [kim2025slap], load values [kim2025flop], and data-dependent memory access patterns [chen2024gofetch]. Each independently instantiates the same predict-execute-verify pattern on a different data domain.
+This repeated rediscovery suggests the abstraction is fundamental rather than artifact-specific, a premise central to the transfer we formalize in Section 3.
 
 The cost model is fundamental: speculation is net-positive when prediction accuracy exceeds $\frac{C_{flush}}{L_{saved} + C_{flush}}$, where $C_{flush}$ is the misprediction penalty and $L_{saved}$ is the latency avoided by correct speculation [hennessy2017computer].
 For typical pipeline depths and flush costs, the break-even accuracy is approximately 70–75% — well below what modern predictors achieve.
+<!-- For typical 15–20 stage pipelines where $C_{flush} \approx 15-20$ cycles and $L_{saved} \approx 5–7$ cycles, the break-even accuracy is approximately 68–80% — well below what modern predictors achieve [hennessy2017computer]. -->
 
 The security implications of speculative execution are equally instructive.
 Spectre demonstrated that speculative memory accesses, even when architecturally rolled back, leave observable traces in microarchitectural state (e.g., cache lines) that can be exploited to leak data across security boundaries [kocher2019spectre].
@@ -29,13 +35,16 @@ A modified rejection sampling scheme ensures the output distribution is *identic
 In the worst case, one token is produced per target forward pass (no worse than standard decoding); in the best case, $\gamma + 1$ tokens are produced, yielding up to $\gamma + 1$ times throughput.
 
 The field has diversified rapidly.
-SpecInfer uses tree-based speculation with multiple draft models generating a candidate tree verified in one pass [miao2024specinfer].
+SpecInfer and Sequoia employ tree-based speculation with hardware-aware optimal tree construction, generating candidate trees from multiple drafts and verifying them in a single pass [miao2024specinfer, chen2024sequoia].
 Medusa eliminates the separate draft model entirely, adding lightweight MLP heads to the target model for multi-position prediction [cai2024medusa].
-EAGLE conditions drafting on the target model's hidden states for higher acceptance rates [li2024eagle, li2024eagle2].
-Online speculative decoding continuously updates the draft model from observed query distributions, improving acceptance rates over time without offline retraining [liu2024online] — a direct precedent for our Learner's online adaptation.
+The EAGLE family conditions drafting on the target model's hidden states, with EAGLE-3 simulating inference conditions during training to close the train-inference gap and achieve up to 6.5× speedup [li2024eagle, li2025eagle3].
+Online speculative decoding continuously updates the draft model from observed query distributions, improving acceptance rates without offline retraining [liu2024online].
+Recent analysis reveals that verification — not drafting — dominates speculative decoding cost [liu2025verification], while TurboSpec formalizes "goodput" as a unifying metric for adaptive runtime tuning [liu2024turbospec].
+These three developments — online adaptation, verification-centric cost analysis, and adaptive parameter control — directly inform our Learner design (§4).
 
-The speedup is governed by three parameters: the mean acceptance rate $\alpha$, the speculation depth $\gamma$, and the cost ratio $c$ between draft and target forward passes.
-The theoretical upper bound on speedup is $1/(1-\alpha)$; practical systems achieve 2–3$\times$ throughput improvement with $\alpha$ in the range 0.6–0.85 [xia2024survey].
+<!-- The speedup is governed by three parameters: the mean acceptance rate $\alpha$, the speculation depth $\gamma$, and the cost ratio $c$ between draft and target forward passes.
+The theoretical upper bound on speedup is $1/(1-\alpha)$; practical systems achieve 2–3$\times$ throughput improvement with $\alpha$ in the range 0.6–0.85 [xia2024survey]. -->
+The speedup is governed by three parameters: the mean acceptance rate $\alpha$, the speculation depth $\gamma$ (i.e., the number of draft tokens), and the cost ratio $c$ between draft and target forward passes. Leviathan et al. [leviathan2023fast] derived the closed-form expected walltime speedup (Theorem 3.8): $E(\text{Speedup}) = \frac{1 - \alpha^{\gamma+1}}{(1-\alpha)(\gamma c + 1)}$. Note that as $c \to 0$ (negligible draft cost), it approaches $1/(1-\alpha)$, demonstrating the theoretical upper bound on speedup. Increasing $\gamma$ raises tokens per cycle but increases wasted computation when $\alpha$ is low (early rejection invalidates all subsequent draft tokens). Practical systems achieve 2–3× walltime improvement with acceptance rates in the range 0.6–0.85 [xia2024survey].
 
 ## 2.3 Multi-Agent Orchestration
 
@@ -44,16 +53,26 @@ AutoGen organizes agents into conversable groups with human-in-the-loop capabili
 MetaGPT encodes standardized operating procedures into an assembly-line paradigm with verification at each stage [hong2024metagpt].
 ChatDev decomposes software development into chat chains across design, coding, and testing phases [qian2024chatdev].
 Agentic patterns such as ReAct interleave reasoning with tool use [yao2023react], while Reflexion adds post-hoc verbal reflection for self-improvement [shinn2023reflexion].
+Beyond these centralized designs, AgentNet enables agents to self-organize into dynamic DAGs without a central controller, using retrieval-augmented memory for continual specialization [yang2025agentnet].
+A controlled evaluation across 180 configurations and five canonical architectures found that centralized designs outperform independent and decentralized alternatives on decomposition-heavy tasks while incurring $O(k)$ LLM calls [qian2025scaling].
 
 All existing frameworks follow the same sequential pipeline: intent recognition → task decomposition → agent assignment → execution.
 CrewAI organizes agents into role-based "crews" with sequential or parallel execution.
 LangGraph models workflows as directed state machines.
 OpenAI's Swarm (and its successor Agents SDK) introduced lightweight handoff primitives.
-None of these systems perform predictive dispatch — each request triggers a fresh planning cycle regardless of how similar it is to prior requests.
 
-Recent work has begun to address routing efficiency.
-RouteLLM trains routers to select between LLMs using preference data [ong2024routellm], and Mixture-of-Agents constructs layered multi-model architectures [wang2024moa].
-However, these operate reactively at query time: they classify *then* route, with no speculation, no pre-execution, and no learning from dispatch history.
+Task allocation within this pipeline has grown increasingly dynamic.
+TDAG dynamically generates task-specific subagents on the fly rather than relying on pre-defined roles [qiao2024tdag].
+COLA combines a planner for coarse decomposition with a scenario-aware task scheduler and decision agents for fine-grained refinement [zhang2025cola].
+MasRouter jointly optimizes collaboration mode, role allocation, and LLM backbone selection, reducing orchestration overhead by up to 52\% [li2025masrouter].
+Yet even the most dynamic allocation systems trigger a fresh planning cycle for every request, regardless of how similar it is to prior requests; none predict or pre-execute.
+
+Routing efficiency has evolved through four generations.
+FrugalGPT introduced simple cascading across models to minimize cost [chen2023frugalgpt].
+RouteLLM advanced to binary strong/weak model selection using preference data [ong2024routellm].
+Difficulty-aware orchestration routes across heterogeneous LLMs, achieving 11\% accuracy improvement at 64\% cost [huang2024diffrouting].
+Most recently, OI-MAS introduced confidence-aware routing that dynamically selects agent roles and model scales as reasoning unfolds [wang2026oimas].
+Yet even OI-MAS — the most adaptive router to date — reroutes based on observed state; it never predicts or pre-executes future dispatch decisions.
 
 The gap is clear: the multi-agent orchestration layer lacks the predictive, speculative, and adaptive capabilities that have proven transformative in CPU architecture and LLM inference.
 

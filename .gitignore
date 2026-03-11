@@ -47,3 +47,8 @@ htmlcov/
 
 # Jupyter
 .ipynb_checkpoints/
+
+## local sources
+.back_source
+.dev_guide
+.planning/sections/

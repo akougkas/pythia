@@ -1,0 +1,30 @@
+fleet:
+  - member_id: gpu-workstation
+    compute: 100.0
+    memory: 64.0
+    rate_limit: 5
+    token_budget: 50000
+    cost_rate: 0.03
+    latency: 0.1
+    capabilities: [code_gen, analysis, review, planner]
+    affinity_tags: [gpu, local]
+
+  - member_id: cpu-server
+    compute: 50.0
+    memory: 32.0
+    rate_limit: 10
+    token_budget: 100000
+    cost_rate: 0.01
+    latency: 0.3
+    capabilities: [analysis, review, planner]
+    affinity_tags: [cpu, local]
+
+  - member_id: cloud-api
+    compute: 200.0
+    memory: 128.0
+    rate_limit: 3
+    token_budget: 200000
+    cost_rate: 0.10
+    latency: 0.5
+    capabilities: [code_gen, analysis, review, planner]
+    affinity_tags: [cloud, api]
