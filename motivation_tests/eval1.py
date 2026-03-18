@@ -290,6 +290,100 @@ class ClaudeCodeFramework(PlanningFramework):
         return result
 
 
+# ── Direct API (OpenAI-compatible) ────────────────────────────────────────
+
+class DirectAPIFramework(PlanningFramework):
+    """
+    Calls any OpenAI-compatible endpoint (LM Studio, Ollama, etc.) directly.
+
+    Single-shot chat completion — no tools, no multi-turn, no SDK.
+    Measures wall-clock latency and captures the raw text as the plan.
+    """
+
+    @property
+    def name(self) -> str:
+        return "direct_api"
+
+    async def generate_plan(
+        self,
+        case: CaseSpec,
+        model: ModelSpec,
+    ) -> PlanOutput:
+        result = PlanOutput(
+            case_name=case.name,
+            framework_name=self.name,
+            model_name=model.name,
+            provider=model.provider,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
+        # ── Compose prompt (same as ClaudeCodeFramework) ──
+        prompt = (
+            f"You are in planning mode. Read the objective below and produce "
+            f"a detailed, step-by-step implementation plan. Do NOT execute "
+            f"anything — only plan.\n\n"
+            f"## Objective\n\n{case.prompt}\n\n"
+            f"## Working Directory\n\n"
+            f"The working directory is: {case.working_dir}\n"
+            f"Inspect it if needed for context materials."
+        )
+
+        # ── Determine API endpoint ──
+        if model.provider == "anthropic":
+            # For Anthropic models, use the Anthropic messages API
+            api_url = "https://api.anthropic.com/v1/messages"
+            api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+            body = json.dumps({
+                "model": model.name,
+                "max_tokens": 8192,
+                "messages": [{"role": "user", "content": prompt}],
+            }).encode()
+            headers = {
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            }
+        else:
+            # OpenAI-compatible endpoint (LM Studio, Ollama, etc.)
+            api_url = f"{model.api_base_url.rstrip('/')}/v1/chat/completions"
+            body = json.dumps({
+                "model": model.name,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.2,
+                "max_tokens": 8192,
+            }).encode()
+            headers = {
+                "Content-Type": "application/json",
+            }
+
+        # ── Call API ──
+        t0 = time.monotonic()
+        try:
+            req = urllib.request.Request(api_url, data=body, headers=headers)
+            with urllib.request.urlopen(req, timeout=600) as resp:
+                raw = json.loads(resp.read().decode())
+
+            if model.provider == "anthropic":
+                # Anthropic response format
+                result.plan_text = "".join(
+                    block["text"]
+                    for block in raw.get("content", [])
+                    if block.get("type") == "text"
+                )
+            else:
+                # OpenAI-compatible response format
+                result.plan_text = raw["choices"][0]["message"]["content"]
+
+            result.num_turns = 1
+
+        except Exception as e:
+            result.error = f"{type(e).__name__}: {e}"
+
+        result.duration_wall_s = time.monotonic() - t0
+        result.duration_ms = int(result.duration_wall_s * 1000)
+        return result
+
+
 # ── Stub: Aider ──────────────────────────────────────────────────────────
 
 class AiderFramework(PlanningFramework):
@@ -349,6 +443,7 @@ class OpenHandsFramework(PlanningFramework):
 
 FRAMEWORK_REGISTRY: dict[str, PlanningFramework] = {
     "claude_code": ClaudeCodeFramework(),
+    "direct_api": DirectAPIFramework(),
     "aider": AiderFramework(),
     "openhands": OpenHandsFramework(),
 }
