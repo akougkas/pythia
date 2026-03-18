@@ -52,3 +52,6 @@ htmlcov/
 .back_source
 .dev_guide
 .planning/sections/
+.scratch/
+.scratchpad/
+.scratch_src/
