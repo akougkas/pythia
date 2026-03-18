@@ -59,6 +59,8 @@ import os
 import shutil
 import sys
 import time
+import urllib.request
+import urllib.error
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -90,8 +92,9 @@ class ModelSpec:
     """A model to test."""
 
     name: str              # e.g. "claude-sonnet-4-6", "glm-4.7-flash"
-    provider: str          # "anthropic" | "ollama"
+    provider: str          # "anthropic" | "ollama" | "lm_studio"
     api_base_url: str = ""  # e.g. Ollama or LM Studio endpoint
+    context_length: int = 0  # 0 = use model's max context length
 
 
 @dataclass
@@ -243,6 +246,9 @@ class ClaudeCodeFramework(PlanningFramework):
                 "ANTHROPIC_AUTH_TOKEN": "local",
                 "ANTHROPIC_API_KEY": "local",
             }
+            # Low temperature for near-deterministic output; 0.2 avoids
+            # repetition loops common with quantized models at temp=0
+            # opts_kwargs["settings"] = json.dumps({"temperatureOverride": 0.2})
 
         options = ClaudeAgentOptions(**opts_kwargs)
 
@@ -356,21 +362,106 @@ DEFAULT_FRAMEWORKS = ["claude_code"]
 # ═══════════════════════════════════════════════════════════════════════════
 
 ANTHROPIC_MODELS: list[ModelSpec] = [
-    ModelSpec(name="claude-sonnet-4-6", provider="anthropic"),
-    ModelSpec(name="claude-opus-4-6", provider="anthropic"),
-    ModelSpec(name="claude-haiku-4-5-20251001", provider="anthropic"),
+    # ModelSpec(name="claude-sonnet-4-6", provider="anthropic"),
+    # ModelSpec(name="claude-opus-4-6", provider="anthropic"),
+    # ModelSpec(name="claude-haiku-4-5-20251001", provider="anthropic"),
 ]
 
 OLLAMA_MODELS: list[ModelSpec] = [
-    ModelSpec(name="glm-4.7-flash", provider="ollama", api_base_url="http://localhost:11434"),
+    # ModelSpec(name="glm-4.7-flash", provider="ollama", api_base_url="http://localhost:11434"),
     # ModelSpec(name="qwen3-coder", provider="ollama", api_base_url="http://localhost:11434"),
     # ModelSpec(name="devstral-small", provider="ollama", api_base_url="http://localhost:11434"),
 ]
 
 LM_STUDIO_MODELS: list[ModelSpec] = [
-    ModelSpec(name="your-model-name", provider="lm_studio", api_base_url="http://localhost:1234/v1"),
-    
+    ModelSpec(name="qwen/qwen3.5-9b", provider="lm_studio", api_base_url="http://192.168.1.139:1234"),
+    # ModelSpec(name="mistralai/ministral-3-14b-reasoning", provider="lm_studio", api_base_url="http://192.168.1.139:1234"),
+    # ModelSpec(name="gemma-3-12b-it", provider="lm_studio", api_base_url="http://192.168.1.139:1234"),
+    ModelSpec(name="nvidia/nemotron-3-nano-4b", provider="lm_studio", api_base_url="http://192.168.1.139:1234"),
+    ModelSpec(name="openai/gpt-oss-20b", provider="lm_studio", api_base_url="http://192.168.1.139:1234"),
 ]
+
+
+# ── LM Studio model management ───────────────────────────────────────────
+
+_lm_studio_loaded_model: str | None = None  # track what we loaded last
+
+
+def _lm_studio_api(base_url: str, path: str, body: dict | None = None) -> dict:
+    """Send a request to LM Studio's management API. Returns parsed JSON."""
+    url = f"{base_url.rstrip('/')}{path}"
+    if body is not None:
+        data = json.dumps(body).encode()
+        req = urllib.request.Request(
+            url, data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+    else:
+        req = urllib.request.Request(url, method="GET")
+
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        return json.loads(resp.read().decode())
+
+
+def lm_studio_swap_model(model: ModelSpec) -> None:
+    """
+    Unload the current LM Studio model and load the requested one.
+
+    Uses LM Studio's /api/v1/models/load and /api/v1/models/unload endpoints.
+    context_length=0 means use the model's max context length (omit the param).
+    """
+    global _lm_studio_loaded_model
+
+    if model.provider != "lm_studio":
+        return
+
+    base = model.api_base_url
+
+    # Skip if already loaded
+    if _lm_studio_loaded_model == model.name:
+        log.info(f"  LM Studio: {model.name} already loaded, skipping swap")
+        return
+
+    # Unload whatever is currently loaded
+    if _lm_studio_loaded_model is None:
+        # First run — try unloading the target model in case it was pre-loaded
+        # with wrong settings (e.g. small context). Also unload any other model
+        # by trying all known LM Studio model names.
+        models_to_try = {model.name} | {m.name for m in LM_STUDIO_MODELS}
+        for mid in models_to_try:
+            try:
+                _lm_studio_api(base, "/api/v1/models/unload", {"instance_id": mid})
+                log.info(f"  LM Studio: unloaded pre-loaded model {mid}")
+            except (urllib.error.URLError, urllib.error.HTTPError):
+                pass  # not loaded, fine
+    else:
+        log.info(f"  LM Studio: unloading {_lm_studio_loaded_model}...")
+        try:
+            _lm_studio_api(base, "/api/v1/models/unload", {
+                "instance_id": _lm_studio_loaded_model,
+            })
+        except urllib.error.URLError as e:
+            log.warning(f"  LM Studio: unload failed (may already be unloaded): {e}")
+
+    # Load requested model — use explicit context_length or request max (1M cap)
+    print(f"model.context_length = {model.context_length}")
+    # ctx = model.context_length if model.context_length > 65536 else 65536
+    ctx = 40000
+    load_body: dict[str, Any] = {
+        "model": model.name,
+        "context_length": ctx,
+        "flash_attention": True,
+        "echo_load_config": True, 
+    }
+
+    log.info(f"  LM Studio: loading {model.name} (requesting ctx={ctx})...")
+
+    resp = _lm_studio_api(base, "/api/v1/models/load", load_body)
+    load_time = resp.get("load_time_seconds", "?")
+    log.info(f"  LM Studio: {model.name} loaded in {load_time}s. (requesting ctx={ctx} {resp["load_config"]["context_length"]})")
+
+    _lm_studio_loaded_model = model.name
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -528,6 +619,9 @@ async def phase1_generate(
                     continue
 
                 log.info(f"  {tag} — generating...")
+
+                # Swap LM Studio model if needed
+                lm_studio_swap_model(model)
 
                 output = await fw.generate_plan(case=case, model=model)
                 save_plan(results_dir, output)
@@ -873,7 +967,7 @@ def parse_args() -> argparse.Namespace:
     gen.add_argument("--include-ollama", action="store_true")
     gen.add_argument("--ollama-url", default="http://localhost:11434")
     gen.add_argument("--include-lm-studio", action="store_true")
-    gen.add_argument("--lm-studio-url", default="http://localhost:1234/v1")
+    gen.add_argument("--lm-studio-url", default="http://192.168.1.139:1234")
     gen.add_argument(
         "--frameworks", nargs="+", default=DEFAULT_FRAMEWORKS,
         help=f"Frameworks to use (available: {list(FRAMEWORK_REGISTRY.keys())})",

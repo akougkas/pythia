@@ -20,6 +20,16 @@ Solver latency is the bottleneck that speculation aims to hide.
 A lightweight prediction model that runs in parallel with the Solver.
 It produces a draft dispatch plan using pattern matching on intent classifications, a historical dispatch cache, and a learned user-specific fingerprint maintained by the Learner.
 Upon generating its prediction, the Speculative Dispatcher immediately begins pre-execution steps according to the active speculation mode.
+<!-- For speculative dispatcher, do we predict the order. 
+Option A: Flat set + explicit execution order. The DispatchPlan is a list of (agent, resource, prompt, phase) tuples. Agents in the same phase run in parallel; phases run sequentially. Simple, not a full DAG, but captures the essential structure.                         
+                                                                  
+  dispatch_plan = [                                                                                                                                                                                                                                                              
+      {"agent": "Claude-code-gen",    "phase": 1},  # runs first                                                                                                                                                                                                                 
+      {"agent": "Slurm-template",     "phase": 2},  # waits for phase 1                                                                                                                                                                                                          
+      {"agent": "HPCToolkit-profiler", "phase": 2},  # also waits for phase 1                                                                                                                                                                                                    
+  ] 
+If you go with Option A (phased execution), how does reconciliation change? Think about it — the Speculative Dispatcher now needs to predict not just which agents but also which phase each agent belongs to. What does PARTIAL COMMIT look like when you   
+  get the agents right but the phases wrong?  -->
 
 **Orchestrator (Reconciliation Engine).**
 Receives both the Solver's optimal plan and the Speculative Dispatcher's pre-executed work.
