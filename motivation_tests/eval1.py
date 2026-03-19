@@ -57,6 +57,7 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 import sys
 import time
 import urllib.request
@@ -233,6 +234,8 @@ class ClaudeCodeFramework(PlanningFramework):
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
 
+        is_local = model.provider in ("ollama", "lm_studio")
+
         # ── Build options ──
         opts_kwargs: dict[str, Any] = {
             "permission_mode": "plan",
@@ -240,15 +243,20 @@ class ClaudeCodeFramework(PlanningFramework):
             "cwd": str(case.working_dir),
         }
 
-        if model.provider in ("ollama", "lm_studio"):
+        if is_local:
+            # Local models work with Claude Code's plan mode (tools, file
+            # reading, ExitPlanMode) just like interactive mode.  The only
+            # issue is thinking: local models don't produce the 'signature'
+            # field that ThinkingBlock requires → MessageParseError.
             opts_kwargs["env"] = {
                 "ANTHROPIC_BASE_URL": model.api_base_url,
                 "ANTHROPIC_AUTH_TOKEN": "local",
                 "ANTHROPIC_API_KEY": "local",
             }
-            # Low temperature for near-deterministic output; 0.2 avoids
-            # repetition loops common with quantized models at temp=0
-            # opts_kwargs["settings"] = json.dumps({"temperatureOverride": 0.2})
+            # opts_kwargs["thinking"] = {"type": "disabled"}
+            # Enable debug output to see what the CLI sends/receives
+            # opts_kwargs["extra_args"] = {"debug-to-stderr": None}
+            # opts_kwargs["stderr"] = lambda line: log.debug(f"  CLI: {line}")
 
         options = ClaudeAgentOptions(**opts_kwargs)
 
@@ -287,6 +295,16 @@ class ClaudeCodeFramework(PlanningFramework):
             result.error = f"{type(e).__name__}: {e}"
 
         result.duration_wall_s = time.monotonic() - t0
+
+        # Fallback: if ExitPlanMode was never called (common with local
+        # models), use the collected text output as the plan.
+        if result.plan_text is None and result.reasoning_text.strip():
+            log.warning(
+                f"  {model.name}: ExitPlanMode not called — "
+                f"falling back to text output as plan"
+            )
+            result.plan_text = result.reasoning_text.strip()
+
         return result
 
 
@@ -463,9 +481,9 @@ ANTHROPIC_MODELS: list[ModelSpec] = [
 ]
 
 OLLAMA_MODELS: list[ModelSpec] = [
-    # ModelSpec(name="glm-4.7-flash", provider="ollama", api_base_url="http://localhost:11434"),
-    # ModelSpec(name="qwen3-coder", provider="ollama", api_base_url="http://localhost:11434"),
-    # ModelSpec(name="devstral-small", provider="ollama", api_base_url="http://localhost:11434"),
+    ModelSpec(name="qwen3.5:9b", provider="ollama", api_base_url="http://localhost:11434"),
+    # ModelSpec(name="nemotron-3-nano:4b", provider="ollama", api_base_url="http://localhost:11434"),
+    # ModelSpec(name="gpt-oss:20b", provider="ollama", api_base_url="http://localhost:11434"),
 ]
 
 LM_STUDIO_MODELS: list[ModelSpec] = [
@@ -557,6 +575,113 @@ def lm_studio_swap_model(model: ModelSpec) -> None:
     log.info(f"  LM Studio: {model.name} loaded in {load_time}s. (requesting ctx={ctx} {resp["load_config"]["context_length"]})")
 
     _lm_studio_loaded_model = model.name
+
+
+# ── Ollama model management ──────────────────────────────────────────────
+
+_ollama_server_proc: subprocess.Popen | None = None
+_ollama_loaded_model: str | None = None
+
+
+def ollama_ensure_server(
+    context_length: int = 40000,
+    keep_alive: str = "-1",
+) -> None:
+    """
+    Start `ollama serve` with the desired env vars if not already running.
+
+    OLLAMA_CONTEXT_LENGTH — default context window for all models.
+    OLLAMA_KEEP_ALIVE    — how long models stay loaded ("-1" = forever).
+    """
+    global _ollama_server_proc
+
+    # Check if ollama is already reachable
+    try:
+        req = urllib.request.Request("http://localhost:11434/api/tags", method="GET")
+        urllib.request.urlopen(req, timeout=5)
+        log.info("  Ollama: server already running")
+        return
+    except (urllib.error.URLError, OSError):
+        pass  # not running, we'll start it
+
+    env = {
+        **os.environ,
+        "OLLAMA_CONTEXT_LENGTH": str(context_length),
+        "OLLAMA_KEEP_ALIVE": keep_alive,
+    }
+
+    log.info(
+        f"  Ollama: starting server "
+        f"(OLLAMA_CONTEXT_LENGTH={context_length}, OLLAMA_KEEP_ALIVE={keep_alive})..."
+    )
+    _ollama_server_proc = subprocess.Popen(
+        ["ollama", "serve"],
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    # Wait for the server to become ready
+    for _ in range(30):
+        try:
+            req = urllib.request.Request("http://localhost:11434/api/tags", method="GET")
+            urllib.request.urlopen(req, timeout=2)
+            log.info("  Ollama: server started")
+            return
+        except (urllib.error.URLError, OSError):
+            time.sleep(1)
+
+    log.error("  Ollama: server did not start within 30s")
+
+
+def ollama_stop_server() -> None:
+    """Stop the ollama server if we started it."""
+    global _ollama_server_proc
+    if _ollama_server_proc is not None:
+        log.info("  Ollama: stopping server...")
+        _ollama_server_proc.terminate()
+        _ollama_server_proc.wait(timeout=10)
+        _ollama_server_proc = None
+
+
+def ollama_swap_model(model: ModelSpec) -> None:
+    """
+    Unload the current Ollama model and load the requested one.
+
+    Uses `ollama stop` to unload and `ollama run <model> /bye` to load.
+    Context length and keep-alive are controlled by the server env vars
+    set in ollama_ensure_server().
+    """
+    global _ollama_loaded_model
+
+    if model.provider != "ollama":
+        return
+
+    if _ollama_loaded_model == model.name:
+        log.info(f"  Ollama: {model.name} already loaded, skipping swap")
+        return
+
+    # Unload previous model
+    if _ollama_loaded_model is not None:
+        log.info(f"  Ollama: unloading {_ollama_loaded_model}...")
+        subprocess.run(
+            ["ollama", "stop", _ollama_loaded_model],
+            capture_output=True, check=False,
+        )
+
+    # Load new model (run + /bye loads it into memory then exits)
+    log.info(f"  Ollama: loading {model.name}...")
+    result = subprocess.run(
+        ["ollama", "run", model.name, "/bye"],
+        capture_output=True, timeout=1200,
+        check=False,
+    )
+    if result.returncode != 0:
+        log.error(f"  Ollama: failed to load {model.name}: {result.stderr.decode()}")
+        return
+
+    log.info(f"  Ollama: {model.name} loaded")
+    _ollama_loaded_model = model.name
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -715,8 +840,9 @@ async def phase1_generate(
 
                 log.info(f"  {tag} — generating...")
 
-                # Swap LM Studio model if needed
+                # Swap model if needed (provider-specific)
                 lm_studio_swap_model(model)
+                ollama_swap_model(model)
 
                 output = await fw.generate_plan(case=case, model=model)
                 save_plan(results_dir, output)
@@ -1061,6 +1187,10 @@ def parse_args() -> argparse.Namespace:
     gen.add_argument("--case", default=None, help="Run only this case")
     gen.add_argument("--include-ollama", action="store_true")
     gen.add_argument("--ollama-url", default="http://localhost:11434")
+    gen.add_argument("--ollama-ctx", type=int, default=40000,
+                     help="OLLAMA_CONTEXT_LENGTH for the server (default: 40000)")
+    gen.add_argument("--ollama-keep-alive", default="-1",
+                     help="OLLAMA_KEEP_ALIVE for the server (default: -1 = forever)")
     gen.add_argument("--include-lm-studio", action="store_true")
     gen.add_argument("--lm-studio-url", default="http://192.168.1.139:1234")
     gen.add_argument(
@@ -1162,14 +1292,26 @@ async def async_main():
         for m in models:
             log.info(f"  Model: {m.name} ({m.provider})")
 
+        # ── Ensure Ollama server is running if we have Ollama models ──
+        has_ollama = any(m.provider == "ollama" for m in models)
+        if has_ollama:
+            ollama_ensure_server(
+                context_length=args.ollama_ctx,
+                keep_alive=args.ollama_keep_alive,
+            )
+
         # ── Generate ──
-        results = await phase1_generate(
-            cases=cases,
-            frameworks=frameworks,
-            models=models,
-            results_dir=args.results_dir,
-            skip_existing=not args.no_skip,
-        )
+        try:
+            results = await phase1_generate(
+                cases=cases,
+                frameworks=frameworks,
+                models=models,
+                results_dir=args.results_dir,
+                skip_existing=not args.no_skip,
+            )
+        finally:
+            # Stop Ollama server if we started it
+            ollama_stop_server()
 
         log.info(f"\nDone. Generated {len(results)} new plan(s).")
 

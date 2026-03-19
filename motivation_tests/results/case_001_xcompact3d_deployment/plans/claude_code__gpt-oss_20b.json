@@ -1,0 +1,16 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "claude_code",
+  "model_name": "gpt-oss:20b",
+  "provider": "ollama",
+  "plan_text": null,
+  "reasoning_text": "",
+  "thinking_text": "",
+  "session_id": null,
+  "duration_ms": 0,
+  "duration_wall_s": 19.125274499994703,
+  "total_cost_usd": null,
+  "num_turns": 0,
+  "error": "MessageParseError: Missing required field in assistant message: 'signature'",
+  "timestamp": "2026-03-18T19:17:01.257560+00:00"
+}
