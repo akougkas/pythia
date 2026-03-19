@@ -96,6 +96,7 @@ class ModelSpec:
     provider: str          # "anthropic" | "ollama" | "lm_studio"
     api_base_url: str = ""  # e.g. Ollama or LM Studio endpoint
     context_length: int = 0  # 0 = use model's max context length
+    disable_thinking: bool = False  # True for models that produce thinking blocks without Anthropic signature
 
 
 @dataclass
@@ -241,19 +242,25 @@ class ClaudeCodeFramework(PlanningFramework):
             "permission_mode": "plan",
             "model": model.name,
             "cwd": str(case.working_dir),
+            # Block interactive tools that would stall automated runs
+            "disallowed_tools": ["AskUserQuestion"],
         }
 
         if is_local:
-            # Local models work with Claude Code's plan mode (tools, file
-            # reading, ExitPlanMode) just like interactive mode.  The only
-            # issue is thinking: local models don't produce the 'signature'
-            # field that ThinkingBlock requires → MessageParseError.
             opts_kwargs["env"] = {
                 "ANTHROPIC_BASE_URL": model.api_base_url,
                 "ANTHROPIC_AUTH_TOKEN": "local",
                 "ANTHROPIC_API_KEY": "local",
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL": model.name,
+                "CLAUDE_CODE_SUBAGENT_MODEL": model.name,
             }
-            # opts_kwargs["thinking"] = {"type": "disabled"}
+
+            # Some local models (e.g. nemotron) produce thinking blocks
+            # without the Anthropic-proprietary 'signature' field, causing
+            # MessageParseError.  Disable thinking only for those models.
+            # Models like Qwen3.5 work fine with thinking enabled.
+            if model.disable_thinking:
+                opts_kwargs["thinking"] = {"type": "disabled"}
             # Enable debug output to see what the CLI sends/receives
             # opts_kwargs["extra_args"] = {"debug-to-stderr": None}
             # opts_kwargs["stderr"] = lambda line: log.debug(f"  CLI: {line}")
@@ -265,6 +272,11 @@ class ClaudeCodeFramework(PlanningFramework):
             f"You are in planning mode. Read the objective below and produce "
             f"a detailed, step-by-step implementation plan. Do NOT execute "
             f"anything — only plan.\n\n"
+            f"IMPORTANT: Do NOT ask clarifying questions. Do NOT use the "
+            f"AskUserQuestion tool. If any detail is ambiguous or missing, "
+            f"make a reasonable assumption, state it explicitly in your plan, "
+            f"and proceed. You must produce a complete plan in a single pass "
+            f"without waiting for human input.\n\n"
             f"## Objective\n\n{case.prompt}\n\n"
             f"## Working Directory\n\n"
             f"The working directory is: {case.working_dir}\n"
@@ -283,7 +295,13 @@ class ClaudeCodeFramework(PlanningFramework):
                             result.thinking_text += block.thinking + "\n"
                         elif isinstance(block, ToolUseBlock):
                             if block.name == "ExitPlanMode":
-                                result.plan_text = block.input.get("plan", "")
+                                exit_plan = block.input.get("plan", "")
+                                if exit_plan and (result.plan_text is None or len(exit_plan) > len(result.plan_text)):
+                                    result.plan_text = exit_plan
+                            elif block.name == "Write" and "/.claude/plans/" in block.input.get("file_path", ""):
+                                write_content = block.input.get("content", "")
+                                if write_content and (result.plan_text is None or len(write_content) > len(result.plan_text)):
+                                    result.plan_text = write_content
 
                 elif isinstance(message, ResultMessage):
                     result.session_id = message.session_id
@@ -340,6 +358,10 @@ class DirectAPIFramework(PlanningFramework):
             f"You are in planning mode. Read the objective below and produce "
             f"a detailed, step-by-step implementation plan. Do NOT execute "
             f"anything — only plan.\n\n"
+            f"IMPORTANT: Do NOT ask clarifying questions. If any detail is "
+            f"ambiguous or missing, make a reasonable assumption, state it "
+            f"explicitly in your plan, and proceed. You must produce a "
+            f"complete plan in a single pass without waiting for human input.\n\n"
             f"## Objective\n\n{case.prompt}\n\n"
             f"## Working Directory\n\n"
             f"The working directory is: {case.working_dir}\n"
@@ -475,22 +497,22 @@ DEFAULT_FRAMEWORKS = ["claude_code"]
 # ═══════════════════════════════════════════════════════════════════════════
 
 ANTHROPIC_MODELS: list[ModelSpec] = [
-    # ModelSpec(name="claude-sonnet-4-6", provider="anthropic"),
-    # ModelSpec(name="claude-opus-4-6", provider="anthropic"),
-    # ModelSpec(name="claude-haiku-4-5-20251001", provider="anthropic"),
+    ModelSpec(name="claude-sonnet-4-6", provider="anthropic"),
+    ModelSpec(name="claude-opus-4-6", provider="anthropic"),
+    ModelSpec(name="claude-haiku-4-5-20251001", provider="anthropic"),
 ]
 
 OLLAMA_MODELS: list[ModelSpec] = [
     ModelSpec(name="qwen3.5:9b", provider="ollama", api_base_url="http://localhost:11434"),
-    # ModelSpec(name="nemotron-3-nano:4b", provider="ollama", api_base_url="http://localhost:11434"),
-    # ModelSpec(name="gpt-oss:20b", provider="ollama", api_base_url="http://localhost:11434"),
+    ModelSpec(name="gpt-oss:20b", provider="ollama", api_base_url="http://localhost:11434"),
+    ModelSpec(name="qwen3.5:4b", provider="ollama", api_base_url="http://localhost:11434"),
+    ModelSpec(name="granite4:3b", provider="ollama", api_base_url="http://localhost:11434"),
 ]
 
 LM_STUDIO_MODELS: list[ModelSpec] = [
     ModelSpec(name="qwen/qwen3.5-9b", provider="lm_studio", api_base_url="http://192.168.1.139:1234"),
     # ModelSpec(name="mistralai/ministral-3-14b-reasoning", provider="lm_studio", api_base_url="http://192.168.1.139:1234"),
     # ModelSpec(name="gemma-3-12b-it", provider="lm_studio", api_base_url="http://192.168.1.139:1234"),
-    ModelSpec(name="nvidia/nemotron-3-nano-4b", provider="lm_studio", api_base_url="http://192.168.1.139:1234"),
     ModelSpec(name="openai/gpt-oss-20b", provider="lm_studio", api_base_url="http://192.168.1.139:1234"),
 ]
 
@@ -576,114 +598,6 @@ def lm_studio_swap_model(model: ModelSpec) -> None:
 
     _lm_studio_loaded_model = model.name
 
-
-# ── Ollama model management ──────────────────────────────────────────────
-
-_ollama_server_proc: subprocess.Popen | None = None
-_ollama_loaded_model: str | None = None
-
-
-def ollama_ensure_server(
-    context_length: int = 40000,
-    keep_alive: str = "-1",
-) -> None:
-    """
-    Start `ollama serve` with the desired env vars if not already running.
-
-    OLLAMA_CONTEXT_LENGTH — default context window for all models.
-    OLLAMA_KEEP_ALIVE    — how long models stay loaded ("-1" = forever).
-    """
-    global _ollama_server_proc
-
-    # Check if ollama is already reachable
-    try:
-        req = urllib.request.Request("http://localhost:11434/api/tags", method="GET")
-        urllib.request.urlopen(req, timeout=5)
-        log.info("  Ollama: server already running")
-        return
-    except (urllib.error.URLError, OSError):
-        pass  # not running, we'll start it
-
-    env = {
-        **os.environ,
-        "OLLAMA_CONTEXT_LENGTH": str(context_length),
-        "OLLAMA_KEEP_ALIVE": keep_alive,
-    }
-
-    log.info(
-        f"  Ollama: starting server "
-        f"(OLLAMA_CONTEXT_LENGTH={context_length}, OLLAMA_KEEP_ALIVE={keep_alive})..."
-    )
-    _ollama_server_proc = subprocess.Popen(
-        ["ollama", "serve"],
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
-    # Wait for the server to become ready
-    for _ in range(30):
-        try:
-            req = urllib.request.Request("http://localhost:11434/api/tags", method="GET")
-            urllib.request.urlopen(req, timeout=2)
-            log.info("  Ollama: server started")
-            return
-        except (urllib.error.URLError, OSError):
-            time.sleep(1)
-
-    log.error("  Ollama: server did not start within 30s")
-
-
-def ollama_stop_server() -> None:
-    """Stop the ollama server if we started it."""
-    global _ollama_server_proc
-    if _ollama_server_proc is not None:
-        log.info("  Ollama: stopping server...")
-        _ollama_server_proc.terminate()
-        _ollama_server_proc.wait(timeout=10)
-        _ollama_server_proc = None
-
-
-def ollama_swap_model(model: ModelSpec) -> None:
-    """
-    Unload the current Ollama model and load the requested one.
-
-    Uses `ollama stop` to unload and `ollama run <model> /bye` to load.
-    Context length and keep-alive are controlled by the server env vars
-    set in ollama_ensure_server().
-    """
-    global _ollama_loaded_model
-
-    if model.provider != "ollama":
-        return
-
-    if _ollama_loaded_model == model.name:
-        log.info(f"  Ollama: {model.name} already loaded, skipping swap")
-        return
-
-    # Unload previous model
-    if _ollama_loaded_model is not None:
-        log.info(f"  Ollama: unloading {_ollama_loaded_model}...")
-        subprocess.run(
-            ["ollama", "stop", _ollama_loaded_model],
-            capture_output=True, check=False,
-        )
-
-    # Load new model (run + /bye loads it into memory then exits)
-    log.info(f"  Ollama: loading {model.name}...")
-    result = subprocess.run(
-        ["ollama", "run", model.name, "/bye"],
-        capture_output=True, timeout=1200,
-        check=False,
-    )
-    if result.returncode != 0:
-        log.error(f"  Ollama: failed to load {model.name}: {result.stderr.decode()}")
-        return
-
-    log.info(f"  Ollama: {model.name} loaded")
-    _ollama_loaded_model = model.name
-
-
 # ═══════════════════════════════════════════════════════════════════════════
 # §5  CASE LOADER
 # ═══════════════════════════════════════════════════════════════════════════
@@ -729,10 +643,10 @@ def load_cases(cases_dir: Path, case_filter: str | None = None) -> list[CaseSpec
 # §6  PLAN PERSISTENCE
 # ═══════════════════════════════════════════════════════════════════════════
 
-def plan_filename(framework: str, model: str) -> str:
-    """Deterministic filename for a plan: framework__model.md"""
+def plan_filename(framework: str, provider: str, model: str) -> str:
+    """Deterministic filename for a plan: framework__provider__model.md"""
     safe_model = model.replace("/", "_").replace(":", "_")
-    return f"{framework}__{safe_model}.md"
+    return f"{framework}__{provider}__{safe_model}.md"
 
 
 def save_plan(results_dir: Path, output: PlanOutput) -> Path:
@@ -740,7 +654,7 @@ def save_plan(results_dir: Path, output: PlanOutput) -> Path:
     plan_dir = results_dir / output.case_name / "plans"
     plan_dir.mkdir(parents=True, exist_ok=True)
 
-    fname = plan_filename(output.framework_name, output.model_name)
+    fname = plan_filename(output.framework_name, output.provider, output.model_name)
     path = plan_dir / fname
 
     lines = [
@@ -780,7 +694,7 @@ def save_plan_metadata(results_dir: Path, output: PlanOutput) -> Path:
     meta_dir.mkdir(parents=True, exist_ok=True)
 
     safe_model = output.model_name.replace("/", "_").replace(":", "_")
-    fname = f"{output.framework_name}__{safe_model}.json"
+    fname = f"{output.framework_name}__{output.provider}__{safe_model}.json"
     path = meta_dir / fname
 
     data = {
@@ -832,7 +746,7 @@ async def phase1_generate(
                 # ── Skip if already generated ──
                 existing = (
                     results_dir / case.name / "plans"
-                    / plan_filename(fw.name, model.name)
+                    / plan_filename(fw.name, model.provider, model.name)
                 )
                 if skip_existing and existing.exists():
                     log.info(f"  {tag} — SKIP (exists)")
@@ -842,7 +756,6 @@ async def phase1_generate(
 
                 # Swap model if needed (provider-specific)
                 lm_studio_swap_model(model)
-                ollama_swap_model(model)
 
                 output = await fw.generate_plan(case=case, model=model)
                 save_plan(results_dir, output)
@@ -1187,10 +1100,6 @@ def parse_args() -> argparse.Namespace:
     gen.add_argument("--case", default=None, help="Run only this case")
     gen.add_argument("--include-ollama", action="store_true")
     gen.add_argument("--ollama-url", default="http://localhost:11434")
-    gen.add_argument("--ollama-ctx", type=int, default=40000,
-                     help="OLLAMA_CONTEXT_LENGTH for the server (default: 40000)")
-    gen.add_argument("--ollama-keep-alive", default="-1",
-                     help="OLLAMA_KEEP_ALIVE for the server (default: -1 = forever)")
     gen.add_argument("--include-lm-studio", action="store_true")
     gen.add_argument("--lm-studio-url", default="http://192.168.1.139:1234")
     gen.add_argument(
@@ -1292,26 +1201,14 @@ async def async_main():
         for m in models:
             log.info(f"  Model: {m.name} ({m.provider})")
 
-        # ── Ensure Ollama server is running if we have Ollama models ──
-        has_ollama = any(m.provider == "ollama" for m in models)
-        if has_ollama:
-            ollama_ensure_server(
-                context_length=args.ollama_ctx,
-                keep_alive=args.ollama_keep_alive,
-            )
-
         # ── Generate ──
-        try:
-            results = await phase1_generate(
-                cases=cases,
-                frameworks=frameworks,
-                models=models,
-                results_dir=args.results_dir,
-                skip_existing=not args.no_skip,
-            )
-        finally:
-            # Stop Ollama server if we started it
-            ollama_stop_server()
+        results = await phase1_generate(
+            cases=cases,
+            frameworks=frameworks,
+            models=models,
+            results_dir=args.results_dir,
+            skip_existing=not args.no_skip,
+        )
 
         log.info(f"\nDone. Generated {len(results)} new plan(s).")
 
