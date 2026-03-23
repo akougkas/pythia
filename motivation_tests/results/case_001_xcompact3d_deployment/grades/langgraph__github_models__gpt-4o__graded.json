@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "langgraph",
+  "model_name": "github_models__gpt-4o",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "The candidate covers all 5 stages but with significantly less detail. Missing: git submodule init, context about XCompact3D (Fortran, MPI, 2decomp&fft), fallback build options (Makefile vs CMake), FFTW from-source instructions, detailed sinfo format strings, real-time log monitoring (tail -f), sacct with detailed format flags, output file validation (checking for NaN/segfault), verification checklist, and working directory paths are incomplete."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical issues: uses 'sudo apt-get install' on an HPC cluster (inappropriate\u2014should use modules), requests a GPU (--gres=gpu:1) when XCompact3D mainline is CPU-based MPI code, uses 'nano' for interactive editing which isn't appropriate for a scripted plan, references a nonexistent 'config' directory and 'config.in' file (XCompact3D uses .i3d namelist files), cmake invocation lacks MPI compiler specification, and doesn't set CMAKE_Fortran_COMPILER."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Commands are mostly generic placeholders. No specific module versions, no specific test case (reference uses Taylor-Green Vortex), no specific input file names (.i3d), no concrete output file patterns (ux*.dat, etc.), no specific sinfo format strings for useful output, batch script uses generic resource requests without explaining how to adapt from cluster query results, and token estimates are unrealistically low (~2600 total vs ~44000 in reference)."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "The dependency graph is correct: Stage 1 and 3 parallel, Stage 2 depends on 1, Stage 4 depends on 2 and 3, Stage 5 depends on 4. This matches the reference plan's structure. The parallelization section clearly identifies the opportunities."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "Almost no error handling. No fallback for missing modules, no alternative build paths (CMake vs Makefile), no FFTW from-source fallback, no checking for NaN/Infinity/segfault in logs, no verification of successful clone, no verification of successful build, no CFL number checking, and no guidance on debugging common build or runtime failures."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "Validation is extremely thin\u2014just 'check for expected output in the logs' with no specifics. Reference plan includes: checking exit codes via sacct, verifying output snapshot files exist and are non-zero, grep for errors/NaN/segfault, CFL number validation, and a complete verification checklist. Candidate has none of these."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "The plan is well-organized with clear tables and consistent formatting. Each stage has objective, steps, and agent assignment. However, the lack of detail means a practitioner would face many ambiguities (which config file? what output to expect? how to verify success?). The reference plan's context section and assumptions are also missing."
+    }
+  },
+  "overall_score": 2.14,
+  "judge_reasoning": "The candidate plan has correct high-level structure and dependency ordering but is severely lacking in technical depth and domain accuracy. Critical issues include using apt-get on HPC (should use modules), requesting GPUs for CPU-based MPI code, referencing nonexistent config files instead of XCompact3D's .i3d format, and providing almost no error handling or validation strategy. The plan reads as a generic template rather than a knowledgeable XCompact3D deployment guide.",
+  "error": null
+}

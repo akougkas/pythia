@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "agents_sdk",
+  "model_name": "github_models__gpt-4o",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all 5 stages but with significantly less detail. Missing: git checkout of specific branch/tag, FFTW build-from-source fallback, CMake build option, input file setup (e.g., TGV example), sacct for post-completion analysis, error grep in logs, and verification checklist."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several issues: uses 'tree' which may not be available on HPC, references './xcompact3d_executable' as a placeholder rather than the actual binary name, uses 'mpirun' instead of 'srun' inside a Slurm script (srun is preferred for Slurm integration), doesn't copy input files to run directory, doesn't specify an input file argument, and 'sudo apt-get' is inappropriate on an HPC cluster."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Commands are generic and lack concrete detail compared to the reference. No specific module versions, no CMake configuration flags, no specific input file (input.i3d), placeholder executable name, no specific output file patterns to validate, and token estimates are unrealistically low (300 vs 6000 for download stage)."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Dependency graph is correct: Tasks 1 and 3 parallel, Task 2 depends on 1, Task 4 depends on 2 and 3, Task 5 depends on 4. This matches the reference. Clearly documented in both text and table form."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling whatsoever. No fallback for missing FFTW module, no check for build failures, no grep for NaN/segfault in output logs, no validation of exit codes, no handling of missing modules or alternative compilers."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Validation in Stage 5 is vague ('confirm appearance of expected outputs'). No specific validation criteria like checking exit code 0:0 via sacct, checking for NaN/Infinity, verifying CFL numbers, or checking output file sizes. No verification checklist."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "Well-structured with clear sections, tables, and a timeline. However, the lack of specificity in commands and the placeholder values reduce actionability. The parallel execution summary is clear but less visually informative than the reference's ASCII timeline."
+    }
+  },
+  "overall_score": 2.43,
+  "judge_reasoning": "The candidate plan covers the correct high-level stages with proper dependency ordering but lacks the depth and technical accuracy of the reference. Critical issues include using sudo apt-get on HPC, placeholder executable names, missing input file configuration, no CMake build option, unrealistic token estimates, and virtually no error handling or meaningful validation criteria. A developer following this plan would encounter multiple failures before successfully deploying XCompact3D.",
+  "error": null
+}

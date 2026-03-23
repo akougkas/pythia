@@ -8,8 +8,8 @@ The Speculative Dispatch pipeline consists of five components with well-defined 
 
 **Intent Detector.**
 A lightweight classifier that transforms a natural-language user request into a structured intent representation: task type, estimated complexity, domain tags, decomposability score, and constraint annotations.
-The Intent Detector is deliberately shallow — it performs fast classification, not planning.
-Its output feeds both the Dispatch Solver and the Speculative Dispatcher simultaneously.
+The Intent Detector is deliberately shallow in order to perform fast classification not planning.
+Its structured output together with the raw user request are fed to both the Dispatch Solver and the Speculative Dispatcher in parallel.
 
 **Dispatch Solver (Target).**
 The full optimization engine that computes the optimal dispatch plan given the complete system state: all classified intents, the current agent pool, fleet configuration, resource availability, and cost constraints.
@@ -66,6 +66,8 @@ This work is useful regardless of the final dispatch plan because the same conte
 
 The Speculative Dispatcher predicts which agents will be needed and begins provisioning them: allocating compute resources, initializing agent runtimes, establishing API connections, and loading agent-specific configurations.
 This mode is gated by a confidence threshold $\tau_2$ — the Speculative Dispatcher only activates Mode 2 when its prediction confidence for the intent class exceeds $\tau_2$.
+Prediction confidence is the Learner's rolling hit rate for the current intent class: the fraction of recent predictions for that class that received COMMIT or PARTIAL COMMIT at reconciliation (§4).
+<!-- [TODO: §4] Define intent class grouping key: (task_type, domain_tags, complexity_level). Discuss domain_tags representation for grouping — sort-and-hash vs. primary tag vs. set similarity. Evaluate fragmentation risk empirically in §6. -->
 
 **Formal characterization.** Let $C_{init}$ be the cost of agent initialization and $p$ be the speculation accuracy (probability that the predicted agent set matches the Solver's optimal set). The expected cost of Mode 2 speculation is:
 

@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "aider",
+  "model_name": "ollama__granite4_3b",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "Covers the four deliverables but misses key requirements: no dataclass/structured config, no exclude pattern filtering implementation, debounce is a naive sleep rather than a proper timer-based mechanism, no CLI argument parsing (--config flag), and the config schema differs from the objective (e.g., 'path' vs 'watch_directory', missing debounce_ms, recursive fields)."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "Multiple bugs: the pattern matching uses glob.glob on include patterns instead of fnmatch, the debounce is a blocking sleep(0.3) which freezes the event thread rather than coalescing events, run_command() re-reads config on every invocation, exclude patterns are defined in YAML but never checked, and the test imports load_config from watcher instead of config. The code would not work correctly as written."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides concrete code snippets with function signatures and class definitions, which is helpful. However, many details are incomplete (test bodies are 'pass', no error handling specifics, no import lists for subprocess/glob in watcher.py)."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "Steps are in a reasonable order (config \u2192 watcher \u2192 yaml \u2192 tests \u2192 run). However, dependency installation (watchdog, PyYAML) is never mentioned, which would cause immediate failures."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "Config loading only checks file existence with FileNotFoundError. No validation of required fields (command), no handling of invalid YAML, no ConfigError custom exception, no validation of debounce values or pattern types. The reference plan has extensive validation; this plan has almost none."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "Only three tests defined, two of which are stubs ('pass'). test_main() calls main() directly which would block forever in the while-True loop. No mocking strategy, no tests for pattern matching, debounce behavior, edge cases, or error conditions. The reference has 18 well-defined tests."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "Well-organized with clear section headers and code snippets. Easy to follow the structure, but the incomplete test stubs and incorrect code reduce practical clarity for implementation."
+    }
+  },
+  "overall_score": 2.0,
+  "judge_reasoning": "The candidate plan provides a recognizable skeleton but is significantly weaker than the reference in almost every dimension. The debounce implementation is fundamentally wrong (blocking sleep vs. timer-based coalescing), pattern matching code is buggy, exclude patterns are ignored at runtime, error handling and config validation are nearly absent, and the test suite is skeletal with blocking and stub tests. Following this plan would produce a non-functional tool requiring substantial rework.",
+  "error": null
+}

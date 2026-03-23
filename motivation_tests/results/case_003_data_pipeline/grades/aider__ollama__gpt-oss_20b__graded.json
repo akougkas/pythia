@@ -1,0 +1,38 @@
+{
+  "case_name": "case_003_data_pipeline",
+  "framework_name": "aider",
+  "model_name": "ollama__gpt-oss_20b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers the four main deliverables plus a requirements.txt, but only defines 3 transform types (filter_rows, rename_columns, add_column) versus the reference's 6. Missing transforms like drop_columns, sort_rows, fill_missing. Also doesn't explicitly create sample CSV data files or specify their content, and places files outside WorkingDir/ contrary to the objective's implied structure."
+    },
+    "correctness": {
+      "score": 3,
+      "reasoning": "The overall approach is sound\u2014YAML config, pandas transforms, registry pattern, argparse CLI. However, putting dry_run in the YAML config rather than primarily as a CLI flag is unusual. The project structure places files at the top level and tests in a tests/ subdirectory, diverging from the expected WorkingDir/ layout. The expression eval namespace includes np but not pd, which could cause issues for pandas-specific expressions."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides a config schema, a table of transforms with parameters, and a step-by-step orchestrator flow. However, lacks concrete function signatures, actual sample CSV content, and specific code snippets for the registry pattern. The reference plan includes actual CSV data, concrete YAML examples matching the data, and more detailed function signatures."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Steps are logically ordered: config schema first, then transforms, then orchestrator, then tests. Dependencies between transforms.py and pipeline.py are correctly identified. Implementation order is implicit but reasonable."
+    },
+    "error_handling": {
+      "score": 3,
+      "reasoning": "Mentions edge cases like non-existent columns raising KeyError, output_dir same as input_dir warning, and config validation. However, doesn't address missing input directory handling, unknown transform types, or empty CSV files\u2014all covered by the reference plan's test cases."
+    },
+    "testability": {
+      "score": 3,
+      "reasoning": "Defines 6 test cases covering individual transforms, full pipeline, dry-run, and logging. Uses tmp_path and fixtures. However, fewer test cases than the reference (which has ~13), missing tests for chaining, error scenarios like unknown transforms and missing input dirs, and operator variants like 'in' and 'not_in'."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with numbered sections, tables, and clear formatting. The step-by-step orchestrator description is easy to follow. The deliverables checklist at the end is helpful. Minor issue: the project structure diagram is slightly confusing regarding where files actually live."
+    }
+  },
+  "overall_score": 3.29,
+  "judge_reasoning": "The candidate plan covers the core requirements but is noticeably less comprehensive than the reference. It defines only 3 transform types instead of 6, provides fewer test cases, and lacks concrete sample data. The overall architecture is sound but the plan would benefit from more specific implementation details, additional transforms to demonstrate extensibility, and broader error-handling and test coverage.",
+  "error": null
+}

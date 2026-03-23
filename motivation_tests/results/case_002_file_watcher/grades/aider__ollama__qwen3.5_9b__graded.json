@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "aider",
+  "model_name": "ollama__qwen3.5_9b",
+  "grades": {
+    "completeness": {
+      "score": 1,
+      "reasoning": "No plan was captured. None of the deliverables (watcher.py, config.py, watcher.yaml, test_watcher.py) are addressed."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "No technical steps are proposed, so correctness cannot be evaluated."
+    },
+    "specificity": {
+      "score": 1,
+      "reasoning": "The plan is entirely empty \u2014 no file names, function signatures, or library choices are provided."
+    },
+    "ordering_and_dependencies": {
+      "score": 1,
+      "reasoning": "No steps exist, so no ordering or dependency management is present."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling strategy is mentioned since no plan exists."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "No testing strategy is included."
+    },
+    "clarity": {
+      "score": 1,
+      "reasoning": "There is nothing to follow \u2014 the plan is blank."
+    }
+  },
+  "overall_score": 1.0,
+  "judge_reasoning": "No plan was captured for this candidate. The submission is entirely empty, providing zero coverage of the required deliverables, constraints, or implementation approach for the file watcher CLI tool.",
+  "error": null
+}

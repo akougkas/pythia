@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "langgraph",
+  "model_name": "github_models__gpt-4o-mini",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "Missing key elements: no git submodule init, no CMake build option, no FFTW dependency handling, no input file setup (e.g., TGV test case), no post-completion validation (sacct), no output file verification. Stage 4 dependency is wrong\u2014it should depend on both Stage 2 and Stage 3, but only lists Stage 3. Token estimates are unrealistically low (single digits vs thousands)."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "Multiple technical errors: uses 'sudo apt-get install' on an HPC cluster (users don't have sudo), requests GPU resources when XCompact3D is CPU/MPI-based, uses 'nano' interactively, runs 'make' inside the Slurm batch script instead of pre-building, references a placeholder 'xcompact3d_executable' instead of the actual binary name, uses --ntasks=1 with --cpus-per-task=4 which is wrong for an MPI application, and doesn't load proper modules."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Very vague throughout: placeholder partition name, placeholder executable name, placeholder username, no specific module versions, no compiler flags, no CMake configuration options, no specific input file paths. The reference plan provides exact paths, module versions, and detailed cmake/make commands."
+    },
+    "ordering_and_dependencies": {
+      "score": 2,
+      "reasoning": "Stage 1 and 3 are correctly identified as parallel, but Stage 4 incorrectly depends only on Stage 3 (should also depend on Stage 2 since the binary must be built). No dependency graph or parallel execution timeline provided. The parallel execution opportunity is noted in the summary table but not explicitly called out."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling whatsoever: no fallback for missing FFTW, no alternative build systems, no checks for successful compilation, no grep for errors in logs, no CFL number validation, no NaN/divergence checks, no verification that the binary was actually produced."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "No validation criteria defined. Only suggests 'cat' of log files with no specific things to look for. Missing: sacct exit code check, output file existence/size verification, error pattern grep, physics sanity checks. No verification checklist."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "The document is reasonably well-organized with clear stage separation and a summary table. However, the content within each stage is too thin to be actionable, and placeholders reduce usability. The reference plan's ASCII dependency graphs and detailed verification checklist are far superior."
+    }
+  },
+  "overall_score": 1.71,
+  "judge_reasoning": "The candidate plan provides a basic skeleton but is significantly deficient compared to the reference. Critical technical errors include using sudo on HPC, requesting GPUs for a CPU-based MPI application, building inside the batch script, and incorrect MPI task configuration. It lacks the depth needed for actual execution: no FFTW handling, no CMake configuration, no test case setup, unrealistic token estimates, and no meaningful validation strategy.",
+  "error": null
+}

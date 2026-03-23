@@ -36,16 +36,16 @@ Usage:
     # Phase 1 — with Ollama models included
     python eval1.py generate --cases-dir ./cases --include-ollama
 
-    # Phase 2 — mark a reference plan
-    python eval1.py set-reference \\
-        --case case_001_add_numbers \\
-        --plan claude_code__claude-sonnet-4-6.md
+    # Phase 2 — set reference plans (one per case)
+    python eval1.py set-reference --results-dir ./results --case case_001_xcompact3d_deployment --plan claude_code__anthropic__claude-opus-4-6.md
+    python eval1.py set-reference --results-dir ./results --case case_002_file_watcher --plan claude_code__anthropic__claude-opus-4-6.md
+    python eval1.py set-reference --results-dir ./results --case case_003_data_pipeline --plan claude_code__anthropic__claude-opus-4-6.md
 
     # Phase 3 — grade all plans against references
-    python eval1.py grade --cases-dir ./cases
+    python eval1.py grade --cases-dir ./cases --results-dir ./results -v
 
     # Full report
-    python eval1.py report
+    python eval1.py report --results-dir ./results --output eval_report.md
 """
 
 from __future__ import annotations
@@ -424,15 +424,136 @@ class DirectAPIFramework(PlanningFramework):
         return result
 
 
-# ── Stub: Aider ──────────────────────────────────────────────────────────
+# ── Gemini ADK (Google free tier) ─────────────────────────────────────────
+
+class GeminiADKFramework(PlanningFramework):
+    """
+    Uses Google ADK (Agent Development Kit) with BuiltInPlanner.
+
+    Creates an LlmAgent with BuiltInPlanner (ThinkingConfig) and runs it
+    via InMemoryRunner.  Captures thinking parts (plan reasoning) and
+    final response (the plan text) from the event stream.
+    Tracks token usage for cost estimation.
+    """
+
+    @property
+    def name(self) -> str:
+        return "gemini_adk"
+
+    async def generate_plan(
+        self,
+        case: CaseSpec,
+        model: ModelSpec,
+    ) -> PlanOutput:
+        from google.adk import Agent as LlmAgent
+        from google.adk.planners import BuiltInPlanner
+        from google.adk.runners import InMemoryRunner
+        from google.genai import types
+
+        result = PlanOutput(
+            case_name=case.name,
+            framework_name=self.name,
+            model_name=model.name,
+            provider=model.provider,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
+        instruction = (
+            "You are in planning mode. Read the objective the user gives you "
+            "and produce a detailed, step-by-step implementation plan. Do NOT "
+            "execute anything — only plan.\n\n"
+            "IMPORTANT: Do NOT ask clarifying questions. If any detail is "
+            "ambiguous or missing, make a reasonable assumption, state it "
+            "explicitly in your plan, and proceed."
+        )
+
+        user_message_text = (
+            f"## Objective\n\n{case.prompt}\n\n"
+            f"## Working Directory\n\n"
+            f"The working directory is: {case.working_dir}\n"
+            f"Inspect it if needed for context materials."
+        )
+
+        t0 = time.monotonic()
+        try:
+            # Build agent with BuiltInPlanner
+            agent = LlmAgent(
+                name="plan_generator",
+                model=model.name,
+                instruction=instruction,
+                planner=BuiltInPlanner(
+                    thinking_config=types.ThinkingConfig(
+                        include_thoughts=True,
+                        thinking_budget=1024,
+                    ),
+                ),
+                generate_content_config=types.GenerateContentConfig(
+                    temperature=0.2,
+                ),
+            )
+
+            runner = InMemoryRunner(
+                agent=agent,
+                app_name="eval1_gemini",
+            )
+
+            session = await runner.session_service.create_session(
+                app_name="eval1_gemini",
+                user_id="eval1",
+            )
+
+            user_content = types.Content(
+                role="user",
+                parts=[types.Part.from_text(text=user_message_text)],
+            )
+
+            # Collect events from the agent run
+            plan_parts: list[str] = []
+            thinking_parts: list[str] = []
+
+            async for event in runner.run_async(
+                user_id="eval1",
+                session_id=session.id,
+                new_message=user_content,
+            ):
+                if event.content and event.content.parts:
+                    for part in event.content.parts:
+                        if not part.text:
+                            continue
+                        if part.thought:
+                            thinking_parts.append(part.text)
+                        elif event.author == "plan_generator":
+                            plan_parts.append(part.text)
+
+            result.plan_text = "\n".join(plan_parts)
+            result.thinking_text = "\n".join(thinking_parts)
+            result.num_turns = 1
+
+        except Exception as e:
+            result.error = f"{type(e).__name__}: {e}"
+
+        result.duration_wall_s = time.monotonic() - t0
+        result.duration_ms = int(result.duration_wall_s * 1000)
+        return result
+
+
+# ── Aider (Architect Mode — plan only) ────────────────────────────────────
 
 class AiderFramework(PlanningFramework):
     """
-    Placeholder for Aider integration.
+    Uses Aider's ArchitectCoder for plan generation.
 
-    Aider has an `--architect` mode that produces plans.
-    Implementation would shell out to `aider --architect --yes ...`
-    and parse the output.
+    ArchitectCoder has a planning-oriented system prompt:
+      "Act as an expert architect engineer… Describe how to modify the code…
+       make instructions unambiguous and complete."
+
+    Safety: ArchitectCoder.reply_completed() normally spawns an editor Coder
+    that applies edits to files.  We neuter this by overriding reply_completed
+    to a no-op on the coder instance after creation.
+
+    - Plan text from coder.partial_response_content
+    - Tokens/cost tracked via litellm under the hood
+    - Models: any litellm-supported model (Anthropic, Ollama, LM Studio)
     """
 
     @property
@@ -444,15 +565,477 @@ class AiderFramework(PlanningFramework):
         case: CaseSpec,
         model: ModelSpec,
     ) -> PlanOutput:
-        # TODO: Implement aider --architect mode
-        return PlanOutput(
+        result = PlanOutput(
             case_name=case.name,
             framework_name=self.name,
             model_name=model.name,
             provider=model.provider,
             timestamp=datetime.now(timezone.utc).isoformat(),
-            error="Aider framework not yet implemented",
         )
+
+        def _run_aider() -> None:
+            from aider.coders import Coder
+            from aider.models import Model as AiderModel
+            from aider.io import InputOutput
+
+            # ── Map ModelSpec → litellm model string ──
+            if model.provider == "ollama":
+                litellm_name = f"ollama/{model.name}"
+                os.environ["OLLAMA_API_BASE"] = model.api_base_url
+            elif model.provider == "lm_studio":
+                litellm_name = f"openai/{model.name}"
+                os.environ["OPENAI_API_BASE"] = (
+                    f"{model.api_base_url.rstrip('/')}/v1"
+                )
+                os.environ["OPENAI_API_KEY"] = "lm-studio"
+            else:
+                litellm_name = model.name  # anthropic models work directly
+
+            aider_model = AiderModel(litellm_name)
+            io = InputOutput(
+                yes=True,          # auto-accept all prompts
+                pretty=False,      # no colour / formatting
+                fancy_input=False,  # no interactive input
+            )
+
+            # ── Gather context files from WorkingDir (if any) ──
+            fnames = []
+            if case.working_dir.exists():
+                for f in case.working_dir.iterdir():
+                    if f.is_file() and f.stat().st_size < 100_000:
+                        fnames.append(str(f))
+
+            # ── Build prompt (same structure as other frameworks) ──
+            prompt = (
+                "You are in planning mode. Read the objective below and "
+                "produce a detailed, step-by-step implementation plan. "
+                "Do NOT execute anything — only plan.\n\n"
+                "IMPORTANT: Do NOT ask clarifying questions. If any detail "
+                "is ambiguous or missing, make a reasonable assumption, "
+                "state it explicitly in your plan, and proceed.\n\n"
+                f"## Objective\n\n{case.prompt}\n\n"
+                f"## Working Directory\n\n"
+                f"The working directory is: {case.working_dir}\n"
+                "Inspect it if needed for context materials."
+            )
+
+            # edit_format="architect" gives us the planning-oriented system
+            # prompt ("Act as expert architect engineer…").
+            # use_git=False prevents Aider from discovering the parent git
+            # repo (Pythia) and indexing the entire project as context.
+            # map_tokens=0 disables the repo map entirely — we only want
+            # the case's WorkingDir files, not the whole repo tree.
+            coder = Coder.create(
+                main_model=aider_model,
+                edit_format="architect",
+                io=io,
+                fnames=fnames,
+                auto_commits=False,
+                suggest_shell_commands=False,
+                stream=False,
+                use_git=False,
+                map_tokens=0,
+            )
+
+            # SAFETY: Neuter reply_completed so the editor Coder is never
+            # spawned.  The architect produces the plan text; we capture it
+            # from partial_response_content and stop there.
+            coder.reply_completed = lambda: None
+
+            # preproc=False disables Aider's URL scraping and file-mention
+            # detection, which can inject large amounts of garbage HTML
+            # into the prompt and cause API errors.
+            plan_text = coder.run(with_message=prompt, preproc=False)
+
+            result.plan_text = plan_text or coder.partial_response_content
+            # total_cost is 0.0 for local models (no pricing data in
+            # litellm), so only set cost if it's actually non-zero.
+            if coder.total_cost > 0:
+                result.total_cost_usd = coder.total_cost
+            # num_reflections counts extra LLM calls from file-mention
+            # detection in the response.  Total turns = 1 + reflections.
+            result.num_turns = 1 + coder.num_reflections
+            log.info(
+                f"  Aider tokens: {coder.total_tokens_sent} sent, "
+                f"{coder.total_tokens_received} received, "
+                f"cost=${coder.total_cost:.4f}, "
+                f"reflections={coder.num_reflections}"
+            )
+
+        t0 = time.monotonic()
+        try:
+            await asyncio.to_thread(_run_aider)
+        except Exception as e:
+            result.error = f"{type(e).__name__}: {e}"
+
+        result.duration_wall_s = time.monotonic() - t0
+        result.duration_ms = int(result.duration_wall_s * 1000)
+        return result
+
+
+# ── CrewAI (Single-Agent Planning) ────────────────────────────────────────
+
+class CrewAIFramework(PlanningFramework):
+    """
+    Uses CrewAI with a single planning agent and one task.
+
+    - No tools, no delegation — the agent's only job is to produce a plan
+    - Token usage via CrewOutput.token_usage (UsageMetrics)
+    - Models: per-agent `llm` param using litellm model strings
+    """
+
+    @property
+    def name(self) -> str:
+        return "crewai"
+
+    async def generate_plan(
+        self,
+        case: CaseSpec,
+        model: ModelSpec,
+    ) -> PlanOutput:
+        result = PlanOutput(
+            case_name=case.name,
+            framework_name=self.name,
+            model_name=model.name,
+            provider=model.provider,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
+        def _run_crewai() -> None:
+            from crewai import Agent, Task, Crew
+
+            # ── Map ModelSpec → litellm model string ──
+            if model.provider == "ollama":
+                llm_string = f"ollama/{model.name}"
+                os.environ["OLLAMA_API_BASE"] = model.api_base_url
+            elif model.provider == "lm_studio":
+                llm_string = f"openai/{model.name}"
+                os.environ["OPENAI_API_BASE"] = (
+                    f"{model.api_base_url.rstrip('/')}/v1"
+                )
+                os.environ["OPENAI_API_KEY"] = "lm-studio"
+            else:
+                llm_string = model.name  # anthropic models work directly
+
+            agent = Agent(
+                role="Implementation Planner",
+                goal=(
+                    "Create a detailed, step-by-step implementation plan. "
+                    "Do NOT execute anything. Do NOT ask clarifying questions."
+                ),
+                backstory=(
+                    "You are an expert software architect who produces "
+                    "thorough, actionable implementation plans. When details "
+                    "are ambiguous, you make reasonable assumptions and state "
+                    "them explicitly."
+                ),
+                llm=llm_string,
+                allow_delegation=False,
+                verbose=False,
+            )
+
+            task = Task(
+                description=(
+                    f"Read the objective below and produce a detailed, "
+                    f"step-by-step implementation plan.\n\n"
+                    f"## Objective\n\n{case.prompt}\n\n"
+                    f"## Working Directory\n\n"
+                    f"The working directory is: {case.working_dir}\n"
+                ),
+                expected_output=(
+                    "A detailed step-by-step implementation plan in markdown "
+                    "format, with file paths, function signatures, and "
+                    "concrete technical decisions."
+                ),
+                agent=agent,
+            )
+
+            crew = Crew(
+                agents=[agent],
+                tasks=[task],
+                verbose=False,
+            )
+
+            output = crew.kickoff()
+
+            result.plan_text = output.raw
+            result.num_turns = len(output.tasks_output) if output.tasks_output else 1
+
+            # Extract token metrics from UsageMetrics
+            if output.token_usage:
+                usage = output.token_usage
+                # UsageMetrics has: total_tokens, prompt_tokens,
+                # completion_tokens, successful_requests
+                # We don't get dollar cost directly — estimate if needed
+                log.info(
+                    f"  CrewAI tokens: {usage.total_tokens} total "
+                    f"({usage.prompt_tokens} prompt, "
+                    f"{usage.completion_tokens} completion)"
+                )
+
+        t0 = time.monotonic()
+        try:
+            await asyncio.to_thread(_run_crewai)
+        except Exception as e:
+            result.error = f"{type(e).__name__}: {e}"
+
+        result.duration_wall_s = time.monotonic() - t0
+        result.duration_ms = int(result.duration_wall_s * 1000)
+        return result
+
+
+# ── LangGraph (Single-Node Planning Graph) ────────────────────────────────
+
+class LangGraphFramework(PlanningFramework):
+    """
+    Uses LangGraph with a single planning node.
+
+    Creates a minimal StateGraph: START → planner → END.
+    The planner node calls an LLM via langchain_openai's ChatOpenAI
+    (which supports Ollama, LM Studio, and OpenAI-compatible endpoints).
+
+    - Plan text from the LLM response content
+    - Token usage via langchain's usage_metadata on AIMessage
+    - Models: any OpenAI-compatible endpoint (Ollama, LM Studio, Anthropic via proxy)
+    """
+
+    @property
+    def name(self) -> str:
+        return "langgraph"
+
+    async def generate_plan(
+        self,
+        case: CaseSpec,
+        model: ModelSpec,
+    ) -> PlanOutput:
+        result = PlanOutput(
+            case_name=case.name,
+            framework_name=self.name,
+            model_name=model.name,
+            provider=model.provider,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
+        def _run_langgraph() -> None:
+            from langgraph.graph import StateGraph, START, END
+            from langchain_openai import ChatOpenAI
+            from typing import TypedDict
+
+            class PlanState(TypedDict):
+                prompt: str
+                plan: str
+                usage: dict
+
+            # ── Build LLM client ──
+            llm_kwargs: dict[str, Any] = {
+                "temperature": 0.2,
+                "max_tokens": 8192,
+            }
+
+            if model.provider == "ollama":
+                llm_kwargs["model"] = model.name
+                llm_kwargs["base_url"] = f"{model.api_base_url}/v1"
+                llm_kwargs["api_key"] = "ollama"
+            elif model.provider == "lm_studio":
+                llm_kwargs["model"] = model.name
+                llm_kwargs["base_url"] = f"{model.api_base_url.rstrip('/')}/v1"
+                llm_kwargs["api_key"] = "lm-studio"
+            elif model.provider == "anthropic":
+                # Use Anthropic via their OpenAI-compatible endpoint
+                llm_kwargs["model"] = model.name
+                llm_kwargs["base_url"] = "https://api.anthropic.com/v1"
+                llm_kwargs["api_key"] = os.environ.get("ANTHROPIC_API_KEY", "")
+            elif model.provider == "github_models":
+                llm_kwargs["model"] = model.name
+                llm_kwargs["base_url"] = model.api_base_url
+                llm_kwargs["api_key"] = os.environ.get("GITHUB_TOKEN", "")
+            else:
+                llm_kwargs["model"] = model.name
+
+            llm = ChatOpenAI(**llm_kwargs)
+
+            # Store usage from the LLM response
+            captured_usage: dict[str, Any] = {}
+
+            def plan_node(state: PlanState) -> dict:
+                response = llm.invoke(state["prompt"])
+                usage_meta = {}
+                if hasattr(response, "usage_metadata") and response.usage_metadata:
+                    usage_meta = dict(response.usage_metadata)
+                return {"plan": response.content, "usage": usage_meta}
+
+            builder = StateGraph(PlanState)
+            builder.add_node("planner", plan_node)
+            builder.add_edge(START, "planner")
+            builder.add_edge("planner", END)
+            graph = builder.compile()
+
+            # ── Compose prompt ──
+            prompt = (
+                "You are in planning mode. Read the objective below and "
+                "produce a detailed, step-by-step implementation plan. "
+                "Do NOT execute anything — only plan.\n\n"
+                "IMPORTANT: Do NOT ask clarifying questions. If any detail "
+                "is ambiguous or missing, make a reasonable assumption, "
+                "state it explicitly in your plan, and proceed.\n\n"
+                f"## Objective\n\n{case.prompt}\n\n"
+                f"## Working Directory\n\n"
+                f"The working directory is: {case.working_dir}\n"
+                "Inspect it if needed for context materials."
+            )
+
+            output = graph.invoke({"prompt": prompt, "plan": "", "usage": {}})
+
+            result.plan_text = output["plan"]
+            result.num_turns = 1
+
+            # Extract token usage
+            usage = output.get("usage", {})
+            if usage:
+                total_tokens = usage.get("total_tokens", 0)
+                input_tokens = usage.get("input_tokens", 0)
+                output_tokens = usage.get("output_tokens", 0)
+                log.info(
+                    f"  LangGraph tokens: {total_tokens} total "
+                    f"({input_tokens} input, {output_tokens} output)"
+                )
+
+        t0 = time.monotonic()
+        try:
+            await asyncio.to_thread(_run_langgraph)
+        except Exception as e:
+            result.error = f"{type(e).__name__}: {e}"
+
+        result.duration_wall_s = time.monotonic() - t0
+        result.duration_ms = int(result.duration_wall_s * 1000)
+        return result
+
+
+# ── OpenAI Agents SDK (No-Tool Agent) ─────────────────────────────────────
+
+class AgentsSDKFramework(PlanningFramework):
+    """
+    Uses the OpenAI Agents SDK with a no-tool, no-handoff agent.
+
+    The agent receives the planning prompt and returns a text response.
+    For non-OpenAI models, uses OpenAIChatCompletionsModel with a custom
+    AsyncOpenAI client pointed at the appropriate endpoint.
+
+    - Plan text from result.final_output
+    - Token usage from result.raw_responses[-1].usage
+    - Models: any OpenAI-compatible endpoint (Ollama, LM Studio, etc.)
+    """
+
+    @property
+    def name(self) -> str:
+        return "agents_sdk"
+
+    async def generate_plan(
+        self,
+        case: CaseSpec,
+        model: ModelSpec,
+    ) -> PlanOutput:
+        from agents import Agent, Runner
+        from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
+        from openai import AsyncOpenAI
+
+        result = PlanOutput(
+            case_name=case.name,
+            framework_name=self.name,
+            model_name=model.name,
+            provider=model.provider,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
+        # ── Build model ──
+        if model.provider == "ollama":
+            client = AsyncOpenAI(
+                base_url=f"{model.api_base_url}/v1",
+                api_key="ollama",
+            )
+            sdk_model = OpenAIChatCompletionsModel(
+                model=model.name, openai_client=client,
+            )
+        elif model.provider == "lm_studio":
+            client = AsyncOpenAI(
+                base_url=f"{model.api_base_url.rstrip('/')}/v1",
+                api_key="lm-studio",
+            )
+            sdk_model = OpenAIChatCompletionsModel(
+                model=model.name, openai_client=client,
+            )
+        elif model.provider == "anthropic":
+            # Agents SDK doesn't natively support Anthropic;
+            # would need litellm proxy or Anthropic's OpenAI-compat endpoint
+            client = AsyncOpenAI(
+                base_url="https://api.anthropic.com/v1",
+                api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
+            )
+            sdk_model = OpenAIChatCompletionsModel(
+                model=model.name, openai_client=client,
+            )
+        elif model.provider == "github_models":
+            client = AsyncOpenAI(
+                base_url=model.api_base_url,
+                api_key=os.environ.get("GITHUB_TOKEN", ""),
+            )
+            sdk_model = OpenAIChatCompletionsModel(
+                model=model.name, openai_client=client,
+            )
+        else:
+            # Default OpenAI
+            sdk_model = model.name
+
+        instruction = (
+            "You are in planning mode. Read the objective the user gives you "
+            "and produce a detailed, step-by-step implementation plan. Do NOT "
+            "execute anything — only plan.\n\n"
+            "IMPORTANT: Do NOT ask clarifying questions. If any detail is "
+            "ambiguous or missing, make a reasonable assumption, state it "
+            "explicitly in your plan, and proceed. You must produce a "
+            "complete plan in a single pass without waiting for human input."
+        )
+
+        agent = Agent(
+            name="Planner",
+            instructions=instruction,
+            model=sdk_model,
+            tools=[],
+            handoffs=[],
+        )
+
+        prompt = (
+            f"## Objective\n\n{case.prompt}\n\n"
+            f"## Working Directory\n\n"
+            f"The working directory is: {case.working_dir}\n"
+            f"Inspect it if needed for context materials."
+        )
+
+        t0 = time.monotonic()
+        try:
+            run_result = await Runner.run(agent, input=prompt, max_turns=1)
+
+            result.plan_text = run_result.final_output
+            result.num_turns = len(run_result.raw_responses)
+
+            # Extract token usage from the last response
+            if run_result.raw_responses:
+                last_usage = run_result.raw_responses[-1].usage
+                if last_usage:
+                    total = last_usage.total_tokens or 0
+                    prompt_t = last_usage.input_tokens or 0
+                    completion_t = last_usage.output_tokens or 0
+                    log.info(
+                        f"  Agents SDK tokens: {total} total "
+                        f"({prompt_t} input, {completion_t} output)"
+                    )
+
+        except Exception as e:
+            result.error = f"{type(e).__name__}: {e}"
+
+        result.duration_wall_s = time.monotonic() - t0
+        result.duration_ms = int(result.duration_wall_s * 1000)
+        return result
 
 
 # ── Stub: OpenHands / SWE-agent / etc. ──────────────────────────────────
@@ -484,7 +1067,11 @@ class OpenHandsFramework(PlanningFramework):
 FRAMEWORK_REGISTRY: dict[str, PlanningFramework] = {
     "claude_code": ClaudeCodeFramework(),
     "direct_api": DirectAPIFramework(),
+    "gemini_adk": GeminiADKFramework(),
     "aider": AiderFramework(),
+    "crewai": CrewAIFramework(),
+    "langgraph": LangGraphFramework(),
+    "agents_sdk": AgentsSDKFramework(),
     "openhands": OpenHandsFramework(),
 }
 
@@ -497,9 +1084,9 @@ DEFAULT_FRAMEWORKS = ["claude_code"]
 # ═══════════════════════════════════════════════════════════════════════════
 
 ANTHROPIC_MODELS: list[ModelSpec] = [
-    ModelSpec(name="claude-sonnet-4-6", provider="anthropic"),
-    ModelSpec(name="claude-opus-4-6", provider="anthropic"),
-    ModelSpec(name="claude-haiku-4-5-20251001", provider="anthropic"),
+    # ModelSpec(name="claude-sonnet-4-6", provider="anthropic"),
+    # ModelSpec(name="claude-opus-4-6", provider="anthropic"),
+    # ModelSpec(name="claude-haiku-4-5-20251001", provider="anthropic"),
 ]
 
 OLLAMA_MODELS: list[ModelSpec] = [
@@ -516,6 +1103,25 @@ LM_STUDIO_MODELS: list[ModelSpec] = [
     ModelSpec(name="openai/gpt-oss-20b", provider="lm_studio", api_base_url="http://192.168.1.139:1234"),
 ]
 
+GEMINI_MODELS: list[ModelSpec] = [
+    # ModelSpec(name="gemini-2.5-flash", provider="gemini"),
+    ModelSpec(name="gemini-3-flash-preview", provider="gemini"),
+    ModelSpec(name="gemini-3.1-flash-lite-preview", provider="gemini"),
+]
+
+# WARNING: GitHub Models free tier has strict rate limits and aggressive
+# abuse detection. Repeated 429 errors may flag your GitHub account.
+# Verify your token is authorized for GitHub Models API before use:
+#   https://github.com/marketplace/models
+# Use --include-github at your own risk.
+GITHUB_MODELS: list[ModelSpec] = [
+    ModelSpec(name="gpt-4o-mini", provider="github_models",
+             api_base_url="https://models.github.ai/inference"),
+    ModelSpec(name="gpt-4o", provider="github_models",
+             api_base_url="https://models.github.ai/inference"),
+    # ModelSpec(name="gpt-5", provider="github_models",
+    #          api_base_url="https://models.github.ai/inference"),
+]
 
 # ── LM Studio model management ───────────────────────────────────────────
 
@@ -775,6 +1381,14 @@ async def phase1_generate(
                     f"{output.duration_ms}ms api | "
                     f"{cost_str}"
                 )
+
+                # Rate-limit free tier APIs
+                if model.provider == "gemini":
+                    log.info("  Gemini rate limit: sleeping 7s...")
+                    await asyncio.sleep(7)
+                elif model.provider == "github_models":
+                    log.info("  GitHub Models rate limit: sleeping 60s...")
+                    await asyncio.sleep(60)
 
     return all_outputs
 
@@ -1102,6 +1716,9 @@ def parse_args() -> argparse.Namespace:
     gen.add_argument("--ollama-url", default="http://localhost:11434")
     gen.add_argument("--include-lm-studio", action="store_true")
     gen.add_argument("--lm-studio-url", default="http://192.168.1.139:1234")
+    gen.add_argument("--include-gemini", action="store_true")
+    gen.add_argument("--include-github", action="store_true",
+                     help="Include GitHub Models (GPT-4o, GPT-4o-mini) — set GITHUB_TOKEN env var")
     gen.add_argument(
         "--frameworks", nargs="+", default=DEFAULT_FRAMEWORKS,
         help=f"Frameworks to use (available: {list(FRAMEWORK_REGISTRY.keys())})",
@@ -1187,6 +1804,10 @@ async def async_main():
                 for lm in LM_STUDIO_MODELS:
                     lm.api_base_url = args.lm_studio_url
                 models.extend(LM_STUDIO_MODELS)
+            if args.include_gemini:
+                models.extend(GEMINI_MODELS)
+            if args.include_github:
+                models.extend(GITHUB_MODELS)
 
         # ── Summary ──
         total = len(cases) * len(frameworks) * len(models)

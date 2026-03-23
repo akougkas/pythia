@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "langgraph",
+  "model_name": "github_models__gpt-5",
+  "grades": {
+    "completeness": {
+      "score": 1,
+      "reasoning": "The candidate plan is entirely empty \u2014 'No Plan Captured'. None of the five required stages (download, build, cluster query, job submission, monitoring) are addressed."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "With no content whatsoever, there are no steps to evaluate for technical correctness."
+    },
+    "specificity": {
+      "score": 1,
+      "reasoning": "No concrete steps, commands, file names, or configurations are provided."
+    },
+    "ordering_and_dependencies": {
+      "score": 1,
+      "reasoning": "No stages or dependencies are defined, so ordering cannot be assessed."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling or edge case considerations are present."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "No testing or validation strategy is included."
+    },
+    "clarity": {
+      "score": 1,
+      "reasoning": "The plan is blank and provides no information for anyone to follow."
+    }
+  },
+  "overall_score": 1.0,
+  "judge_reasoning": "The candidate produced no plan at all \u2014 the output is simply 'No Plan Captured'. It fails every criterion completely, covering none of the required deployment stages, commands, agent assignments, or resource specifications outlined in the objective.",
+  "error": null
+}

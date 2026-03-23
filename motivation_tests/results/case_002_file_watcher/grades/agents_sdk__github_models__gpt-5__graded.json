@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "agents_sdk",
+  "model_name": "github_models__gpt-5",
+  "grades": {
+    "completeness": {
+      "score": 5,
+      "reasoning": "Covers all four deliverables (watcher.py, config.py, watcher.yaml, test_watcher.py) and goes beyond with extras like shell mode, verbose flag, CLI overrides, and pending-rerun logic. All requirements (watchdog, YAML config, glob patterns, debounce) are addressed."
+    },
+    "correctness": {
+      "score": 4,
+      "reasoning": "Technically sound overall. The debounce-with-pending-rerun design is more sophisticated than needed but correct. Minor concern: using fnmatchcase with '**/' glob patterns won't work correctly since fnmatch doesn't support recursive '**' \u2014 the reference uses basename matching with simple globs, which is simpler and more reliable. The command parsing with shlex.split and shell flag adds complexity that could introduce subtle issues."
+    },
+    "specificity": {
+      "score": 5,
+      "reasoning": "Extremely detailed \u2014 specifies dataclass fields, method signatures, threading logic, pattern matching semantics, subprocess invocation details, CLI flags, and even algorithmic edge cases. More specific than the reference plan in many areas."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Clear implementation order with config first, then filter, runner, handler, CLI. Dependencies are well-identified. Slightly verbose in describing the order across multiple sections (implementation steps, estimated time, deliverables summary) which creates some redundancy."
+    },
+    "error_handling": {
+      "score": 5,
+      "reasoning": "Excellent coverage: config validation (missing command, invalid debounce with minimum 50ms safeguard), path normalization edge cases, graceful shutdown with shutdown flag, thread cleanup, moved event handling, and cross-platform path concerns."
+    },
+    "testability": {
+      "score": 4,
+      "reasoning": "Good test strategy covering config loading, pattern matching, debounce behavior, pending reruns, and handler filtering. Uses mocking and short timers appropriately. Slightly fewer named test cases than the reference (6 vs 18), though the cases cover similar ground. Missing explicit tests for error conditions in config loading."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "While thorough, the plan is excessively long and repetitive. Key information is scattered across multiple sections (e.g., config fields described in config.py section, watcher.yaml section, and example content section). The reference plan is much more scannable. A developer would need to read carefully to extract the actionable steps."
+    }
+  },
+  "overall_score": 4.29,
+  "judge_reasoning": "A very thorough and technically ambitious plan that covers all requirements and adds thoughtful extras like shell mode, pending-rerun coalescence, and CLI overrides. However, it trades clarity for exhaustiveness \u2014 it's roughly 3x longer than the reference with significant repetition across sections. The use of '**/' patterns with fnmatch is a potential correctness issue since fnmatch doesn't natively support recursive glob syntax.",
+  "error": null
+}

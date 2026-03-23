@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "gemini_adk",
+  "model_name": "gemini__gemini-2.5-flash",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all 5 stages but lacks depth in several areas: no dependency graph visualization, no summary dispatch table, no verification checklist, no mention of git submodules for bundled 2decomp&fft, missing FFTW build-from-source fallback, and no discussion of the Taylor-Green Vortex test case specifically."
+    },
+    "correctness": {
+      "score": 3,
+      "reasoning": "Several technical issues: the Slurm batch script uses comments with '# SBATCH' instead of '#SBATCH' (the space after # would make directives non-functional), clones into 'xcompact3d_source' rather than the standard directory name, assumes building in src/ with plain make rather than documenting the CMake option, uses 'input.i' instead of the actual '.i3d' namelist format, and requests only 4GB memory per node which is likely insufficient for CFD."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides concrete commands but is less specific than the reference: uses generic module versions, doesn't specify cmake flags, doesn't mention specific compiler flags (-O3, -march=native), uses placeholder executable name 'xcompact3d_mpi' without verifying actual binary name, and lacks specific sinfo format strings for targeted resource queries."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Correctly identifies that Stages 1 and 3 can run in parallel, Stage 2 depends on Stage 1, Stage 4 depends on Stages 2 and 3, and Stage 5 depends on Stage 4. However, incorrectly states Stage 3 can run in parallel with Stage 2 (Stage 2 depends on Stage 1, so they aren't truly parallel). Missing a clear visual dependency graph."
+    },
+    "error_handling": {
+      "score": 3,
+      "reasoning": "The batch script includes checks for executable and input file existence, which is good. However, it lacks error checking for NaN/Infinity/segfault in outputs, no CFL number validation, no fallback for missing modules (e.g., building FFTW from source), and no guidance on handling common build failures."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Validation is very weak compared to the reference. Only suggests grepping for generic strings like 'Simulation started' without knowledge of actual XCompact3D output format. Missing sacct exit code verification, output file size checks, NaN/divergence checks, and no structured verification checklist."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear markdown structure, consistent formatting for each stage with agent, hardware, tokens, and dependencies. However, lacks the visual dependency graph and summary table that make the reference plan easier to scan quickly."
+    }
+  },
+  "overall_score": 3.14,
+  "judge_reasoning": "The candidate plan covers all five required stages with reasonable structure but falls short of the reference in technical accuracy and depth. Critical issues include a broken Slurm script (commented-out directives), incorrect input file naming, and weak validation steps. The plan would benefit from CMake build documentation, a FFTW fallback build path, proper XCompact3D-specific validation criteria, and a visual dependency summary.",
+  "error": null
+}

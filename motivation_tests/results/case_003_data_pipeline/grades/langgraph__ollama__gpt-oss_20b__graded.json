@@ -1,0 +1,38 @@
+{
+  "case_name": "case_003_data_pipeline",
+  "framework_name": "langgraph",
+  "model_name": "ollama__gpt-oss_20b",
+  "grades": {
+    "completeness": {
+      "score": 4,
+      "reasoning": "Covers all four required deliverables plus extras (requirements.txt, README). However, it only defines 3 transform types (filter, rename, derive) versus the reference's 6 (filter_rows, rename_columns, compute_column, drop_columns, sort_rows, fill_missing). It also doesn't create sample CSV files in input/, which the reference explicitly does. The YAML config schema puts input_dir/output_dir as CLI args rather than in the config, and omits log_level from the config file."
+    },
+    "correctness": {
+      "score": 3,
+      "reasoning": "The dry-run implementation is flawed: it still executes all transforms and only skips writing, whereas the reference skips transform execution and logs descriptions. Using df.eval() for derive_column won't work for string concatenation expressions like \"first + ' ' + last\" in standard pandas eval. The filter using df.query() is reasonable but less flexible than the reference's operator-based approach. The config schema differs from the reference (steps vs transforms, condition string vs column/operator/value)."
+    },
+    "specificity": {
+      "score": 5,
+      "reasoning": "The plan is very specific with complete code snippets for every module, function signatures, YAML schema, test implementations, and CLI arguments. It provides a fully executable blueprint."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "The plan follows a logical order: skeleton \u2192 config \u2192 transforms \u2192 pipeline \u2192 tests. Dependencies are correctly sequenced. However, it doesn't explicitly mention creating the input directory with sample data before running tests or the pipeline."
+    },
+    "error_handling": {
+      "score": 3,
+      "reasoning": "Handles unknown transform types and missing config keys. Tests for invalid steps. However, missing: graceful handling of missing input directory (reference has test_missing_input_dir), validation of operator values in filter, and no describe/summary functionality for dry-run mode. Config validation is minimal."
+    },
+    "testability": {
+      "score": 4,
+      "reasoning": "Includes 6 well-structured tests covering individual transforms, end-to-end pipeline, dry-run, and error cases. Uses tmp_path and fixtures properly. However, fewer test cases than the reference (which has 13 tests) \u2014 missing tests for chaining, missing input dir, and multiple operator types."
+    },
+    "clarity": {
+      "score": 5,
+      "reasoning": "Exceptionally well-organized with clear sections, tables, code blocks, and a summary execution flow. The deliverables checklist and step numbering make it easy to follow."
+    }
+  },
+  "overall_score": 4.0,
+  "judge_reasoning": "The candidate plan is well-structured and highly specific with complete code provided, but has fewer transform types (3 vs 6), a flawed dry-run implementation that still executes transforms, and potential correctness issues with df.eval() for string expressions. It covers the core requirements but lacks the depth of the reference plan in terms of transform variety, error handling, and test coverage.",
+  "error": null
+}

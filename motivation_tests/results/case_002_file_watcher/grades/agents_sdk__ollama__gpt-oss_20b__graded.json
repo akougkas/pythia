@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "agents_sdk",
+  "model_name": "ollama__gpt-oss_20b",
+  "grades": {
+    "completeness": {
+      "score": 4,
+      "reasoning": "Covers all four required deliverables plus extras (requirements.txt, README, .gitignore). However, files are placed at the case root rather than WorkingDir/, and it adds unrequested deliverables while the core four are present."
+    },
+    "correctness": {
+      "score": 4,
+      "reasoning": "The technical approach is sound\u2014watchdog Observer, threading.Timer for debounce, fnmatch for glob matching, argparse for CLI. Minor issues: the debounce test with FakeTimer that calls function immediately wouldn't actually test that only one command fires (both events would trigger immediately), and relative_to matching may fail for events outside watch_dir. The config loader raises raw exceptions rather than a custom ConfigError."
+    },
+    "specificity": {
+      "score": 5,
+      "reasoning": "Very detailed with full code snippets for every component, concrete function signatures, class definitions, data model fields, and exact test case descriptions. Goes beyond the reference plan in showing inline code."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Logical ordering: config schema \u2192 config loader \u2192 watcher \u2192 tests \u2192 build/run. Dependencies are correctly sequenced. Slightly less explicit about implementation order than the reference plan."
+    },
+    "error_handling": {
+      "score": 3,
+      "reasoning": "Handles FileNotFoundError and YAMLError but uses raw exceptions rather than a unified ConfigError. Debounce clamped to 50-5000ms range which is opinionated. Missing validation that command is non-empty. The command runner catches CalledProcessError but re-raises via check=True which would crash if not caught\u2014inconsistent with the reference plan's 'never raises' approach."
+    },
+    "testability": {
+      "score": 4,
+      "reasoning": "Eight test cases covering config loading, event filtering, debounce, command execution, and edge cases. The debounce test example has a logic flaw (FakeTimer calling immediately means both events trigger, contradicting the assertion of one call). Missing some test cases the reference has like empty file, missing command validation, and exclude-overrides-include."
+    },
+    "clarity": {
+      "score": 5,
+      "reasoning": "Extremely well-organized with tables, clear section headings, code snippets, and an assumptions section. Easy to follow and execute."
+    }
+  },
+  "overall_score": 4.14,
+  "judge_reasoning": "A thorough and well-structured plan that covers all required deliverables with detailed code snippets and clear organization. Its main weaknesses are less robust error handling (no custom ConfigError, inconsistent exception strategy), a flawed debounce test example, and placing files at the case root instead of WorkingDir/. Overall it would produce a working solution with minor issues.",
+  "error": null
+}

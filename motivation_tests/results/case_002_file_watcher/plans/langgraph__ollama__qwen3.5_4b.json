@@ -1,0 +1,16 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "langgraph",
+  "model_name": "qwen3.5:4b",
+  "provider": "ollama",
+  "plan_text": "",
+  "reasoning_text": "",
+  "thinking_text": "",
+  "session_id": null,
+  "duration_ms": 299683,
+  "duration_wall_s": 299.68309949000104,
+  "total_cost_usd": null,
+  "num_turns": 1,
+  "error": null,
+  "timestamp": "2026-03-20T22:48:00.262793+00:00"
+}

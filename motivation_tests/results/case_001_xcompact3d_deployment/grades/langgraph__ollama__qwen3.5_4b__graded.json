@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "langgraph",
+  "model_name": "ollama__qwen3.5_4b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all 5 stages and includes agent assignments, hardware, tokens, and dependencies. However, missing key details: no git submodule handling, no FFTW3 dependency (critical for XCompact3D), no specific test case (TGV), no input file configuration, incomplete Slurm query commands (missing scontrol show partition/nodes, topology check), and minimal monitoring/validation steps compared to reference."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical issues: suggests sudo apt-get on an HPC cluster (should use module system), assumes CUDA/GPU requirement (XCompact3D mainline is CPU/MPI-based), uses 'source /usr/local/bin/activate' which is nonsensical, references './run_xcompact3d.sh' that is never created, clones into current directory with '.' which would fail if directory is non-empty, uses --gres=gpu:1 and --ntasks=1 which is wrong for an MPI-parallel CFD code, and cmake uses --CMAKE_INSTALL_PREFIX=/usr/local which requires root."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Commands are provided but many are generic/incorrect. No specific compiler flags for Fortran/MPI, no mention of mpifort, sinfo format strings are wrong/incomplete, Slurm batch script lacks srun for MPI execution, no specific output file patterns documented, no input.i3d file referenced. The reference plan provides much more concrete commands tailored to XCompact3D's actual build system and runtime requirements."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Dependency graph is correct: Stage 1 and 3 parallel, Stage 2 depends on 1, Stage 4 depends on 2 and 3, Stage 5 depends on 4. This matches the reference plan's structure well."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling whatsoever. No fallback for missing modules, no alternative build paths (CMake vs Makefile), no FFTW build-from-source fallback, no checking for NaN/segfault in output, no exit code validation, no grep for error patterns in logs."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Mentions 'run a simple test executable' and 'check for specific success indicators' but provides no concrete validation criteria. Reference plan specifies checking exit codes via sacct, verifying output snapshot files, checking for NaN/Infinity, CFL numbers, and provides a full verification checklist."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "Well-organized with clear tables and section structure. Easy to follow the overall flow. However, the incorrect technical details and vague implementation steps would confuse someone trying to actually execute the plan."
+    }
+  },
+  "overall_score": 2.43,
+  "judge_reasoning": "The candidate plan has a correct high-level structure and dependency graph but suffers from significant technical inaccuracies: it assumes GPU/CUDA requirements for a CPU/MPI application, uses apt-get instead of module system on HPC, provides an incorrect Slurm batch script (single task, no srun, references nonexistent scripts), and lacks critical XCompact3D-specific details like FFTW3 dependency, MPI parallel execution, and the TGV test case. Error handling and validation are essentially absent.",
+  "error": null
+}

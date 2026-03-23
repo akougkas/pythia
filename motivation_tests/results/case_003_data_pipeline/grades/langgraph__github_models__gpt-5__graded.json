@@ -1,0 +1,38 @@
+{
+  "case_name": "case_003_data_pipeline",
+  "framework_name": "langgraph",
+  "model_name": "github_models__gpt-5",
+  "grades": {
+    "completeness": {
+      "score": 1,
+      "reasoning": "The candidate plan contains no actual plan content \u2014 it is entirely an error message due to a rate limit failure."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "No technical steps are proposed, so there is nothing correct to evaluate."
+    },
+    "specificity": {
+      "score": 1,
+      "reasoning": "No concrete steps, file names, function signatures, or any actionable content is provided."
+    },
+    "ordering_and_dependencies": {
+      "score": 1,
+      "reasoning": "No steps exist to evaluate ordering or dependencies."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling strategy is discussed since no plan was produced."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "No testing strategy is included \u2014 the plan is entirely absent."
+    },
+    "clarity": {
+      "score": 1,
+      "reasoning": "The output is just an error message with no plan content whatsoever."
+    }
+  },
+  "overall_score": 1.0,
+  "judge_reasoning": "The candidate produced no plan at all \u2014 the entire output is a RateLimitError from GitHub. There is nothing to evaluate against the reference plan, which is a comprehensive and well-structured implementation blueprint.",
+  "error": null
+}

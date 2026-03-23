@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "agents_sdk",
+  "model_name": "ollama__granite4_3b",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "The plan covers the 5 stages but lacks critical details: no git submodule fetch, no discussion of CMake vs Makefile build options, no FFTW dependency handling, no mention of MPI, no dependency graph showing parallelism, missing validation criteria (NaN checks, exit codes), and the token estimates are nonsensical (<10 tokens). It adds a Stage 6 but that stage is thin."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "Multiple technical errors: invokes a nonexistent `install_dependencies.sh` script, uses `scontrol show hosts` (invalid subcommand), the network topology check (`cat /proc/mounts`) is completely wrong, job ID retrieval via `hostname | awk` is nonsensical, `sinfo --partition=gpustat | grep gres` uses a made-up partition, the batch script loads a nonexistent `module load XCompact3D`, and requests 8 GPUs when XCompact3D is CPU/MPI-based."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Commands are given but many are placeholder-level: `/your_path/xcompact3d_executable <input_file>`, no specific compiler flags, no CMake configuration, no module names for real dependencies (gcc, openmpi, fftw), no specific test case (e.g., Taylor-Green Vortex), and token estimates are unrealistically low with no justification."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "The sequential dependency chain is roughly correct (download \u2192 build \u2192 submit \u2192 monitor \u2192 validate). However, it misses that Stage 3 (cluster query) can run in parallel with Stage 1, and Stage 4 should depend on both Stages 2 AND 3. No parallel execution groups are defined despite the objective requiring parallel scheduling."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling whatsoever: no fallback if FFTW is missing, no checks for build failures, no grep for errors/NaN in logs, no verification that the binary was successfully compiled, no handling of module load failures or missing compilers."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "Validation is extremely thin: just `sacct` and `cat job.out` with a vague mention of 'additional analysis.' No specific validation criteria like checking exit codes, verifying output file existence/size, checking for NaN/divergence, or CFL number monitoring."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "The document is reasonably well-structured with clear sections and tables for each stage. However, the incorrect commands and placeholder values would confuse anyone trying to follow it. The hardware requirements for agents are oddly specified (workstation specs rather than HPC login node resources)."
+    }
+  },
+  "overall_score": 1.86,
+  "judge_reasoning": "The candidate plan provides a basic structural outline but is riddled with technical errors (nonexistent scripts, wrong Slurm commands, nonsensical job ID retrieval), lacks critical XCompact3D-specific knowledge (MPI, FFTW, CMake build system, test cases), and fails to address parallelism between stages despite the objective explicitly requiring it. It would not successfully deploy XCompact3D if followed as written.",
+  "error": null
+}

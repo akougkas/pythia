@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "agents_sdk",
+  "model_name": "ollama__qwen3.5_4b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all four deliverables but places files in the wrong directory (parent instead of WorkingDir/), adds unnecessary files (requirements.txt), and over-complicates the YAML config with nested structures not required by the objective."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical errors: imports non-existent `FileSystemMonitor` from watchdog, uses `on_event` instead of the correct `on_any_event`/`on_modified` methods, the debounce approach (timestamp per path) is less robust than the timer-based approach, `--watch-dir` is marked required but should come from config, and the command execution hardcodes `[command, '-v']` rather than using shell=True with the configured command string."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides code snippets and function signatures, but many are pseudocode-level with comments like '# Check include/exclude patterns' rather than actual logic. The config.py section lists functions but lacks detail on validation rules and error types."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Steps are in a reasonable order: dependencies, config file, config loader, watcher, tests, verification. Dependencies between steps are implicit but logically correct."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "No custom exception class for config errors, no mention of handling missing/invalid config fields beyond 'validate required fields', no handling of missing watch directory, command timeout is mentioned but the 30s hardcode is arbitrary and not configurable."
+    },
+    "testability": {
+      "score": 3,
+      "reasoning": "Lists reasonable test categories covering config, debounce, patterns, command execution, and integration. However tests are described only as bullet points without technique details (e.g., how to mock, how to test debounce timing), and integration tests for a file watcher are tricky without explanation of approach."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "Well-organized with clear phases and tables, but the mix of pseudocode and real code is confusing, and inconsistencies (e.g., config structure differs between YAML example and code usage) would cause ambiguity during implementation."
+    }
+  },
+  "overall_score": 2.86,
+  "judge_reasoning": "The candidate plan covers the required deliverables and has reasonable structure, but contains multiple technical errors (wrong watchdog API usage, incorrect event handler methods, hardcoded command arguments) that would prevent a working implementation. The YAML config is over-engineered compared to requirements, and the debounce mechanism and error handling lack the rigor of the reference plan.",
+  "error": null
+}

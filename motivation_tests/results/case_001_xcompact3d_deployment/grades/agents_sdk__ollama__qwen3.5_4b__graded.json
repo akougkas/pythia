@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "agents_sdk",
+  "model_name": "ollama__qwen3.5_4b",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "The plan covers all 5 stages but with significant gaps. It misses git submodule initialization, doesn't identify the actual build system (CMake vs Makefile), omits MPI/FFTW dependencies (critical for XCompact3D), lacks proper sinfo/scontrol commands for querying partitions and nodes, and the validation stage is superficial with no sacct or physics-level checks."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "Multiple critical errors: XCompact3D is a Fortran-based CFD solver using MPI, NOT a CUDA-based 3D image compression tool. The plan incorrectly assumes GPU/CUDA requirements, uses 'sudo apt-get' on an HPC cluster (not appropriate), references non-existent files like 'input.tiff' and 'output.comp', invokes a fictional 'build_check.sh', uses incorrect sinfo flags ('--partitions --nodes' and '--gres=gpu:1 --nodes' are wrong syntax), and runs 'mtr' and 'lsof' for network topology instead of 'scontrol show topology'. The Slurm script requests only 1 task with no MPI, which is fundamentally wrong for XCompact3D."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "While the plan provides concrete commands, many are fabricated or incorrect. It doesn't identify the actual executable name (xcompact3d/incompact3d), the input file format (.i3d namelist files), the actual dependencies (MPI, FFTW3, 2decomp&fft), or proper module load commands. The Slurm script uses made-up input/output file paths and config files."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "The dependency graph is mostly correct: Phase 1 and 3 can run in parallel, Phase 2 depends on Phase 1, Phase 4 depends on Phases 2 and 3, and Phase 5 depends on Phase 4. However, Phase 3 is listed as depending on Phase 1 in the dependency matrix, contradicting the parallel execution strategy. The reference correctly shows Stage 3 as independent of Stage 1."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "Minimal error handling. The FFTW/library fallback is absent. No handling for module load failures, build failures, or job submission errors. The validation phase has a broken validation report script. No checks for NaN/Infinity in simulation output, no CFL number validation, no exit code checking via sacct."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "The validation is extremely weak. It only checks if an output file exists with 'ls -la' and 'file', references non-existent output files (output.comp), and the validation report script is broken (ends with 'cat > validation_report.txt' which would overwrite the file). No sacct check for job completion state, no physics sanity checks, no log error scanning for segfaults/NaN."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "The plan is reasonably well-organized with clear tables, labeled phases, and a parallel execution strategy section. The markdown formatting is clean. However, the fundamental misunderstanding of what XCompact3D is (treating it as an image compression tool rather than a CFD solver) creates confusion, and some commands are clearly nonsensical."
+    }
+  },
+  "overall_score": 1.86,
+  "judge_reasoning": "The candidate plan fundamentally misidentifies XCompact3D as a CUDA-based 3D image compression tool rather than what it actually is \u2014 a Fortran MPI-based computational fluid dynamics solver. This leads to incorrect dependencies (CUDA instead of MPI/FFTW), wrong build commands, fabricated input/output files, and an entirely wrong Slurm job script that requests a single GPU task instead of multi-node MPI. While the document structure and dependency ordering are reasonable, the technical content is largely incorrect and would fail to deploy XCompact3D.",
+  "error": null
+}

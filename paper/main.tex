@@ -176,7 +176,14 @@ The gap is clear: the multi-agent orchestration layer lacks the predictive, spec
 
 \placeholder{Profiling methodology: instrument the dispatch pipeline of a production multi-agent scientific computing platform handling HPC-adjacent workloads over N requests.}
 
-\placeholder{Table or figure: dispatch latency breakdown by stage --- intent classification, task decomposition, agent selection, context assembly, agent initialization. Show dispatch overhead as \% of end-to-end latency.}
+% \placeholder{Table or figure: dispatch latency breakdown by stage --- intent classification, task decomposition, agent selection, context assembly, agent initialization. Show dispatch overhead as \% of end-to-end latency.}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{img/motivation/dispatch_vs_execution_latency.pdf}
+\caption{Dispatch vs.\ execution latency for six representative KramaBench queries processed by a LangGraph supervisor (qwen3.5:9b). Dark bars show supervisor routing overhead (1.6--3.8\,s, 19--37\% of total); light bars show agent execution time. Dispatch decisions are made by sequential LLM calls---one per agent handoff---constituting a fixed latency tax on every query.}
+\label{fig:dispatch-latency}
+\end{figure}
 
 \placeholder{Predictability analysis: conditional entropy of dispatch plans given intent class for top-K intent classes covering Z\% of requests.}
 

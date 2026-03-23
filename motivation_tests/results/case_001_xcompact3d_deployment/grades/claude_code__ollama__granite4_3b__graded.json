@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "claude_code",
+  "model_name": "ollama__granite4_3b",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "Missing explicit Slurm query commands (scontrol show nodes, scontrol show partition, topology checks). No dependency graph or parallel grouping summary table. No clear Stage 3 equivalent for querying cluster resources \u2014 it's buried as a sub-step. Missing validation criteria (exit code checks, NaN/divergence checks, sacct usage). Token estimates are unrealistically low (50-200 vs thousands in the reference)."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "The batch script includes --gres=gpu:4 despite XCompact3D being primarily CPU/MPI-based (not GPU). It runs 'make' inside the batch script which is incorrect practice. The --input and --output flags are fabricated \u2014 XCompact3D uses .i3d namelist input files. References 'sinstall' which is not a standard Slurm command. Token estimates (50-200) are implausibly low for LLM agent tasks. Missing MPI/FFTW dependencies which are critical."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Lacks concrete module load commands, specific compiler flags, CMake configuration options, and actual XCompact3D input file formats. The batch script uses invented CLI flags (--input, --output). No specific test case mentioned (reference uses Taylor-Green Vortex). Working directory paths in the batch script are inconsistent. No fallback instructions for building FFTW from source."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "The sequential ordering is roughly correct (download \u2192 explore \u2192 build \u2192 submit \u2192 verify), but fails to identify that source download and cluster querying can run in parallel. No explicit dependency graph or parallel group assignments as required by the objective. The reference clearly shows Stage 1 and Stage 3 running in parallel, which is a key requirement."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling whatsoever. No checks for failed builds, missing modules, or job failures. No grep for errors/NaN in output logs. No fallback paths (e.g., building FFTW from source if module unavailable). No discussion of what to do if the job fails or produces incorrect results."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "No verification checklist, no validation criteria, no commands to check job completion status via sacct, no output file validation, no sanity checks for physics output. The reference includes detailed validation criteria and a verification checklist \u2014 the candidate has almost none of this."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "The table format is readable and organized, but the content within is vague and sometimes incorrect. The specialist agent names are generic tool names rather than meaningful role-based agents. The execution workflow section at the end is mostly filler. Hardware resource estimates seem arbitrary (e.g., '~5 GB' for CMake generation, '~15 GB' for compilation)."
+    }
+  },
+  "overall_score": 2.0,
+  "judge_reasoning": "The candidate plan provides a superficial structure but lacks the technical depth and correctness of the reference. Critical issues include fabricated XCompact3D CLI flags, inappropriate GPU resource requests, missing MPI/FFTW dependencies, unrealistic token estimates, no parallel execution strategy, and virtually no error handling or validation steps. It would not successfully deploy XCompact3D if followed.",
+  "error": null
+}

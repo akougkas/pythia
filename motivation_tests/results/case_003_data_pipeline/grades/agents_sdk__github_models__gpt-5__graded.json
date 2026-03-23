@@ -1,0 +1,38 @@
+{
+  "case_name": "case_003_data_pipeline",
+  "framework_name": "agents_sdk",
+  "model_name": "github_models__gpt-5",
+  "grades": {
+    "completeness": {
+      "score": 1,
+      "reasoning": "The candidate plan contains no plan at all \u2014 it is entirely an error message due to a rate limit. None of the deliverables are addressed."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "There are no proposed steps to evaluate for technical soundness. The session failed before producing any output."
+    },
+    "specificity": {
+      "score": 1,
+      "reasoning": "No concrete steps, file names, function signatures, or library choices are provided \u2014 only an error trace."
+    },
+    "ordering_and_dependencies": {
+      "score": 1,
+      "reasoning": "No steps exist, so there is no ordering or dependency management to evaluate."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "The plan itself does not exist, so no edge cases or error handling strategies are discussed."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "No testing strategy is included because no plan was generated."
+    },
+    "clarity": {
+      "score": 1,
+      "reasoning": "The output is just an error message. There is nothing for a developer to follow."
+    }
+  },
+  "overall_score": 1.0,
+  "judge_reasoning": "The candidate produced no plan whatsoever due to a RateLimitError. The session failed before any planning could occur, resulting in zero coverage of the objective's requirements. This is a complete failure compared to the comprehensive reference plan.",
+  "error": null
+}

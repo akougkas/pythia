@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "aider",
+  "model_name": "ollama__qwen3.5_4b",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "Covers all 5 stages at a high level but lacks critical details: no git submodule init, no module load commands, no FFTW dependency handling, no input file setup (e.g., TGV input.i3d), no sacct for post-completion analysis, and no validation criteria for output files."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "Multiple technical errors: XCompact3D is Fortran-based (not C++), uses MPI pencil decomposition (not CUDA/GPU by default), the Slurm script requests a GPU and only 1 task (should be multi-node MPI), uses apt-get instead of module system on HPC, invokes xcompact3d with --config and a JSON file (it uses .i3d namelist files), and Stage 3 repeats the same sinfo command four times for different queries."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Provides some concrete commands but many are wrong or placeholder (e.g., '/path/to/config.json', 'libcuda-dev'). The Slurm script lacks proper MPI launch (no srun/mpirun), environment setup, and diagnostic output. Stage 3 commands are identical and don't actually query different resource types."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "The dependency graph is correct: Stages 1 and 3 are parallel, Stage 2 depends on 1, Stage 4 depends on 2 and 3, Stage 5 depends on 4. This matches the reference plan structure."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Includes a risk mitigation table mentioning cached clones, retry logic, CPU fallback, and timeout adjustment, which is reasonable in concept. However, no concrete error-handling commands are provided (e.g., grep for errors in logs, checking exit codes, verifying non-empty output files)."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "Validation is extremely thin: only grep for 'started|success' in a log file. No sacct check for exit codes, no verification of output snapshot files, no CFL/NaN checks, no verification checklist. The log path is also likely incorrect."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "Well-structured with consistent table formatting and clear section headers. Easy to scan. However, the incorrect technical assumptions (C++, CUDA, JSON config) would confuse anyone trying to execute the plan."
+    }
+  },
+  "overall_score": 2.14,
+  "judge_reasoning": "The candidate plan has a correct high-level structure and dependency ordering but contains fundamental technical errors: it misidentifies XCompact3D as a C++/CUDA application when it is Fortran/MPI, uses apt-get instead of HPC module systems, provides an incorrect Slurm script (single-task GPU job instead of multi-node MPI), and uses wrong invocation syntax. The Stage 3 Slurm query commands are all identical. Validation and testing are insufficient compared to the reference plan's comprehensive checks.",
+  "error": null
+}

@@ -1,0 +1,38 @@
+{
+  "case_name": "case_003_data_pipeline",
+  "framework_name": "agents_sdk",
+  "model_name": "github_models__gpt-4o",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers the four main deliverables but puts pipeline.yaml in a config/ subdirectory instead of WorkingDir root, doesn't define input/output dirs in the YAML config (requires them as CLI args instead), and adds fewer transform types than the reference (missing drop_columns, sort_rows, fill_missing). Logging verbosity is mentioned but not configurable via the YAML config as required."
+    },
+    "correctness": {
+      "score": 3,
+      "reasoning": "The core approach works but has issues: filter_rows uses named operations like 'greater_than' instead of standard operators, compute_column uses df.eval() which doesn't support the same expressions as the reference's eval-with-scope approach, and the dry-run mode just prints the processed dataframe rather than describing what transforms would be applied without executing them."
+    },
+    "specificity": {
+      "score": 4,
+      "reasoning": "The plan provides concrete code snippets for most functions, specific file paths, and clear function signatures. It's fairly actionable, though some details like the exact logging configuration and how log-level override works are left vague."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Steps are in a logical order: directory setup, config, transforms, orchestrator, logging, tests, QA. Dependencies are correctly sequenced with transforms before pipeline."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Minimal error handling. Only raises ValueError for unsupported transforms and operations. No mention of handling missing input directories, empty CSVs, malformed configs, or unknown transform types in tests. The reference plan explicitly tests missing_input_dir and unknown_transform error cases."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Test plan is sparse compared to the reference. Only three unit tests and one vague integration test. Missing tests for dry-run mode, chaining multiple transforms, error cases, and edge cases. No use of tmp_path or proper test isolation described."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear sections and code examples. Easy to follow the progression. The step-by-step format with numbered sub-items is readable, though some sections like Step 7 (QA) are aspirational rather than actionable."
+    }
+  },
+  "overall_score": 3.14,
+  "judge_reasoning": "The candidate plan covers the basic structure and provides useful code snippets but falls short of the reference in several areas. It supports fewer transform types, has a weaker dry-run implementation (executes transforms then prints rather than describing without executing), lacks configurable logging from YAML, and has a significantly less thorough testing strategy. Error handling and edge cases are largely neglected.",
+  "error": null
+}

@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "claude_code",
+  "model_name": "ollama__gpt-oss_20b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all 5 required stages but splits them into 7 stages unnecessarily. Missing key details like specific test case selection (TGV), input file format (.i3d), the bundled 2decomp&fft library, and fallback instructions for building FFTW from source. Incorrectly assumes GPU deployment and CUDA dependency when XCompact3D mainline is CPU-based with MPI."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical errors: assumes a ./configure script exists (XCompact3D uses CMake or raw Makefiles, not autotools), references 'make check' and 'make install' which are not standard XCompact3D build targets, assumes GPU/CUDA usage when the code is primarily CPU/MPI-based, uses '--config examples/configuration_file.xml' when XCompact3D uses .i3d namelist input files, and loads unnecessary modules like netcdf/hdf5/cuda. The ntasks-per-node=1 with cpus-per-task=16 is wrong for an MPI code that needs multiple MPI ranks."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides concrete commands and file paths, which is good. However, many specifics are incorrect (wrong build system, wrong input file format, wrong runtime flags). The Slurm script has specific but wrong resource requests (GPU-oriented instead of CPU/MPI). Agent names are generic ('General-Purpose') rather than specialized descriptors like the reference plan uses."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Dependency graph is correct: Stage 1 and 4 parallel, sequential chain through build stages, Stage 5 depends on both build and cluster inspection. The split of download/dependencies/build into 3 stages is reasonable though slightly verbose. The parallel execution strategy is clearly documented."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Minimal error handling. No fallback for FFTW unavailability, no discussion of what to do if modules aren't available, no checks for NaN/divergence in output, no CFL number validation. The reference plan includes grep for errors/segfaults, checks for NaN/Infinity, and provides alternative build paths."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Verification checklist exists but relies on incorrect markers ('Simulation finished' grep which is not a standard XCompact3D output). Missing validation of output data files (ux*.dat, uy*.dat), no CFL check, no sacct exit code verification pattern. The 'make check' referenced doesn't exist in XCompact3D."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear table summary, per-stage breakdown with agent/resource/token/dependency info, and a verification checklist. The markdown formatting is clean and easy to follow. The dependency explanation at the end is clear."
+    }
+  },
+  "overall_score": 2.86,
+  "judge_reasoning": "The candidate plan has good structure and organization but suffers from significant technical inaccuracies. It incorrectly assumes XCompact3D uses autotools (./configure), requires GPU/CUDA, and accepts XML configuration files, when in reality it uses CMake/Makefiles, is primarily CPU/MPI-based, and uses .i3d namelist files. The Slurm script requests GPUs and uses wrong MPI task configuration for a pencil-decomposition MPI code. While the dependency ordering and document clarity are reasonable, the factual errors would prevent successful deployment.",
+  "error": null
+}

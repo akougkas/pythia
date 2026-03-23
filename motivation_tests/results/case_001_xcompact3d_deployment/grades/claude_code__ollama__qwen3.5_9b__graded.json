@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "claude_code",
+  "model_name": "ollama__qwen3.5_9b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all 5 stages plus monitoring, but splits into 6 stages unnecessarily. Missing key details like identifying the actual test case (TGV), the actual build system (CMake/Makefile with Fortran), and the correct nature of XCompact3D's dependencies (FFTW3, 2decomp&fft). Includes unnecessary dependencies like HDF5, NetCDF, PnetCDF that are not core requirements."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "Fundamentally misidentifies XCompact3D as '3D induction heating and electromagnetic simulation code' when it is a CFD solver. Lists incorrect dependencies (HDF5, NetCDF, HDF-EOS, PnetCDF) instead of the actual ones (MPI, FFTW3). The build commands reference non-existent files like 'build/Makefile.in', 'build/configure', 'build/setup_compiler_wrapper.sh'. References C/C++ compilation (XC3D_EXE, main.cc.o) when XCompact3D is written in Fortran. The input file format is fabricated. The Slurm script has errors like '--time=04-00:00:00' (4 days, not 4 hours), duplicate --cpus-per-task, invalid --signal directive, and uses srun incorrectly. Stage 2 says 'Dependencies: None' then contradicts with 'depends on Stage 1 completion'."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides specific commands, file paths, and configurations, but many are fabricated or incorrect. The Slurm scripts are detailed but contain wrong module names ('opensmpi' vs 'openmpi'), wrong executable names, and wrong input file formats. The specificity is undermined by inaccuracy."
+    },
+    "ordering_and_dependencies": {
+      "score": 2,
+      "reasoning": "The dependency graph is incorrect. It shows Stage 1 and Stage 2 as parallel, but Stage 2 (Build) clearly depends on Stage 1 (Download). The reference correctly identifies Stage 1 and Stage 3 as the parallel pair. Stage 4 should depend on both Stage 2 AND Stage 3, but the candidate only lists dependency on Stages 1 and 2."
+    },
+    "error_handling": {
+      "score": 3,
+      "reasoning": "Includes a troubleshooting appendix and some validation checks, which is good. However, the error patterns to grep for are generic, and the troubleshooting items reference issues (CUDA errors, HDF5 errors) that aren't relevant to XCompact3D's actual stack. Missing CFL number validation and NaN/divergence checks that are important for CFD."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Validation checks are present but generic. No specific test case identified (reference uses Taylor-Green Vortex). Output file checks reference wrong file types (solution.h5 instead of ux*.dat, uy*.dat). Missing physics-specific validation like CFL number checks. The 'squery' command in 6.1 is not a valid Slurm command."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear sections, tables, and formatting. The dependency graph and summary table are helpful. However, clarity is somewhat undermined by contradictions (Stage 2 dependency statement) and the fundamental misidentification of the application."
+    }
+  },
+  "overall_score": 2.57,
+  "judge_reasoning": "The candidate plan is well-structured and formatted but fundamentally flawed in its understanding of XCompact3D, misidentifying it as an electromagnetic simulation code instead of a CFD solver. This leads to cascading errors: wrong dependencies (HDF5/NetCDF instead of FFTW3), wrong build system commands (referencing non-existent configure scripts), wrong language assumptions (C/C++ instead of Fortran), and fabricated input file formats. The dependency ordering incorrectly marks Stages 1 and 2 as parallel when Stage 2 depends on Stage 1.",
+  "error": null
+}

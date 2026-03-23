@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "claude_code",
+  "model_name": "anthropic__claude-haiku-4-5-20251001",
+  "grades": {
+    "completeness": {
+      "score": 4,
+      "reasoning": "Covers all 5 required stages with extensive detail, includes extra substages (post-analysis, cleanup, wrapper scripts). However, it misses some specifics like git submodule init for bundled 2decomp&fft, and the dependency graph incorrectly shows stages 1-3 as more sequential than they should be."
+    },
+    "correctness": {
+      "score": 3,
+      "reasoning": "Most commands are technically sound, but several issues: the input.i3d example is fabricated and may not match actual XCompact3D namelist format; mentions HDF5 as a key dependency when it's optional; suggests GPU variants when mainline XCompact3D GPU support is experimental; the build commands include CMAKE flags like -DENABLE_MPI=ON which may not exist in the actual CMakeLists.txt; uses 'srun ./xcompact3d input.i3d > xcompact3d.log' which redirects srun output incorrectly in a batch script context."
+    },
+    "specificity": {
+      "score": 4,
+      "reasoning": "Very specific with exact file paths, complete bash scripts, detailed Slurm directives, and concrete commands. Provides multiple script variants (GPU, array jobs) and a full wrapper script. Token estimates and hardware resources specified for each substage."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "The dependency graph is less clean than the reference. Stage 3 is shown as depending on Stage 2 completion (Group C after Group B), but cluster querying is independent and should run in parallel with Stage 1 as the reference correctly identifies. The 12-substage decomposition creates unnecessary sequential dependencies (e.g., 1.2 depends on 1.1 but 3.1 waits for Group B)."
+    },
+    "error_handling": {
+      "score": 4,
+      "reasoning": "Includes a dedicated Risk Mitigation section covering common issues (missing deps, PD state, MPI mismatch, OOM, slow performance). The wrapper script has input validation. However, lacks the reference's specific guidance on checking for NaN/Infinity/CFL conditions in output."
+    },
+    "testability": {
+      "score": 4,
+      "reasoning": "Comprehensive validation checklist at the end, output validation commands in Stage 5.2, and convergence checking. Doesn't specifically mention the Taylor-Green Vortex test case as a standard validation benchmark like the reference does, which is a meaningful omission for scientific validation."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear tables, code blocks, and section headers. The file structure summary at the end is helpful. However, the 12-substage decomposition is overly granular compared to the reference's cleaner 5-stage structure, making it harder to follow the overall flow. Some sections feel padded (e.g., the cleanup/archival stage)."
+    }
+  },
+  "overall_score": 3.71,
+  "judge_reasoning": "The candidate plan is comprehensive and well-structured with extensive detail, but has notable issues: the dependency graph incorrectly serializes Stage 3 (cluster querying) after Stages 1-2 instead of running it in parallel, some commands may not match actual XCompact3D build system options, and it omits the standard TGV test case for validation. The over-decomposition into 12 substages adds complexity without proportional value compared to the reference's cleaner 5-stage approach.",
+  "error": null
+}

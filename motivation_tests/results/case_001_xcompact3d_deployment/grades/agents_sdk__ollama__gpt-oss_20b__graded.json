@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "agents_sdk",
+  "model_name": "ollama__gpt-oss_20b",
+  "grades": {
+    "completeness": {
+      "score": 4,
+      "reasoning": "Covers all 5 required stages plus submission and monitoring. Includes commands for each stage, agent assignments, hardware, tokens, and dependencies. However, it splits stages 1-2 unnecessarily (download vs dependencies) and lacks detail on XCompact3D-specific knowledge like the TGV test case, input file format (.i3d), and the 2decomp&fft library."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical issues: suggests `yum install` and `brew install` on an HPC cluster (inappropriate), requests GPU resources (#SBATCH --gres=gpu:1) when XCompact3D mainline is CPU-based, uses `mpirun` instead of `srun` inside a Slurm script, references `xcompact3d.exe` (Windows convention) and `input.inp` instead of the actual `.i3d` input format, `echo $SLURM_JOB_ID` after sbatch won't work as expected, and the cmake command lacks Fortran compiler specification for MPI."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides concrete commands and a full batch script, which is good. However, token estimates are unrealistically low (~200 tokens per stage vs ~6000-14000 in reference), module versions are arbitrary (gcc/9.3.0 vs checking what's available), and the batch script parameters (4 MPI tasks, 32 threads, 1 GPU) seem chosen without justification. Missing specific paths relative to the working directory."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "Correctly identifies that Slurm querying can run in parallel with early stages. However, the dependency graph is somewhat confused - it shows Stage 2 & 4 as parallelizable but the table shows Stage 4 depends on nothing while Stage 2 depends on Stage 1, which is correct but the graph visualization is misleading. The reference plan more cleanly shows Stage 1 || Stage 3, then Stage 2, then Stage 4, then Stage 5."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Mentions 'if any criterion fails, rollback to the preceding successful stage' but provides no specific fallback strategies. No handling for missing FFTW (reference provides full build-from-source instructions), no check for NaN/infinity in output, no error log inspection with grep patterns, and no CFL number validation."
+    },
+    "testability": {
+      "score": 3,
+      "reasoning": "Includes a validation checklist with 9 criteria covering repo clone, build success, job completion, and output files. However, lacks physics-level validation (CFL < 1, no NaN/infinity checks), doesn't specify expected output file patterns (ux*.dat, uy*.dat), and the 'diff reference_output.dat' step assumes a reference exists without explaining where it comes from."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear tables, numbered stages, and a dependency graph. The document structure is logical and easy to follow. The use of tables for commands is clean. However, the dependency graph ASCII art is less clear than the reference's, and some sections mix concerns (e.g., macOS instructions in an HPC deployment plan)."
+    }
+  },
+  "overall_score": 3.0,
+  "judge_reasoning": "The candidate plan covers the required stages with reasonable structure and organization, but contains several technical inaccuracies that would cause issues in practice: inappropriate GPU requests for CPU-based code, using `mpirun` instead of `srun`, suggesting `yum`/`brew` on HPC, and wrong executable/input file naming. Token estimates are unrealistically low, and error handling lacks the specificity needed for a robust deployment. The reference plan demonstrates significantly deeper domain knowledge of both XCompact3D and HPC best practices.",
+  "error": null
+}

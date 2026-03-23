@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "claude_code",
+  "model_name": "ollama__gpt-oss_20b",
+  "grades": {
+    "completeness": {
+      "score": 4,
+      "reasoning": "Covers all four deliverables (watcher.py, config.py, watcher.yaml, test_watcher.py). Mentions optional README. However, it uses 'paths' (list of directories) instead of a single 'watch_directory', and doesn't explicitly mention the 'recursive' config option required by the objective."
+    },
+    "correctness": {
+      "score": 3,
+      "reasoning": "The overall approach is sound (watchdog, threading.Timer debounce, subprocess.run). However, the config schema diverges from the objective: 'paths' as a list vs a single watch directory, empty include default vs ['*'], and 'command: pytest' as default rather than requiring the command field. The plan also doesn't clearly state that exclude should take priority over include in pattern matching."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides a file map, design decisions table, and implementation outline with argument names and general class structure. However, it lacks the level of detail in the reference: no function signatures, no specific test names/counts, no dataclass field types, and the config validation logic is vague ('validate that paths is a list of existing directories')."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Steps are logically ordered: config.py first, then watcher.py, then watcher.yaml, then tests. Dependencies are implicit but correct. Missing explicit mention of installing watchdog/PyYAML as a prerequisite step."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Very little attention to error handling. No custom exception class (like ConfigError), no mention of handling FileNotFoundError for missing config, no validation of debounce_ms being non-negative, no handling of invalid YAML content. The reference plan explicitly details these scenarios."
+    },
+    "testability": {
+      "score": 3,
+      "reasoning": "Mentions testing config parsing, pattern matching, and debounce logic, and uses monkeypatching. However, lacks specificity: no individual test names, no test counts, no specific edge cases enumerated. The reference lists 18 specific tests across 4 test classes with clear validation targets."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with tables, clear sections, and a logical flow. The design decisions table is a nice touch. However, the implementation outline sections are somewhat brief and could benefit from more concrete details to remove ambiguity."
+    }
+  },
+  "overall_score": 3.29,
+  "judge_reasoning": "The candidate plan covers the basic architecture correctly and is well-organized, but lacks the specificity and rigor of the reference plan. Key gaps include insufficient error handling details, a divergent config schema (list of paths vs single directory, missing recursive option), and a testing section that is too vague\u2014listing categories of tests rather than specific test cases with expected behaviors.",
+  "error": null
+}

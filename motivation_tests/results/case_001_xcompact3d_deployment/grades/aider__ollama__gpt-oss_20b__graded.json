@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "aider",
+  "model_name": "ollama__gpt-oss_20b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all 5 stages but lacks important details: no git submodule init, no mention of FFTW3 dependency (critical for XCompact3D), no specific test case (e.g., Taylor-Green Vortex), no input file format discussion (.i3d namelist files), missing sacct for post-completion analysis, and no mention of 2decomp&fft library."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical issues: uses CMAKE_C_COMPILER/CMAKE_CXX_COMPILER instead of CMAKE_Fortran_COMPILER (XCompact3D is Fortran), assumes GPU partition by default when XCompact3D mainline is CPU/MPI-based, uses 'sudo apt-get' on an HPC cluster (typically not allowed), uses 'mpirun' instead of 'srun' inside a Slurm script, references a nonexistent 'input_file.dat' instead of the .i3d format, and sets --cpus-per-task=8 with --gres=gpu:1 which doesn't match XCompact3D's MPI parallelism model."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides concrete commands and a batch script, but many details are generic placeholders rather than XCompact3D-specific. Token estimates are unrealistically low (2,900 total vs reference's 44,000). Agent names are overly fragmented (10 agents vs reference's 5 well-scoped agents). Missing specific output file patterns, CFL validation, and XCompact3D-specific diagnostics."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "Correctly identifies Stage 1 and Stage 3 as parallelizable and that Stage 4 depends on Stage 2. However, the parallelization table in Section 6 incorrectly says Stage 4 can run concurrently with cluster info, and doesn't clearly state Stage 4 depends on both Stages 2 AND 3. The dependency graph is less precise than the reference's explicit Gantt-style diagram."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Minimal error handling: no fallback for missing FFTW3 (build from source), no checks for NaN/Infinity/segfault in output logs, no verification of exit codes via sacct, no CFL number validation, no handling of topology command unavailability. The reference plan includes grep for common errors, sacct exit code checking, and alternative build paths."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Validation is vague\u2014suggests md5sum comparison with unspecified reference files and grepping for 'Simulation completed'. Missing concrete validation criteria: no check for ExitCode 0:0 via sacct, no output file size verification, no CFL < 1 check, no specific output file patterns (ux*.dat, uy*.dat). The reference provides a detailed verification checklist."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear tables, numbered sections, and code blocks. The structure is easy to follow with consistent formatting. However, the excessive agent fragmentation (10 agents) adds unnecessary complexity, and some notes are generic rather than XCompact3D-specific."
+    }
+  },
+  "overall_score": 2.71,
+  "judge_reasoning": "The candidate plan provides a reasonable structural framework but suffers from significant technical inaccuracies: it treats XCompact3D as a C/C++ project instead of Fortran, assumes GPU deployment when the code is primarily MPI/CPU-based, uses sudo on HPC, and uses mpirun instead of srun. It also lacks critical XCompact3D-specific details like FFTW3 dependency, .i3d input files, 2decomp&fft, and meaningful validation criteria. The token estimates are unrealistically low and the agent decomposition is overly fragmented.",
+  "error": null
+}

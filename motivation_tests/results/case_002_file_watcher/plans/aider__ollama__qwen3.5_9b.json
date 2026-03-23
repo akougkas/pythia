@@ -1,0 +1,16 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "aider",
+  "model_name": "qwen3.5:9b",
+  "provider": "ollama",
+  "plan_text": "",
+  "reasoning_text": "",
+  "thinking_text": "",
+  "session_id": null,
+  "duration_ms": 66349,
+  "duration_wall_s": 66.34994349600038,
+  "total_cost_usd": null,
+  "num_turns": 1,
+  "error": null,
+  "timestamp": "2026-03-21T15:27:04.505659+00:00"
+}

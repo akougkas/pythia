@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "aider",
+  "model_name": "ollama__gpt-oss_20b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all four deliverables but puts test_watcher.py in tests/ subdirectory instead of WorkingDir root as specified. Adds unnecessary README.md and requirements.txt not in the objective. Missing watch_directory and recursive config fields. Config dataclass marked as 'optional' rather than committed."
+    },
+    "correctness": {
+      "score": 3,
+      "reasoning": "Debounce implementation is flawed \u2014 uses timestamp comparison (time.time() - last_run) which drops events rather than properly rescheduling with a timer. The reference correctly uses threading.Timer to coalesce rapid events and fire after the debounce window. The candidate approach would miss the last event in a burst. Also uses Path.match which has different semantics than fnmatch for glob patterns."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides function signatures and code snippets but is less precise than the reference. Config dataclass is 'optional', validate_patterns is mentioned but error types are vague. Missing specific field defaults like watch_directory and recursive. The debounce mechanism lacks concrete threading/timer details."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Steps are in a reasonable order: config file, config loader, watcher, tests, dependencies. Similar logical flow to the reference plan."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Only mentions raising ValueError for invalid patterns. Missing FileNotFoundError handling for config, validation of command being non-empty, validation of debounce_ms being non-negative, handling of empty/None YAML results. Reference plan has comprehensive ConfigError handling for 7 distinct failure modes."
+    },
+    "testability": {
+      "score": 3,
+      "reasoning": "Includes test categories for config, event handling, debounce, include/exclude, and CLI integration. However tests are less specific than reference \u2014 no enumerated test cases, missing tests for empty file, missing command, invalid YAML. CLI integration test using subprocess is brittle and timing-dependent."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear sections and code snippets. Easy to follow structure. Additional notes section adds useful context. Slightly less precise than reference but still readable."
+    }
+  },
+  "overall_score": 3.14,
+  "judge_reasoning": "The candidate plan covers the basic requirements but has a significant correctness issue with the debounce implementation using timestamp comparison instead of a proper timer-based approach. Error handling is notably weak compared to the reference, and several config fields (watch_directory, recursive) are missing. The plan is reasonably well-structured but lacks the precision and thoroughness of the reference.",
+  "error": null
+}

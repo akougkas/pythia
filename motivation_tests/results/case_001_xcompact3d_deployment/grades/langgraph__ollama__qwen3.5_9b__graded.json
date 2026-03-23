@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "langgraph",
+  "model_name": "ollama__qwen3.5_9b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all 5 stages and the parallel dispatch structure, but lacks important details present in the reference: no specific test case (TGV), no mention of 2decomp&fft or FFTW3 (the actual key dependency), no fallback build option (Makefile), missing detailed sacct/monitoring commands, no verification checklist, and the Slurm script is minimal (missing srun, diagnostics, error/output file directives)."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical inaccuracies: lists HDF5, NetCDF, and PETSc as dependencies which are NOT required by XCompact3D (it primarily needs MPI and FFTW3). The CMake flags -DENABLE_MPI=ON -DENABLE_OPENMP=ON are fabricated and not actual XCompact3D build options. The Slurm script uses a single task with 16 cpus-per-task which is wrong for an MPI code\u2014should use ntasks-per-node matching cores. The run command './xcompact3d -i input_file.in' uses a wrong flag format; XCompact3D reads input.i3d namelist files. Missing FFTW3 as the actual critical dependency."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides concrete commands and file paths, which is good. However, many specifics are wrong or generic (fabricated CMake flags, wrong dependencies, placeholder input_file.in). The reference plan provides much more detailed commands with correct flags, multiple build options, and specific output file expectations. Token estimates are an order of magnitude lower than the reference (4400 vs 44000)."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Correctly identifies that Stages 1 and 3 can run in parallel, Stage 2 depends on Stage 1, Stage 4 depends on Stages 2 and 3, and Stage 5 depends on Stage 4. The dependency graph matches the reference plan. The execution flow diagram is clear."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Only mentions three generic risks (build failure, resource unavailability, token limit) with vague mitigations. The reference plan includes specific error checking commands (grep for NaN, segfault, etc.), fallback FFTW3 build from source, alternative build systems, and detailed validation criteria. No mention of checking CFL numbers, exit codes, or output file integrity."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Validation section is minimal\u2014just squeue and tail -f with a vague 'Application started successfully' marker. Missing sacct for exit code checking, no output file validation, no physics sanity checks (NaN/divergence), no specific validation criteria. The reference provides comprehensive validation with sacct, file size checks, error pattern grep, and physics checks."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear tables, sections, and a text-based execution flow diagram. The executive summary and agent definitions are helpful. Easy to follow the structure, though the incorrect technical details would mislead an implementer."
+    }
+  },
+  "overall_score": 2.86,
+  "judge_reasoning": "The candidate plan has a solid organizational structure and correctly identifies the parallel/sequential dependency graph, but suffers from significant technical inaccuracies. It lists wrong dependencies (HDF5, NetCDF, PETSc instead of FFTW3), uses fabricated CMake flags, and provides an incorrect Slurm configuration for an MPI application. The validation and error handling sections are superficial compared to the reference plan's comprehensive approach.",
+  "error": null
+}

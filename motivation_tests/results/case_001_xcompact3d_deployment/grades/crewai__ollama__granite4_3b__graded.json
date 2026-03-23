@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "crewai",
+  "model_name": "ollama__granite4_3b",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "Covers all 5 stages at a surface level but misses critical details: no git submodule init, no MPI setup, no FFTW dependency handling, no discussion of test cases (e.g., TGV), no verification checklist, no sacct for post-completion analysis, no working directory setup, and token estimates are all 'N/A'."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical errors: suggests conda/pip for installing CMake on an HPC system instead of module load; uses an outdated CMake version (3.10.4); the Slurm script requests a GPU (--gres=gpu:1) with only 1 task and 1 node which is inappropriate for an MPI-parallel CFD code; uses a placeholder './xcompact3d_executable <input_parameters>' instead of showing actual invocation with srun and input.i3d; no MPI awareness at all."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Agents are named after generic CLI tools (git, bash, make, sinfo) rather than specialist agents with defined roles. Hardware resources are uniformly 'Standard CPU' with no concrete specs. Token estimates are all N/A. The build step is just 'make' with no compiler flags, no CMake option, no module loads. The batch script uses placeholders instead of concrete paths and commands."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "The sequential ordering is generally correct (download \u2192 build \u2192 submit \u2192 monitor), and Stage 3 is correctly identified as independent. However, the plan does not explicitly identify that Stages 1 and 3 can run in parallel, which was a key requirement. Dependencies in the summary table are vague ('Completion of previous subtask')."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling whatsoever. No fallback if FFTW is unavailable, no checking for NaN/divergence in output, no grep for errors in logs, no validation of exit codes, no discussion of what to do if the build fails or if modules are unavailable."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "No testing or validation strategy. The reference plan includes checking exit codes via sacct, grepping for errors/NaN/segfault, verifying output file sizes, checking CFL numbers, and a full verification checklist. The candidate only says 'cat stdout.out stderr.err' with no criteria for success."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "The document is reasonably well-organized with tables and clear section headers. The markdown formatting is clean. However, the use of generic tool names as 'agents' is confusing, and placeholders reduce clarity for actual execution."
+    }
+  },
+  "overall_score": 2.0,
+  "judge_reasoning": "The candidate plan provides a superficial skeleton of the deployment process but lacks the technical depth and HPC-specific knowledge demonstrated in the reference. Critical omissions include MPI configuration, proper module-based environment setup, FFTW dependency management, meaningful token estimates, parallel stage scheduling, and any form of error handling or validation. The suggestion to use conda/pip on an HPC cluster and the GPU-requesting single-task Slurm script indicate a lack of domain understanding.",
+  "error": null
+}

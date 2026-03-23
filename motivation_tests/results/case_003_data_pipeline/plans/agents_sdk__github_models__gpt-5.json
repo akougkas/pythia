@@ -1,0 +1,16 @@
+{
+  "case_name": "case_003_data_pipeline",
+  "framework_name": "agents_sdk",
+  "model_name": "gpt-5",
+  "provider": "github_models",
+  "plan_text": null,
+  "reasoning_text": "",
+  "thinking_text": "",
+  "session_id": null,
+  "duration_ms": 60643,
+  "duration_wall_s": 60.643300502000784,
+  "total_cost_usd": null,
+  "num_turns": 0,
+  "error": "RateLimitError: Too many requests. For more on scraping GitHub and how it may affect your rights, please review our Terms of Service (https://docs.github.com/en/site-policy/github-terms/github-terms-of-service).",
+  "timestamp": "2026-03-21T03:15:35.725570+00:00"
+}

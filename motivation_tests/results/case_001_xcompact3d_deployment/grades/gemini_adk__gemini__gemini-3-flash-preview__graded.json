@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "gemini_adk",
+  "model_name": "gemini__gemini-3-flash-preview",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all five stages but with significantly less detail. Missing: git submodule init, CMake build option, FFTW build-from-source fallback, input file setup (e.g., TGV input.i3d), diagnostics in the Slurm script, sacct format details, error-grep validation, and a verification checklist."
+    },
+    "correctness": {
+      "score": 3,
+      "reasoning": "Generally sound but has issues: suggests 'sudo apt-get install' on an HPC cluster (inappropriate), uses 'mpirun' instead of 'srun' inside a Slurm script, references generic module versions ('openmpi/4.1.x') rather than concrete ones, and omits critical Slurm directives like --mem, --exclusive, and --mail-type. The Makefile-only build assumption may be wrong if CMake is the preferred build system."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Much less concrete than the reference. No specific compiler flags, no CMake configuration command, no detailed sinfo format strings, no specific output file names to validate, no full working directory paths in the Slurm script, and token estimates seem arbitrarily low without justification. The Slurm script is minimal and lacks environment setup, working directory management, and diagnostic echo statements."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Dependency graph is correct: Stage 1 and 3 parallel, Stage 2 depends on 1, Stage 4 depends on 2 and 3, Stage 5 depends on 4. However, the note that Stage 3 'Can run in parallel with Stage 1 & 2' is slightly misleading since Stage 2 depends on Stage 1. The dependency structure is otherwise properly identified."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling whatsoever. Missing: fallback for FFTW not available as module (only mentions apt-get which is wrong for HPC), no grep for errors/NaN/segfault in logs, no CFL number checking, no handling of build failures, no verification of clone integrity beyond a vague mention."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Mentions checking for output files and exit codes but is vague. No specific validation criteria (e.g., non-zero file sizes, absence of NaN/Infinity), no specific test case selection (TGV), no sanity checks on physics output, and no structured verification checklist like the reference provides."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear table structure, consistent formatting, and a summary table. Easy to follow at a high level. However, the brevity that aids readability also results in insufficient detail for actual execution."
+    }
+  },
+  "overall_score": 2.71,
+  "judge_reasoning": "The candidate plan captures the correct high-level structure and dependency ordering but is substantially thinner than the reference in every dimension. It lacks critical HPC-specific details (srun vs mpirun, module specifics, FFTW fallback build), provides no error handling or robust validation strategy, and gives minimal actionable commands. The token estimates appear unrealistically low, and several suggestions (like sudo apt-get on HPC) indicate limited domain expertise.",
+  "error": null
+}

@@ -1,0 +1,16 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "langgraph",
+  "model_name": "granite4:3b",
+  "provider": "ollama",
+  "plan_text": "## Implementation Plan\n\n### Step 1: Set Up Project Structure\n\n- Create a new directory named `FileWatcher`.\n- Inside the `FileWatcher` directory, create subdirectories for `src`, `tests`, and `docs`.\n\n### Step 2: Develop the Main CLI Entry Point (`watcher.py`)\n\n- In the `src` directory, create a file named `watcher.py`.\n- Implement the main functionality of the File Watcher tool in this script.\n- Use the `watchdog` library to monitor filesystem events.\n\n### Step 3: Create YAML Config Loader (`config.py`)\n\n- In the `src` directory, create a file named `config.py`.\n- Develop a function to load configuration from `watcher.yaml`.\n- Ensure that the function can handle include/exclude glob patterns and debounce settings.\n\n### Step 4: Example Configuration File (`watcher.yaml`)\n\n- In the root of the project directory, create a file named `watcher.yaml`.\n- Define an example configuration including:\n  - The directory to monitor.\n  - Include and exclude glob patterns for files.\n  - Configurable command (e.g., test suite) to run on changes.\n\n### Step 5: Develop Unit Tests (`test_watcher.py`)\n\n- In the `tests` directory, create a file named `test_watcher.py`.\n- Write unit tests to verify:\n  - The File Watcher can correctly monitor the specified directory.\n  - It triggers the configured command when source files are modified.\n  - Include/exclude patterns work as expected.\n  - Debounce functionality works with a default of 300ms.\n\n### Step 6: Implement Debounce Functionality\n\n- Within `watcher.py`, implement logic to debounce rapid changes using a 300ms delay by default.\n- Ensure that the debounce mechanism does not interfere with the execution of the configured command.\n\n### Step 7: Configure Test Suite\n\n- In the `tests` directory, create additional files or scripts as needed for setting up and running the test suite.\n- Ensure tests cover all edge cases related to file changes, including rapid successive changes.\n\n### Step 8: Documentation (`docs`)\n\n- Create a documentation folder in the project root.\n- Document how to set up and run the File Watcher tool.\n- Include instructions on configuring `watcher.yaml`.\n- Provide usage examples for both command line and configuration options.\n\n### Step 9: Testing with Example Project Structure\n\n- Navigate to the example project structure directory `/home/jye/publications/pythia/motivation_tests/cases/case_002_file_watcher/WorkingDir`.\n- Use this directory as a test case to ensure that the File Watcher tool works correctly.\n- Modify files in this directory and verify that the configured command is executed.\n\n### Step 10: Final Review and Testing\n\n- Conduct a final review of all code, configuration files, and documentation.\n- Ensure that all unit tests pass without errors.\n- Verify that the File Watcher tool behaves as expected with different configurations and file change scenarios.",
+  "reasoning_text": "",
+  "thinking_text": "",
+  "session_id": null,
+  "duration_ms": 4543,
+  "duration_wall_s": 4.543174345999432,
+  "total_cost_usd": null,
+  "num_turns": 1,
+  "error": null,
+  "timestamp": "2026-03-20T21:55:31.347490+00:00"
+}

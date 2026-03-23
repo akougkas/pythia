@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "crewai",
+  "model_name": "ollama__gpt-oss_20b",
+  "grades": {
+    "completeness": {
+      "score": 4,
+      "reasoning": "Covers all 5 required stages with good detail. Splits stages more granularly (9 vs 5), which adds some value. However, it includes unnecessary dependencies like NetCDF and HDF5 that aren't core XCompact3D requirements, and uses a fabricated input file name (xyz.cfg) instead of the actual .i3d namelist format. Missing git submodule initialization for bundled 2decomp&fft."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical issues: uses --depth=1 clone which may miss submodules/tags; fabricated CMake flag -DWITH_MPI=ON (not a real XCompact3D CMake option - should use -DCMAKE_Fortran_COMPILER=mpifort); incorrect input file format (xyz.cfg vs input.i3d); expects .nc output files when XCompact3D produces .dat files; includes NetCDF/HDF5 as dependencies which aren't required for basic XCompact3D; the Slurm script uses ${WORKDIR} in heredoc with single quotes preventing variable expansion; specifies a nonexistent --account=project_x."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides concrete commands and file paths, which is good. However, many specifics are wrong (input file format, output format, CMake flags). Token budgets are unrealistically low (200 tokens for download agent vs reference's 6000). Hardware allocations are reasonable but overly generous for agent tasks (8GB RAM for a git clone agent)."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Correctly identifies Stage 1 and 3 as parallelizable. The dependency chain is logically sound. The extra granularity (separating code review, dep resolution, and build into separate stages) is reasonable though perhaps over-engineered. The dependency graph is clearly documented."
+    },
+    "error_handling": {
+      "score": 3,
+      "reasoning": "The validation stage includes exit code checking, output file existence, and error log scanning, which is good. However, it doesn't mention checking for NaN/Infinity/CFL numbers in simulation output as the reference does. The fallback from CMake to configure script is mentioned but configure isn't actually how XCompact3D builds (it uses Makefile directly). No FFTW build-from-source fallback is provided."
+    },
+    "testability": {
+      "score": 3,
+      "reasoning": "Includes a validation stage with specific checks (exit code, file existence, error grep). However, it checks for .nc files which XCompact3D doesn't produce, and doesn't mention using a specific test case like Taylor-Green Vortex for validation. Missing physics-level sanity checks (CFL numbers, divergence)."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear tables, consistent formatting, and a logical structure. The file layout diagram is helpful. The execution summary at the end provides a good overview. Some redundancy between detailed sections and the summary commands section, but overall readable."
+    }
+  },
+  "overall_score": 3.29,
+  "judge_reasoning": "The candidate plan is well-structured and covers the required stages with good organization, but suffers from significant technical inaccuracies. Key issues include incorrect input file format (.cfg vs .i3d), wrong output file expectations (.nc vs .dat), fabricated CMake flags, unnecessary dependencies (NetCDF, HDF5), and unrealistic token budgets. While the parallel execution strategy and overall flow are sound, following this plan as-is would fail at the build and run stages due to incorrect commands and configurations.",
+  "error": null
+}

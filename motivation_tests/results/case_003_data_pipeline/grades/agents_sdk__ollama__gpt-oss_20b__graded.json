@@ -1,0 +1,38 @@
+{
+  "case_name": "case_003_data_pipeline",
+  "framework_name": "agents_sdk",
+  "model_name": "ollama__gpt-oss_20b",
+  "grades": {
+    "completeness": {
+      "score": 4,
+      "reasoning": "Covers all four required deliverables plus extras (requirements.txt, README). However, it does not create sample CSV files in WorkingDir/input/ as the reference does, and places files outside WorkingDir/ contrary to the objective's implied structure. Missing a concrete sample CSV definition and sort_rows/fill_missing equivalents from reference."
+    },
+    "correctness": {
+      "score": 3,
+      "reasoning": "Several technical concerns: the formula example uses np.where with df['age'] inside df.eval(), which won't work as written\u2014df.eval() doesn't support np.where or df references that way. The filter_rows signature uses min_value/max_value/condition instead of operator-based filtering, which is less intuitive. The YAML config uses name/params keys vs the reference's flatter type-based structure, which works but is inconsistent with what the spec might expect."
+    },
+    "specificity": {
+      "score": 4,
+      "reasoning": "Provides concrete function signatures, parameter dictionaries, CLI arguments, YAML examples, and code snippets for the processing loop. Registry pattern is well-defined. Slightly less specific than reference on test case details and sample data content."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "The plan is logically ordered with transforms before pipeline before tests. Dependencies are implicitly correct. However, it lacks an explicit implementation order section like the reference plan, and doesn't mention creating the input directory and sample data first."
+    },
+    "error_handling": {
+      "score": 4,
+      "reasoning": "Mentions try/except wrapping for transform failures, global error catch with non-zero exit, unknown transform errors, and missing params validation. Includes test cases for error scenarios. Comparable to reference plan."
+    },
+    "testability": {
+      "score": 4,
+      "reasoning": "Includes unit tests for individual transforms, integration tests for full pipeline and dry-run, edge case tests for unknown transforms and missing params, and logging tests. Uses tmp dirs for isolation. Slightly less detailed than reference on specific test case assertions."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with tables, code blocks, clear section headers, and an execution flow summary. The table-based format for transforms is easy to scan. Some assumptions are explicitly stated. Slightly verbose with optional enhancement sections that add noise."
+    }
+  },
+  "overall_score": 3.86,
+  "judge_reasoning": "The candidate plan is comprehensive and well-structured, covering all major requirements with good specificity and organization. Its main weaknesses are technical correctness issues (the df.eval/np.where formula won't work as written), placing files outside WorkingDir contrary to the objective, and missing explicit sample CSV data creation. It adds useful extras like requirements.txt but slightly diverges from the reference in config format and transform naming conventions.",
+  "error": null
+}

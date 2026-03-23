@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "langgraph",
+  "model_name": "ollama__qwen3.5_4b",
+  "grades": {
+    "completeness": {
+      "score": 1,
+      "reasoning": "No plan was captured. None of the deliverables (watcher.py, config.py, watcher.yaml, test_watcher.py) are addressed."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "No steps are proposed, so there is nothing to evaluate for technical correctness."
+    },
+    "specificity": {
+      "score": 1,
+      "reasoning": "No concrete steps, file names, function signatures, or library choices are provided."
+    },
+    "ordering_and_dependencies": {
+      "score": 1,
+      "reasoning": "No steps exist to order or sequence."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling strategy is mentioned."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "No testing strategy is included."
+    },
+    "clarity": {
+      "score": 1,
+      "reasoning": "The plan is entirely empty, providing no guidance whatsoever."
+    }
+  },
+  "overall_score": 1.0,
+  "judge_reasoning": "The candidate produced no plan at all. There is nothing to evaluate \u2014 no deliverables, no steps, no implementation details. This completely fails to address the objective.",
+  "error": null
+}

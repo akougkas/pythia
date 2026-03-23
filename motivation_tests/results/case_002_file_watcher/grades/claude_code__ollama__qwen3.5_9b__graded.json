@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "claude_code",
+  "model_name": "ollama__qwen3.5_9b",
+  "grades": {
+    "completeness": {
+      "score": 4,
+      "reasoning": "Covers all four deliverables and main requirements (watchdog, YAML config, glob patterns, debouncing). Mentions extra features like initial_delay and platform-specific observers that aren't required but doesn't miss any core elements."
+    },
+    "correctness": {
+      "score": 3,
+      "reasoning": "Several technical issues: the debouncing strategy uses a per-path timestamp check instead of a proper Timer-based approach, which won't correctly coalesce rapid events into a single command run. References non-existent watchdog classes like 'FSEPoller' and 'ReadDirChanger'. Mentions shlex.split() for command handling but shell=True with subprocess is more appropriate for shell commands. The ConfigLoader class approach is heavier than needed vs a simple function + dataclass."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides class names and general structure but lacks concrete function signatures, exact field names/types for the config dataclass, and specific test case names. The reference plan specifies exact method signatures, field defaults, and individual test names with validation targets. The candidate is more descriptive than prescriptive."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Phases are logically ordered: config first, then watcher, then example config, then tests. Dependencies are correctly sequenced. Similar to the reference plan's ordering."
+    },
+    "error_handling": {
+      "score": 4,
+      "reasoning": "Mentions catching exceptions in event handlers, graceful shutdown with signal handling, missing required fields validation, and error logging. However, doesn't define a custom ConfigError exception class or specify exact validation rules (e.g., debounce_ms must be non-negative, command must be non-empty string)."
+    },
+    "testability": {
+      "score": 3,
+      "reasoning": "Proposes test categories (config, filter, debounce, integration) but splits them across multiple files despite the requirement for a single test_watcher.py. Test descriptions are vague compared to the reference's specific test table with exact test names and what each validates. Missing specific test counts and concrete assertions."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "Well-organized with clear sections but overly verbose with unnecessary details (platform-specific observers, logging levels, exit codes) that add noise. The 'Technical Decisions' section discusses platform-specific observer types that are irrelevant to the task. The reference plan is more concise and actionable."
+    }
+  },
+  "overall_score": 3.43,
+  "judge_reasoning": "The candidate plan covers all required deliverables and has a reasonable structure, but suffers from technical inaccuracies (incorrect watchdog class names, flawed debouncing strategy) and lacks the specificity of the reference plan. It is overly verbose with tangential details while missing concrete function signatures, exact test cases, and precise validation rules that would make it directly executable.",
+  "error": null
+}

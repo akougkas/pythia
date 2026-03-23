@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "aider",
+  "model_name": "ollama__qwen3.5_9b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all 5 stages but misses key details: no git submodule init, no mention of 2decomp&fft bundled library, no specific test case (TGV) selection, no sacct for post-completion analysis, and Stage 4 dependency incorrectly omits Stage 3. The Slurm batch script uses incorrect XCompact3D invocation syntax and lacks a proper input file setup."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical errors: installs many irrelevant packages (PETSc, Hypre, deal.II, Eigen, Boost, MUMPS, ScaLAPACK) that XCompact3D doesn't use; CMake flags like ENABLE_PETSC, ENABLE_HYPRE, ENABLE_DEALII don't exist in XCompact3D's build system; the executable is called 'xcompact3d' not 'Incompact3d'; uses incorrect CLI flags (-i, -o) instead of .i3d namelist input; uses sudo apt-get on an HPC cluster which is inappropriate; batch script uses --ntasks-per-node=1 with --cpus-per-task=16 (OpenMP-only) instead of MPI tasks which is wrong for this MPI-parallelized code."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides concrete commands and file paths, which is good. However, many specifics are wrong (incorrect CMake options, wrong executable name, wrong invocation syntax). The Slurm query commands are less detailed than the reference (missing sinfo format strings, missing topology checks). Token estimates are unrealistically low (500, 300, 200)."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "The dependency graph is mostly correct (Stage 2 depends on Stage 1, Stage 4 depends on 2, Stage 5 depends on 4). However, it fails to identify that Stages 1 and 3 can run in parallel (the flow diagram shows them sequential). Stage 4 lists dependencies as 'Stages 1,2' but should also include Stage 3. The execution flow diagram shows all stages as sequential, contradicting the stated parallelism."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Minimal error handling. No fallback for FFTW not being available as a module (reference includes building from source). No verification of build success. The monitoring stage checks for errors but uses %j literally in file paths instead of the actual job ID variable. No mention of checking CFL numbers or NaN/divergence in output."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Validation is weak compared to reference. No specific test case identified (reference uses Taylor-Green Vortex). Looks for .h5 and .nc output files which aren't XCompact3D's native output format (should be .dat files). No sacct check for exit codes. No physics-based validation criteria (CFL < 1, no NaN). Missing verification checklist."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear tables, consistent formatting, and a visual flow diagram. The resource summary table is helpful. However, the flow diagram contradicts the text about parallelism, which creates confusion."
+    }
+  },
+  "overall_score": 2.71,
+  "judge_reasoning": "The candidate plan has good structural organization and covers all five required stages, but suffers from significant technical inaccuracies. It installs many irrelevant dependencies, uses incorrect CMake flags and executable invocation syntax for XCompact3D, misconfigures the Slurm batch script for MPI execution, and fails to properly identify the parallel execution opportunities (Stages 1 and 3). The plan appears to be generated without actual knowledge of XCompact3D's build system and runtime behavior.",
+  "error": null
+}

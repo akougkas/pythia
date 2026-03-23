@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "aider",
+  "model_name": "ollama__granite4_3b",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "Missing key elements: no dependency graph, no token estimates per stage, no parallel group assignments, no submodule fetch, no FFTW/MPI module loading, no actual build steps (cmake/make), no validation criteria, no sacct commands, no detailed Slurm resource queries. Stage 2 only shows apt-get install rather than actual build process."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "Several technical errors: uses 'sudo apt-get' on an HPC cluster (no sudo access typically), requests GPUs (--gres=gpu:4) when XCompact3D is CPU-based MPI code, references 'module load XCompact3D/YourVersionHere' instead of building from source, 'scontrol show hostinfo' is not a valid command, the batch script has no module loads for compilers/MPI/FFTW, and the executable invocation is a placeholder."
+    },
+    "specificity": {
+      "score": 1,
+      "reasoning": "Extremely vague throughout: no CMake configuration flags, no compiler specifications, no actual build commands, placeholder executable name and input parameters, no specific partition names, no working directory setup in the batch script, no output file paths, no specific validation steps. Token estimates marked as 'not applicable'."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "Dependencies are listed at the end and correctly identify that Stages 1-3 must precede Stage 4 and Stage 5 follows Stage 4. However, it fails to identify that Stages 1 and 3 can run in parallel, and doesn't organize stages into parallel groups as requested."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling whatsoever: no fallback for missing FFTW, no checking of build success, no grep for errors in logs, no verification of exit codes, no handling of missing modules, no CFL/NaN checks."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "Validation is essentially absent. Stage 5 mentions 'inspecting output files or results' with no specifics. No sacct exit code check, no output file existence verification, no sanity checks on simulation output, no verification checklist."
+    },
+    "clarity": {
+      "score": 2,
+      "reasoning": "The structure follows the 5 stages which is good, but content is too thin to be actionable. A developer could not execute this plan without significant additional research. Agent names are generic ('System Administrator') rather than descriptive specialized agents."
+    }
+  },
+  "overall_score": 1.57,
+  "judge_reasoning": "The candidate plan provides only a skeletal outline compared to the reference. It contains significant technical errors (sudo on HPC, GPU requests for CPU code, invalid Slurm commands), lacks the actual build process, uses placeholders instead of concrete commands, and omits parallel scheduling groups, token estimates, and validation criteria. It would not successfully deploy XCompact3D.",
+  "error": null
+}

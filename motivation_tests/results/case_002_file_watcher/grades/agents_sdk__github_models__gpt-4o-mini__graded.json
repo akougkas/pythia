@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "agents_sdk",
+  "model_name": "github_models__gpt-4o-mini",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "Missing CLI argument parsing (--config flag), missing dataclass for config, missing pattern matching helpers (should_process, matches_any). Creates an unnecessary subdirectory instead of placing files directly in WorkingDir. No recursive/watch_directory config fields matching the reference."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Debounce implementation is flawed \u2014 uses timestamp comparison on on_modified only, which doesn't properly debounce rapid events (no timer/cancellation logic). Doesn't handle include/exclude glob patterns in the event handler at all. Config loader returns a raw dict instead of a validated structured object. Only handles on_modified, not on_created/on_deleted events."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides sample code for each file which is somewhat concrete, but the code is incomplete and skeletal. Function signatures are partially defined. Config fields differ from the reference without justification. Test file is a stub with placeholder comments rather than concrete test cases."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Steps are in a reasonable order: config file first, then config loader, then watcher, then tests. Dependencies are correctly sequenced. Minor issue with unnecessary directory creation step."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling in config loading (no FileNotFoundError catch, no validation of required fields like command, no ConfigError custom exception, no validation of debounce value, no check that watch directory exists). The reference plan has extensive validation; this plan has virtually none."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "Test file contains only one real test that checks config loading with minimal assertions. No tests for pattern matching, debounce behavior, event handler filtering, error cases, or edge cases. The reference has 18 specific tests across 4 test classes; this plan has 1 test with a comment placeholder."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "Plan is well-organized with clear step numbering and code samples. However, includes unnecessary steps (git init, README, deployment planning) not in the objective, and the skeletal nature of the code samples leaves ambiguity about actual implementation details."
+    }
+  },
+  "overall_score": 2.29,
+  "judge_reasoning": "The candidate plan provides a basic skeleton but is significantly inferior to the reference. It lacks proper debounce implementation (no timer-based approach), omits glob pattern filtering in the event handler, has virtually no error handling or config validation, and provides only a single stub test. The plan also introduces unnecessary steps (subdirectory creation, git init, README, deployment) while missing critical requirements like CLI argument parsing and comprehensive testing.",
+  "error": null
+}

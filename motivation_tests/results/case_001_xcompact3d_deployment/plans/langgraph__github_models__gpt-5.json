@@ -1,0 +1,16 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "langgraph",
+  "model_name": "gpt-5",
+  "provider": "github_models",
+  "plan_text": "",
+  "reasoning_text": "",
+  "thinking_text": "",
+  "session_id": null,
+  "duration_ms": 173289,
+  "duration_wall_s": 173.2898469469983,
+  "total_cost_usd": null,
+  "num_turns": 1,
+  "error": null,
+  "timestamp": "2026-03-21T03:05:13.822554+00:00"
+}

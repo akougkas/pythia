@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "agents_sdk",
+  "model_name": "ollama__qwen3.5_9b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all 5 stages but lacks important details present in the reference: no mention of specific test cases (e.g., Taylor-Green Vortex), no fallback for building FFTW from source, missing sacct for post-completion analysis, missing key Slurm commands like scontrol show nodes and scontrol show topology. The Slurm batch script lacks proper #SBATCH directives (uses inline srun flags instead), missing module load commands in the script, and no mail notifications."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical errors: the build commands are fabricated (XCompact3D uses CMake or Makefile, not 'make configure --with-MPI=openmpi'); clones --branch dev instead of master; sinfo flags are wrong (-p without argument, -h is help not detailed info); squeue format strings are incorrect (%ID, %TOUT, %MEM are not valid); 'exists_check' is not a real command; the batch script lacks #SBATCH headers and uses srun with -G for a primarily CPU-based code; requesting 1600 tasks with 2 GPUs is nonsensical; references non-existent files like 'input_file_003D.in' and 'run_all_executable'."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides concrete commands and file paths, which is good. However, many commands are incorrect or fabricated, reducing their actionability. The reference plan provides much more specific and accurate details about CMake flags, module names, input file formats (.i3d), and expected output file types (ux*.dat, uy*.dat). The candidate uses vague placeholders like 'input_file_003D.in' and '*.h5' output files which don't match XCompact3D's actual behavior."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "The dependency graph is mostly correct - Stages 1 and 2 (cluster query) run in parallel, Stage 3 (build) depends on Stage 1, Stage 4 depends on Stage 3. However, the candidate incorrectly labels the parallel stages as 1 and 2 rather than 1 and 3 (matching the objective's numbering). Also, Stage 4 should explicitly depend on both the build AND the cluster query stages, but the candidate only lists Stage 3 as a dependency. The executive summary incorrectly says 'Stages 1 and 2 are executed in parallel' when Stage 2 in their plan is the cluster query."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Minimal error handling. The batch script has a basic exit code check, and Stage 5 has rudimentary status checking. However, compared to the reference, it's missing: grep for NaN/Infinity/segfault in logs, CFL number validation, checking for non-empty output files, sacct exit code verification. The fallback for missing dependencies is just 'sudo apt-get install' which is inappropriate for HPC clusters where users don't have sudo access."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Validation criteria are weak: just checks for job status 'C' and exit code 0 with output files. Missing physics-level validation (CFL < 1, no NaN/divergence), missing specific output file checks, no mention of what correct output looks like. The reference plan includes a detailed verification checklist with 6 specific items including physics checks."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear tables, consistent formatting, and a logical flow. The stage-by-stage breakdown with agent specs, hardware, and commands is easy to follow. The summary table at the end is helpful. Loses a point for some confusing elements like the stage numbering mismatch with the objective."
+    }
+  },
+  "overall_score": 2.71,
+  "judge_reasoning": "The candidate plan has reasonable structure and organization but suffers from significant technical inaccuracies. The build commands are fabricated and don't match XCompact3D's actual build system (CMake/Makefile), many Slurm commands use incorrect flags or formats, and the batch script lacks proper #SBATCH directives. The plan also assumes sudo access on an HPC cluster, references non-existent files, and provides weak validation criteria compared to the reference plan's thorough verification approach.",
+  "error": null
+}

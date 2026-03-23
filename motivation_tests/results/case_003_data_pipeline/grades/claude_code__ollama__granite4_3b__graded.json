@@ -1,0 +1,38 @@
+{
+  "case_name": "case_003_data_pipeline",
+  "framework_name": "claude_code",
+  "model_name": "ollama__granite4_3b",
+  "grades": {
+    "completeness": {
+      "score": 1,
+      "reasoning": "No plan was produced. None of the required deliverables (pipeline.py, transforms.py, pipeline.yaml, test_pipeline.py) are addressed."
+    },
+    "correctness": {
+      "score": 1,
+      "reasoning": "There are no proposed steps to evaluate for technical soundness."
+    },
+    "specificity": {
+      "score": 1,
+      "reasoning": "No concrete steps, file names, function signatures, or library choices are provided."
+    },
+    "ordering_and_dependencies": {
+      "score": 1,
+      "reasoning": "No steps exist to order or sequence."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling or edge case considerations are mentioned."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "No testing strategy is included."
+    },
+    "clarity": {
+      "score": 1,
+      "reasoning": "The plan is entirely absent; there is nothing to follow."
+    }
+  },
+  "overall_score": 1.0,
+  "judge_reasoning": "The candidate produced no plan at all ('No Plan Captured'). It fails every grading criterion as there is zero content to evaluate against the objective's requirements for a configurable CSV data pipeline with transforms, YAML config, dry-run mode, logging, and tests.",
+  "error": null
+}

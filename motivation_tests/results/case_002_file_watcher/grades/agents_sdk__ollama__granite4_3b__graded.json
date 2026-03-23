@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "agents_sdk",
+  "model_name": "ollama__granite4_3b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all four deliverables (watcher.py, config.py, watcher.yaml, test_watcher.py) but adds an unrequested README. Missing details on CLI argument parsing, the dataclass for config, and the debounce implementation mechanism. No mention of threading or Timer for debounce."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "References non-existent watchdog classes like 'TimeEventFilter' and 'ModifiedFileEventHandler'. The YAML schema uses 'paths_to_watch' (list) and nested 'command.test_suite' which deviates from a clean design. Debounce is mentioned but no correct implementation strategy is given. The config loader returns a plain dict rather than a validated dataclass."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Lacks function signatures, class definitions, field names with types/defaults, and concrete implementation details. The reference plan specifies exact methods like matches_any(), should_process(), DebouncedEventHandler with _schedule_run/_execute, and a WatcherConfig dataclass. The candidate stays at a high-level description."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "Steps are in a reasonable order (setup, main file, config, then tests), though creating watcher.py before config.py means the config dependency is backwards. The reference correctly creates config first since watcher depends on it."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Mentions 'include exception handling around file operations and argument parsing' as a vague note but doesn't specify a custom ConfigError, validation of required fields, handling missing config files, or ensuring run_command never raises. The reference plan details specific validations."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Lists four high-level test categories but no specific test cases, no mocking strategy, no mention of tempfile for config tests, and no concrete debounce test approach. The reference specifies 18 individual tests with techniques. The candidate's tests are more like acceptance criteria than a test plan."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "Well-organized with numbered steps and clear headers, but the content under each step is too vague for unambiguous execution. Another developer would need to make many design decisions not covered in the plan."
+    }
+  },
+  "overall_score": 2.43,
+  "judge_reasoning": "The candidate plan covers the basic deliverables but lacks the technical depth and specificity needed for implementation. It references non-existent watchdog APIs, provides no concrete function signatures or class designs, and offers only superficial testing and error-handling strategies. A developer following this plan would need to make significant design decisions independently.",
+  "error": null
+}

@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "gemini_adk",
+  "model_name": "gemini__gemini-3.1-flash-lite-preview",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "The candidate covers all 5 stages but with minimal depth. It omits git submodule fetching, CMake build option, FFTW from-source fallback, input file setup (no input.i3d copied), GPU/network topology queries, detailed sacct validation, error log checking, and a verification checklist. The Slurm script lacks environment setup details, diagnostics, error stream capture, and working directory management."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several issues: the build step assumes a plain Makefile with 'make' but XCompact3D primarily uses CMake; the Slurm script runs 'mpirun ./bin/xcompact3d' without an input file argument and without setting up a run directory or copying input.i3d; using 'mpirun' instead of 'srun' inside a Slurm script is suboptimal and may cause issues; no --exclusive flag or memory specification; no stderr capture (#SBATCH --error missing)."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Commands are sparse and generic. No specific module versions, no compiler flags, no CMake configuration options, no specific sinfo format strings, placeholder '<node_name>' without guidance, no specific output file patterns to check, no mention of the Taylor-Green Vortex test case or any concrete validation target. Token estimates are unrealistically low (500-1500 vs reference's 6000-14000)."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "The dependency graph is correct: Stage 1 and 3 are parallel, Stage 2 depends on 1, Stage 4 depends on 2 and 3, Stage 5 depends on 4. This matches the reference. However, there is no visual dependency diagram or parallel group labeling."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling whatsoever. No fallback if FFTW module is unavailable, no check for build failures, no grep for errors/NaN/segfault in logs, no exit code checking, no guidance on what to do if scontrol show topology fails, no mention of common failure modes."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "Validation is limited to 'grep Simulation finished' which is not a reliable marker for XCompact3D. The reference checks sacct exit codes, output file existence and sizes, NaN/infinity detection, and CFL number monitoring. The candidate has no verification checklist, no output file validation, and no physics sanity checks."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "The document is well-structured with a clean table and consistent formatting per stage. However, it is too terse to be actionable\u2014a developer would need significant additional research to fill in the gaps. The reference is far more self-contained and executable."
+    }
+  },
+  "overall_score": 2.14,
+  "judge_reasoning": "The candidate plan provides a correct high-level skeleton with proper dependency ordering but is severely lacking in depth, specificity, and robustness compared to the reference. Critical details are missing: CMake build support, input file setup, FFTW fallback installation, proper srun usage, error handling, and meaningful validation. The plan would likely fail during execution due to missing input files and incorrect build/run commands.",
+  "error": null
+}

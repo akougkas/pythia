@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "agents_sdk",
+  "model_name": "github_models__gpt-5",
+  "grades": {
+    "completeness": {
+      "score": 5,
+      "reasoning": "The candidate plan covers all 5 required stages plus adds a documentation/archival stage (S6). It includes source download, dependency fetching, code reading/build, Slurm cluster querying, batch script authoring with sbatch command, and monitoring/validation. It also adds appendices for alternative dependency resolutions, a Slurm cookbook, and a risk matrix \u2014 exceeding the reference in breadth."
+    },
+    "correctness": {
+      "score": 4,
+      "reasoning": "Commands are technically sound and would generally work. The plan correctly identifies XCompact3D as Fortran/MPI-based and CPU-only. Minor issues: it assumes HDF5 is needed (the reference doesn't require it and the base XCompact3D build may not need it), uses `< input.i3d` redirection for srun which may not be the correct invocation pattern (reference uses positional argument), and the make.inc approach may not match the actual CMake-based build system of modern Incompact3d. Token estimates are unrealistically low (400-1400 vs reference's 6000-14000 range) if these represent LLM agent tokens."
+    },
+    "specificity": {
+      "score": 5,
+      "reasoning": "The plan is highly specific with exact file paths, complete shell commands, full batch script content, environment variable settings, module load commands, and a detailed directory layout. It provides concrete make.inc content, specific sinfo/scontrol format strings, and grep patterns for validation."
+    },
+    "ordering_and_dependencies": {
+      "score": 5,
+      "reasoning": "Dependencies are correctly identified: S1 and S3 run in parallel, S2 depends on S1, S4 depends on S2 and S3, S5 depends on S4, S6 depends on all. This matches the reference's dependency graph exactly. The parallel execution groups are clearly stated."
+    },
+    "error_handling": {
+      "score": 5,
+      "reasoning": "The candidate plan significantly exceeds the reference in error handling. It includes a full risk matrix with mitigations (FFTW serial-only, Makefile layout differences, input file naming, hyperthreading oversubscription, HDF5 file locking). It provides fallback Spack instructions, troubleshooting commands (ldd, scontrol show job for failure reasons), and alternative MPI stack instructions."
+    },
+    "testability": {
+      "score": 4,
+      "reasoning": "The plan includes validation steps: checking for MPI startup messages, verifying output files, grepping for errors, using sacct for exit codes, and ldd checks. It has a deliverables checklist. However, it lacks the reference's specific physics validation criteria (CFL < 1, checking for NaN/Infinity/divergence in time-stepping output) and doesn't mention specific expected output file patterns (ux*.dat, etc.)."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "The plan is well-structured with clear sections, tables for agent resources, and a logical flow. However, it is significantly longer than the reference, which could make it harder to follow. The directory layout plan adds organizational clarity but also complexity. Some redundancy exists between the main stages and the appendices/quick reference sections."
+    }
+  },
+  "overall_score": 4.57,
+  "judge_reasoning": "The candidate plan is comprehensive and well-structured, covering all required stages with excellent specificity and error handling that in some areas exceeds the reference. Its main weaknesses are slightly questionable correctness around HDF5 dependency assumptions and the binary invocation pattern, unrealistically low token estimates for agents, and verbosity that could hinder quick execution. Overall it is a strong plan that would successfully guide an XCompact3D deployment.",
+  "error": null
+}

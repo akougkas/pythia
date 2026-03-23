@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "langgraph",
+  "model_name": "ollama__gpt-oss_20b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all 5 required stages but splits them into 8 unnecessarily granular stages. Missing key details like specific test case selection (TGV), verification of output files (snapshot data), and CFL/physics checks. Token estimates are unrealistically low (e.g., 200 tokens for cloning). No mention of 2decomp&fft bundled library."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical issues: suggests `sudo apt-get install` on an HPC cluster (users don't have root); assumes GPU deployment with CUDA flags when XCompact3D mainline GPU support is experimental; uses `mpirun` instead of `srun` inside a Slurm script; incorrect input file format (`-i input.dat -o output.dat` vs actual `.i3d` namelist files); Stage 5 (Slurm query) incorrectly depends on Stage 4 (Build) when it has no dependency."
+    },
+    "specificity": {
+      "score": 3,
+      "reasoning": "Provides concrete commands and a full batch script, which is good. However, some details are wrong or generic (input file format, run command syntax). The CMake flags include speculative CUDA options. Module versions are older than reference but still concrete."
+    },
+    "ordering_and_dependencies": {
+      "score": 1,
+      "reasoning": "The plan declares ALL stages as strictly sequential with no parallelism, which directly contradicts the objective's requirement to identify and schedule independent subtasks in parallel. The reference correctly identifies Stage 1 and Stage 3 as parallelizable. The candidate also incorrectly makes Slurm query (Stage 5) depend on Build (Stage 4) when it's completely independent."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Minimal error handling. Only a brief note to 'consult the error log' if the job fails. Missing: fallback for FFTW not available as module, checking for NaN/Infinity in output, verifying non-empty output files, checking CFL conditions. Reference includes grep for common errors and multiple validation criteria."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Only checks if 'output.dat' exists with expected size, which is incorrect (XCompact3D produces snapshot files like ux*.dat, not a single output.dat). Missing: sacct state/exit code verification, log error scanning, physics sanity checks. The final checklist is procedural, not a validation strategy."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-structured with clear tables, numbered stages, and formatted commands. The markdown is clean and easy to follow. However, the over-splitting into 8 stages adds unnecessary complexity compared to the reference's cleaner 5-stage approach."
+    }
+  },
+  "overall_score": 2.43,
+  "judge_reasoning": "The candidate plan is well-formatted but has significant technical flaws: it suggests using sudo on HPC, assumes GPU/CUDA support that isn't mainline, uses incorrect XCompact3D command-line syntax, and critically fails the parallelism requirement by declaring all stages strictly sequential. The dependency graph is incorrect (Slurm query doesn't depend on build), and token estimates are unrealistically low. Error handling and validation are superficial compared to the reference.",
+  "error": null
+}

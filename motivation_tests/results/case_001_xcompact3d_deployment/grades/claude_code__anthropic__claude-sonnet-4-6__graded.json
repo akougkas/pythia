@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "claude_code",
+  "model_name": "anthropic__claude-sonnet-4-6",
+  "grades": {
+    "completeness": {
+      "score": 5,
+      "reasoning": "The candidate plan covers all 5 required stages and adds useful extras like HDF5 installation, input file parameter documentation, a diagnostics table for common failures, and reproducibility via SOURCE_REVISION.txt. It splits the reference's Stage 2 into two agents (Code Intelligence + Build), which is reasonable."
+    },
+    "correctness": {
+      "score": 4,
+      "reasoning": "Technically sound overall. Commands are correct for cloning, building with CMake, querying Slurm, and monitoring. Minor issues: the FFTW_ROOT fallback using `dirname $(which fftw-wisdom)` is fragile; `sbatch submit_tgv.sh | tee JOBID.txt` would submit the job twice if run as shown in the sequence; some CMake flags like DOUBLE_PREC and SAVE_SNAPSHOT may not exist in the actual XCompact3D CMakeLists.txt. The `--mpi=pmix` flag in srun is cluster-dependent and may cause errors."
+    },
+    "specificity": {
+      "score": 5,
+      "reasoning": "Very specific throughout \u2014 exact CMake flags, module versions, input.i3d parameter explanations with Fortran namelist syntax, srun flags, sacct format strings, and even ldd verification commands. More detailed than the reference in several areas (e.g., input file parameters, HDF5 installation, diagnostic table)."
+    },
+    "ordering_and_dependencies": {
+      "score": 5,
+      "reasoning": "The DAG is clearly drawn and correct. A1 and A4 run in parallel, A2 depends on A1, A3 depends on A2, A5 depends on both A3 and A4, A6 depends on A5. This is logically sound and matches the reference's dependency structure with a finer-grained decomposition."
+    },
+    "error_handling": {
+      "score": 5,
+      "reasoning": "Exceeds the reference plan with a dedicated diagnostics table covering common failure modes (PENDING stuck, MPI_Init errors, FFTW plan failures, segfaults, timeouts, empty outputs) with corresponding diagnostic commands. The batch script includes pre-flight checks for binary and input file existence."
+    },
+    "testability": {
+      "score": 5,
+      "reasoning": "Comprehensive verification checklist with 13 items covering source acquisition, build verification (ldd), cluster profiling, sbatch dry-run (--test-only), job status, log content validation, output file checks, and final sacct exit code verification. More thorough than the reference's 6-item checklist."
+    },
+    "clarity": {
+      "score": 5,
+      "reasoning": "Well-organized with clear section headers, agent roster table, execution DAG, per-stage metadata tables, and a summary resource table. The diagnostics table and input file parameter documentation add practical value. Easy to follow and execute."
+    }
+  },
+  "overall_score": 4.86,
+  "judge_reasoning": "The candidate plan is comprehensive, well-structured, and in several areas exceeds the reference plan \u2014 notably in error diagnostics, input file documentation, and verification depth. Minor correctness concerns exist around some fragile shell constructs and potentially non-existent CMake flags, but these are minor issues that wouldn't prevent successful deployment. The 6-agent decomposition is a reasonable refinement of the reference's 5-stage approach.",
+  "error": null
+}

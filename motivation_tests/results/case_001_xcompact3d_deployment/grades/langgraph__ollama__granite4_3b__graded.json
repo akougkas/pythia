@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "langgraph",
+  "model_name": "ollama__granite4_3b",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "The candidate covers all 5 stages conceptually but lacks actual commands, scripts, and configurations. No git clone command, no build commands, no Slurm batch script, no sinfo/scontrol commands, no monitoring commands. Stage 4 (submit) is split from Stage 4 (batch script) but the batch script itself is empty. Missing dependency on Stage 2 for Stage 4."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "The dependency graph is partially wrong \u2014 Stage 4 (batch script) only depends on Stage 3, missing the critical dependency on Stage 2 (the binary must be built before writing the run script). Token estimates are unrealistically low (100-200 tokens vs thousands needed). No actual commands are provided to verify correctness."
+    },
+    "specificity": {
+      "score": 1,
+      "reasoning": "Extremely vague throughout. No actual commands (git clone, cmake, make, sinfo, sbatch, squeue, etc.), no Slurm batch script content, no module load commands, no compiler flags, no input file references, no file paths for executables. The reference plan provides dozens of concrete commands; the candidate provides zero."
+    },
+    "ordering_and_dependencies": {
+      "score": 3,
+      "reasoning": "Correctly identifies Stage 1 and Stage 3 as independent (no mutual dependency). However, Stage 4 (batch script) incorrectly depends only on Stage 3, not on Stage 2 (build). The split of submit into a separate Stage 5 is unnecessary but not harmful. Parallel execution opportunity between Stages 1 and 3 is implied but not explicitly called out in a timeline."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling whatsoever. No fallback for missing modules, no alternative build paths (CMake vs Makefile), no FFTW from-source fallback, no validation of downloads, no checking for NaN/segfaults in output logs."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "No verification criteria, no validation commands, no checklist. The reference plan includes a detailed verification checklist and specific validation commands (sacct, grep for errors, file size checks). The candidate just says 'validate application started correctly' with no specifics."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "The document is well-structured with clear headings and a consistent format for each stage (agent, hardware, tokens, dependencies). However, the lack of actual content makes it more of a skeleton than an actionable plan. Another developer could not execute this without significant additional research."
+    }
+  },
+  "overall_score": 1.86,
+  "judge_reasoning": "The candidate plan provides a high-level skeleton that identifies the correct stages and some dependencies, but critically lacks all substantive content. It contains zero actual commands, no Slurm batch script, no build instructions, no validation criteria, and unrealistically low token estimates. Compared to the reference plan which provides dozens of concrete commands, alternative paths, and detailed verification steps, this plan is essentially an outline that could not be executed without substantial additional work.",
+  "error": null
+}

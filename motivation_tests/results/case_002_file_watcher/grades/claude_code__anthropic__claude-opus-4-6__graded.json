@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "claude_code",
+  "model_name": "anthropic__claude-opus-4-6",
+  "grades": {
+    "completeness": {
+      "score": 5,
+      "reasoning": "The candidate plan is identical to the reference plan, covering all four deliverables and every requirement."
+    },
+    "correctness": {
+      "score": 5,
+      "reasoning": "Technically identical to the reference; all steps are sound."
+    },
+    "specificity": {
+      "score": 5,
+      "reasoning": "Concrete file names, function signatures, class designs, and test cases are all specified, matching the reference exactly."
+    },
+    "ordering_and_dependencies": {
+      "score": 5,
+      "reasoning": "Steps are in the correct logical order with dependencies properly sequenced, identical to reference."
+    },
+    "error_handling": {
+      "score": 5,
+      "reasoning": "ConfigError, validation of command/debounce/patterns, and edge cases are all addressed identically to the reference."
+    },
+    "testability": {
+      "score": 5,
+      "reasoning": "18 unit tests across 4 test classes with specific techniques, matching the reference exactly."
+    },
+    "clarity": {
+      "score": 5,
+      "reasoning": "Well-organized with tables, code blocks, and clear sections, identical to the reference plan."
+    }
+  },
+  "overall_score": 5.0,
+  "judge_reasoning": "The candidate plan is identical to the reference plan in every detail. All deliverables, implementation steps, test cases, and verification procedures match exactly.",
+  "error": null
+}

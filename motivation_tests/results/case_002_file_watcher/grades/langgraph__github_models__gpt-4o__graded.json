@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "langgraph",
+  "model_name": "github_models__gpt-4o",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all four deliverables but misses CLI argument parsing (--config flag), no argparse usage, and places files outside WorkingDir (project structure shows watcher.py etc. at case level, not inside WorkingDir as required). Missing recursive config option."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "The debounce implementation is fundamentally flawed\u2014it uses a simple timestamp check that drops events instead of properly deferring execution with a timer/threading approach. Rapid changes would be silently ignored rather than coalesced into a single execution. The fnmatch patterns are matched against full src_path instead of basename, which will fail for patterns like '*.py'. No directory event filtering."
+    },
+    "specificity": {
+      "score": 4,
+      "reasoning": "Provides concrete code outlines with function signatures, library choices, and configuration format. Includes actual code snippets for all modules. However, some details like the dataclass/dict choice and exact error types are less precise than the reference."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Steps are logically ordered: config file, config loader, watcher, tests, then manual testing. Dependencies are correctly sequenced. Missing explicit dependency installation step before running tests."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "No custom exception class for config errors. Config loader only checks file existence, doesn't validate command is non-empty, debounce is non-negative, or patterns are valid lists. Uses raw FileNotFoundError and NotADirectoryError instead of meaningful custom errors. subprocess errors are not handled."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Only 3 test cases total (2 config, 1 handler) compared to reference's 18 tests. Missing tests for: missing file, invalid YAML, empty file, missing command, pattern matching logic, debounce coalescing behavior, directory event filtering, and exclude-overrides-include logic. The mock approach patches builtins.open but doesn't patch os.path.exists, so tests would fail."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear sections, code outlines, and a logical flow. The plan is easy to follow and includes a usage documentation step. However, some assumptions are unnecessary and the plan could be more concise."
+    }
+  },
+  "overall_score": 3.0,
+  "judge_reasoning": "The candidate plan covers the basic deliverables and provides concrete code outlines, but has significant technical issues. The debounce mechanism is incorrectly implemented (timestamp-based filtering vs. proper timer coalescing), pattern matching operates on full paths instead of basenames, and error handling/validation is minimal. The test suite is severely lacking with only 3 tests versus the reference's 18, missing critical edge cases for config validation, pattern matching, and debounce behavior.",
+  "error": null
+}

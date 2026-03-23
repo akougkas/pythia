@@ -79,15 +79,20 @@ The gap is clear: the multi-agent orchestration layer lacks the predictive, spec
 ## 2.4 Empirical Motivation
 
 To quantify the dispatch bottleneck, we profiled Clio Coder — the multi-agent orchestration component of the IOWarp scientific computing platform — handling realistic HPC-adjacent workloads including MPI code generation, scientific data pipeline construction, and research workflow automation.
-[PLACEHOLDER: Insert Clio Coder profiling methodology — instrument dispatch pipeline stages, collect timing data across N requests over M days]
+<!-- [PLACEHOLDER: Insert Clio Coder profiling methodology — instrument dispatch pipeline stages, collect timing data across N requests over M days] -->
 
-[PLACEHOLDER: Figure or table showing dispatch latency breakdown:
+To further characterize the dispatch bottleneck in existing frameworks, we profiled the LangGraph supervisor pattern — the dominant orchestration architecture in current multi-agent systems — on 25 scientific data analysis queries drawn from the KramaBench benchmark across three domains (wildfire science, astronomy, and legal analytics). We configured a supervisor with six specialist agents (DataReader, DataCleaner, GeoProcessor, Calculator, StatModeler, Visualizer) backed by a qwen3.5:9b model served locally via Ollama. For each query, we measured supervisor LLM inference time (dispatch overhead) and agent LLM inference time (execution) separately by collecting per-node timestamps through LangGraph's streaming API. Each query was repeated three times to assess dispatch consistency.
+
+<!-- [PLACEHOLDER: Figure or table showing dispatch latency breakdown:
 - Intent classification: ~X ms (Y% of total)
 - Task decomposition/planning: ~X ms (Y% of total)
 - Agent selection and resource matching: ~X ms (Y% of total)
 - Context assembly and prompt construction: ~X ms (Y% of total)
 - Agent initialization and warm-up: ~X ms (Y% of total)
-- TOTAL dispatch overhead: ~X ms (Y% of end-to-end)]
+- TOTAL dispatch overhead: ~X ms (Y% of end-to-end)] -->
+
+![Dispatch vs. execution latency for six representative KramaBench queries processed by a LangGraph supervisor (qwen3.5:9b). Dark bars show supervisor routing overhead (1.6–3.8 s, 19–37% of total); light bars show agent execution time. Dispatch decisions are made by sequential LLM calls — one per agent handoff — constituting a fixed latency tax on every query.](../paper/img/motivation/dispatch_vs_execution_latency.png)
+*Figure: Dispatch vs. execution latency breakdown (§2.4). See `\label{fig:dispatch-latency}` in main.tex.*
 
 [PLACEHOLDER: Dispatch predictability analysis — show that for the top-K intent classes (which cover Z% of all requests), the dispatch plan has low conditional entropy given the intent. This is the empirical justification for why speculation can work.]
 

@@ -1,0 +1,38 @@
+{
+  "case_name": "case_002_file_watcher",
+  "framework_name": "gemini_adk",
+  "model_name": "gemini__gemini-3.1-flash-lite-preview",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all four deliverables and mentions key requirements (watchdog, YAML config, glob patterns, debounce). However, it omits details like the recursive flag, the WatcherConfig dataclass, custom ConfigError exception, and doesn't mention a specific example watcher.yaml content. Also adds requirements.txt which wasn't requested but isn't harmful."
+    },
+    "correctness": {
+      "score": 3,
+      "reasoning": "The general approach is sound (watchdog observer, fnmatch, threading.Timer, argparse). However, overriding on_modified/on_created/on_deleted separately rather than on_any_event may miss some event types (e.g., moves). Also doesn't mention filtering out directory events, which is important for correctness. The should_process description doesn't clarify that excludes should take priority over includes."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Significantly less specific than the reference. No function signatures, no dataclass fields, no concrete YAML example content, no specific test names or counts. Uses vague descriptions like 'Add validation to ensure required fields exist' without specifying which fields or what validation. The reference provides exact method signatures, field types, defaults, and 18 specific test cases."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "Steps are in a logical order: config first, then core logic, then tests, then assembly. Dependencies are implicitly correct. Similar to the reference plan's ordering."
+    },
+    "error_handling": {
+      "score": 2,
+      "reasoning": "Mentions validation of required fields and default values but doesn't specify a custom exception class, doesn't enumerate specific error cases (missing file, invalid YAML, empty file, missing command, invalid debounce), and doesn't mention graceful error handling in the command runner (never raises). The reference is much more thorough here."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Mentions four general test categories (config loading, include patterns, exclude patterns, debounce) but provides no specific test case names, counts, or techniques. The reference lists 18 specific tests across 4 test classes with concrete validation targets and testing techniques (tempfile, mock strategies, timing margins)."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "Well-organized with clear phases and bullet points. Easy to follow at a high level. However, the lack of specificity means a developer would need to make many decisions not addressed in the plan. The reference plan is much more actionable."
+    }
+  },
+  "overall_score": 2.71,
+  "judge_reasoning": "The candidate plan covers the right high-level architecture and uses appropriate technologies, but lacks the specificity and depth of the reference plan. It provides a reasonable skeleton but omits critical details: no concrete function signatures, no dataclass definitions, no specific test cases, and insufficient error handling strategy. A developer following this plan would need to make many implementation decisions independently.",
+  "error": null
+}

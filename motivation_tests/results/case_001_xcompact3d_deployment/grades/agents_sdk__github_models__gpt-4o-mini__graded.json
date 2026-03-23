@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "agents_sdk",
+  "model_name": "github_models__gpt-4o-mini",
+  "grades": {
+    "completeness": {
+      "score": 2,
+      "reasoning": "The candidate covers all 5 stages but with minimal depth. Missing: git submodule init, FFTW3 dependency handling, input file setup (e.g., TGV input.i3d), environment module loading in build, sacct for post-completion checks, error log inspection, validation criteria, and a verification checklist. The Slurm script lacks critical directives like --error, --mail, --exclusive, and proper working directory setup."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Several technical issues: uses 'sudo apt-get' on an HPC cluster (inappropriate\u2014modules should be used), suggests --gres=gpu:1 and nvidia-smi for querying GPUs when XCompact3D is CPU-based MPI code, the Slurm script requests only 1 task with 4 cpus-per-task and a GPU which is wrong for an MPI Fortran code, references a nonexistent 'scontrol show network' command, and the executable name 'xcompact3d_executable' is fabricated. The cmake invocation omits the Fortran compiler specification."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Commands are superficial\u2014no specific module names, no compiler flags, no cmake options, no mention of specific test cases (TGV), no concrete file paths for outputs, no specific sinfo format strings. Token estimates are nonsensical (e.g., '3 Tokens' vs the reference's thousands). Hardware specs are generic and lack memory/disk detail for meaningful stages."
+    },
+    "ordering_and_dependencies": {
+      "score": 4,
+      "reasoning": "The dependency graph is correct: Stage 1 and 3 are independent (parallel), Stage 2 depends on 1, Stage 4 depends on 2 and 3, Stage 5 depends on 4. This matches the reference. However, the parallel execution opportunity is only implied in the summary table, not explicitly called out with a visual timeline or parallel group labeling."
+    },
+    "error_handling": {
+      "score": 1,
+      "reasoning": "No error handling whatsoever. No fallback for missing FFTW, no alternative build paths (Makefile vs CMake), no grep for errors/NaN in logs, no exit code checking, no handling of failed builds or missing modules. The reference provides extensive fallback paths and error-checking commands."
+    },
+    "testability": {
+      "score": 1,
+      "reasoning": "No validation criteria defined. No mention of checking exit codes, output file existence/size, CFL numbers, NaN/divergence checks, or sacct status verification. The only 'validation' is checking if the process is running and reading a log file. The reference includes a full verification checklist and specific validation commands."
+    },
+    "clarity": {
+      "score": 3,
+      "reasoning": "The document is reasonably well-organized with consistent formatting, clear table summary, and numbered steps. However, it lacks the depth and visual aids (dependency diagrams, execution timelines) of the reference, and some steps are too terse to be actionable without additional context."
+    }
+  },
+  "overall_score": 2.14,
+  "judge_reasoning": "The candidate plan provides a basic skeleton covering all five stages with correct dependency ordering, but falls far short of the reference in depth, correctness, and actionability. Critical flaws include using apt-get on an HPC system, incorrectly configuring the Slurm script for GPU usage when XCompact3D is CPU/MPI-based, nonsensical token estimates, and near-complete absence of error handling and validation strategies.",
+  "error": null
+}

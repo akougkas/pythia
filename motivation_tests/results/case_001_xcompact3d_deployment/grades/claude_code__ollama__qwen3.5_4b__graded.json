@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "claude_code",
+  "model_name": "ollama__qwen3.5_4b",
+  "grades": {
+    "completeness": {
+      "score": 3,
+      "reasoning": "Covers all 5 required stages plus an extra error handling stage. However, it misses key XCompact3D-specific details: no mention of Fortran (searches for .c/.cpp files instead), no mention of 2decomp&fft, no mention of MPI pencil decomposition, no input.i3d file handling, no TGV test case setup, and no sacct for post-completion analysis."
+    },
+    "correctness": {
+      "score": 2,
+      "reasoning": "Multiple technical errors: XCompact3D is Fortran-based but the plan searches for C/C++ files; uses apt-get on an HPC cluster (should use module load); uses pip/npm for dependencies of a Fortran CFD code; Stage 3 uses invalid Slurm commands like 'slurmctl list gpu' and 'sinfo -t GPU'; the batch script references a nonexistent 'xcompact3d_application' binary; Stage 3 incorrectly depends on Stage 2 instead of being independent; sinfo format strings are incorrect."
+    },
+    "specificity": {
+      "score": 2,
+      "reasoning": "Many placeholder values and generic commands. The batch script uses './build/xcompact3d_application [args]' instead of the actual binary name and input file. Library searches are generic (Eigen, Boost, BLAS) rather than XCompact3D-specific (FFTW, MPI). The clone uses --depth 1 without fetching submodules. No specific compiler flags for Fortran. Validation checks for generic strings like 'successfully compiled' rather than actual XCompact3D output patterns."
+    },
+    "ordering_and_dependencies": {
+      "score": 2,
+      "reasoning": "Critical error: Stage 3 (cluster query) is listed as depending on Stage 2 (build), but cluster queries are independent and should run in parallel with Stage 1, as the reference plan correctly identifies. The plan mentions parallel execution possibility in the context but the actual dependency chain is Stage 1\u21922\u21923\u21924\u21925, which is fully sequential and misses the key optimization of running Stages 1 and 3 in parallel."
+    },
+    "error_handling": {
+      "score": 3,
+      "reasoning": "Includes a dedicated Stage 6 for error handling covering timeout, compilation failure, and memory limits, which is a nice addition not in the reference. However, the error handling procedures are quite generic and don't address XCompact3D-specific issues like NaN/divergence in simulations, CFL violations, or MPI communication failures."
+    },
+    "testability": {
+      "score": 2,
+      "reasoning": "Verification steps are generic and wouldn't actually validate XCompact3D. Checks for 'success|completed|ready' strings that XCompact3D doesn't output. Missing: checking for output data files (ux*.dat, uy*.dat), CFL number validation, sacct exit code checking, and NaN/infinity detection in output. The reference plan has much more specific validation criteria."
+    },
+    "clarity": {
+      "score": 4,
+      "reasoning": "Well-organized with clear markdown structure, tables, and consistent formatting across stages. Each stage has clear sections for objective, agent, hardware, tokens, dependencies, and commands. Easy to follow the overall structure, though the incorrect content reduces practical utility."
+    }
+  },
+  "overall_score": 2.57,
+  "judge_reasoning": "The candidate plan has good structural organization but suffers from fundamental technical errors: it treats XCompact3D as a C/C++/Python project rather than a Fortran MPI application, uses invalid Slurm commands, proposes apt-get on an HPC cluster instead of module load, and incorrectly serializes the dependency graph by making cluster queries depend on the build stage. The generic nature of commands and validation checks suggests a lack of understanding of both the specific application and HPC environments.",
+  "error": null
+}

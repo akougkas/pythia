@@ -1,0 +1,38 @@
+{
+  "case_name": "case_001_xcompact3d_deployment",
+  "framework_name": "claude_code",
+  "model_name": "anthropic__claude-opus-4-6",
+  "grades": {
+    "completeness": {
+      "score": 5,
+      "reasoning": "The candidate plan covers all five required stages identically to the reference: download, build, cluster query, job submission, and monitoring. All deliverables are present."
+    },
+    "correctness": {
+      "score": 5,
+      "reasoning": "The technical steps are identical to the reference plan - same commands, same configurations, same approach. All steps would achieve the objective."
+    },
+    "specificity": {
+      "score": 5,
+      "reasoning": "The plan provides exact commands, file paths, module names, CMake flags, Slurm directives, and token estimates - identical specificity to the reference."
+    },
+    "ordering_and_dependencies": {
+      "score": 5,
+      "reasoning": "Dependencies are correctly identified: Stages 1 and 3 in parallel, Stage 2 after 1, Stage 4 after 2 and 3, Stage 5 after 4. The dependency graph and parallel groups match exactly."
+    },
+    "error_handling": {
+      "score": 5,
+      "reasoning": "Includes fallback for FFTW3 build from source, alternative build systems (CMake vs Makefile), error log checking, and grep for common failure patterns - all matching the reference."
+    },
+    "testability": {
+      "score": 5,
+      "reasoning": "Verification checklist covers source code presence, binary existence, cluster info documentation, job submission, completion status, and physics validation - identical to reference."
+    },
+    "clarity": {
+      "score": 5,
+      "reasoning": "Well-structured markdown with tables, ASCII dependency graphs, clear section headers, and a summary dispatch table. Organization is identical to the reference."
+    }
+  },
+  "overall_score": 5.0,
+  "judge_reasoning": "The candidate plan is identical to the reference plan in every aspect - same structure, same content, same commands, same metadata. This is a perfect match, covering all required stages with detailed commands, proper dependency ordering, parallel execution groups, and comprehensive verification steps.",
+  "error": null
+}
