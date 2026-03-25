@@ -51,11 +51,70 @@ For the Orchestrator:
   2. What's the comparison granularity — per-agent? per-subtask?
   3. What happens to in-flight speculative work while reconciliation runs?
   4. Does the Orchestrator have any state, or is it purely reactive?
+
+Notes:
+1. Trigger: Reconciliation begins when the Solver completes
+2. Comparison granularity
+
+  Your implementation in comparison.py line 27 is clear: comparison is per-assignment, where a match is defined as the same (agent_type, fleet_member_id) pair. So the granularity is: "same agent on same infrastructure node."
+
+  This is described nowhere in the paper. §3.3 says "element-by-element" but never defines what an "element" is. You should state this explicitly — it's a design decision that matters for the salvage ratio calculation.
+
+  Note one subtlety your code handles but the paper doesn't discuss: COMMIT requires matches == len(p_hat.assignments) AND matches == len(p_star.assignments) (line 49). This means COMMIT requires the plans to be identical in size, not just that $\hat{P} \subseteq P^*$. That's
+  worth stating.
+
+  3. Pausing in-flight work
+
+  Your intuition makes sense, but think about when and what gets paused:
+
+  - Mode 1 work (context preparation): No reason to pause — context is agent-agnostic, useful regardless of verdict.
+  - Mode 2 work (agent provisioning): Pausing mid-provisioning is awkward. By the time the Solver finishes, provisioning is likely either done or nearly done. Does it make sense to let it complete and then decide what to keep vs discard?
+  - Mode 3 work (draft execution): This is where pausing matters. The draft agent is producing output — do you stop it immediately when the Solver returns, or let it finish the current generation step?
+
+  The CPU analogy helps here: in speculative execution, the pipeline doesn't pause — it continues until the branch resolves, then either commits or flushes. Your Orchestrator could work the same way: let speculative work continue until reconciliation completes, then commit or
+  flush. This is simpler to implement and avoids the complexity of a pause/resume protocol.
+
+  4. Orchestrator state
+
+  Good question. Look at what your ReconciliationEngine currently is: stateless (line 49-58). It takes inputs, produces an output, done. But you're right that a real Orchestrator needs state. Think about what it needs to track:
+
+  What state?
+  - Which speculation mode is active for the current request
+  - References to in-flight speculative work (so it can commit or flush them)
+  - The Solver's completion status (has $P^*$ arrived yet?)
+
+  What states (lifecycle)? Think of it as a simple state machine per request:
+
+  IDLE → SPECULATING → RECONCILING → EXECUTING → DONE
+
+  - IDLE: Waiting for a request
+  - SPECULATING: Speculative Dispatcher is running, Solver is running in parallel. Orchestrator holds references to both.
+  - RECONCILING: Solver returned $P^*$. Orchestrator is comparing plans and deciding the verdict.
+  - EXECUTING: Verdict issued. Committed work proceeds, flushed work is cleaned up, redirected agents are re-initialized.
+  - DONE: Execution complete. Outcome sent to Learner.
+
+  Right now your ReconciliationEngine only covers the RECONCILING → EXECUTING transition (the reconcile() method). The Orchestrator as described in §3.1 is bigger — it manages the full lifecycle.
+
+  My suggestion: Don't try to describe the full state machine in §3.1. That's implementation detail for §5. In §3.1, focus on the Orchestrator's role and contracts: it receives both plans, performs reconciliation, manages the transition from speculative to committed execution,
+  and feeds outcomes to the Learner. The how belongs in §5.
+
+  ---
+  So for your §3.1 Orchestrator expansion, you have enough to draft it now. The key points to cover:
+
+  1. Trigger: Reconciliation begins when the Solver completes
+  2. Comparison: Per-assignment matching on (agent_type, fleet_member_id)
+  3. In-flight handling: Speculative work continues until reconciliation completes, then is committed or flushed (no pause)
+  4. Output: Reconciliation verdict + final execution plan → agents + outcome to Learner
+  narrative guide: what it is → what it produces → design rationale → key implementation choice + justification.
 -->
 
 **Learner.**
-A reinforcement learning component that observes the full dispatch lifecycle — intent, solver plan, speculation result, reconciliation decision, and execution outcome — and continuously updates the Speculative Dispatcher's prediction model.
+A reinforcement learning component that observes the full dispatch lifecycle of each request — intent, solver plan, speculation result, reconciliation decision, and execution outcome — and continuously updates the Speculative Dispatcher's prediction model.
 The Learner is described in detail in Section 4.
+<!-- Question:
+1. what the Learner produces? that is its output?
+   The Learner's output is the updated prediction model (policy $\pi_\theta$) and the confidence scores that gate Mode 2/3 activation, correct?
+-->
 
 <!-- ```
 [FIGURE 1: Five-layer architecture diagram. Request flows down through
