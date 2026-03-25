@@ -40,6 +40,18 @@ Upon generating its prediction, the Speculative Dispatcher immediately begins pr
 **Orchestrator (Reconciliation Engine).**
 Receives both the Solver's optimal plan and the Speculative Dispatcher's pre-executed work.
 Performs reconciliation: comparing the two plans element-by-element and issuing one of three verdicts — COMMIT, PARTIAL COMMIT, or FLUSH — before executing the final dispatch.
+<!-- Questions to answer before we rephrase/clarify
+1. When does reconciliation trigger? When the Solver finishes? What if the Solver finishes before the Speculative Dispatcher has done anything useful? 
+2. How is element-by-element comparison done? What are the "elements"? Agent identity? Agent+prompt? Agent+prompt+context? The granularity of comparison determines what PARTIAL COMMIT means in practice.
+3. What happens to in-flight speculative work during reconciliation? Is execution paused? Does it continue optimistically until the verdict?
+4. Timing relationship. The Orchestrator sits between two parallel paths with different completion times. The control flow here is non-trivial — describe it.
+
+For the Orchestrator:
+  1. What event triggers reconciliation — Solver completion?
+  2. What's the comparison granularity — per-agent? per-subtask?
+  3. What happens to in-flight speculative work while reconciliation runs?
+  4. Does the Orchestrator have any state, or is it purely reactive?
+-->
 
 **Learner.**
 A reinforcement learning component that observes the full dispatch lifecycle — intent, solver plan, speculation result, reconciliation decision, and execution outcome — and continuously updates the Speculative Dispatcher's prediction model.
