@@ -6,9 +6,15 @@ eval_execution.py — Plan Execution Experiments
 Measures execution quality: given the same plan, how much working code
 does each model produce within a time budget?
 
-Test 1: Opus executes a gpt-oss plan with a 3-minute hard cutoff.
-Test 2: Opus and gpt-oss both execute the same plan in parallel;
-        gpt-oss is cancelled when Opus finishes naturally.
+Test 1: gpt-oss generates a plan, starts executing it, and is stopped
+        after a timeout (default 30s).  The solver context is saved so a
+        follow-up agent can merge the partial work with its own plan.
+Test 2: Speculative dispatch — gpt-oss and Opus generate plans in
+        parallel; gpt-oss starts executing immediately; when Opus finishes
+        planning, gpt-oss execution is stopped and context is saved.
+Test 3: Speculative dispatch + merge — same as Test 2, then Opus takes
+        over gpt-oss's workdir, evaluates its partial work, and decides
+        to reuse / merge / discard before completing the task.
 
 Instrumentation:
   - Full event timeline (tool calls, subagent lifecycle, task progress)
@@ -17,11 +23,14 @@ Instrumentation:
   - Pre/PostToolUse hooks to trace every tool invocation
 
 Usage:
-    # Test 1 — Opus with 3-min cutoff
-    python eval_execution.py test1 --case case_002_file_watcher [--timeout 180]
+    # Test 1 — gpt-oss plan + execute + stop after 30s
+    python eval_execution.py test1 --case case_002_file_watcher [--timeout 30]
 
-    # Test 2 — Opus vs gpt-oss parallel
-    python eval_execution.py test2 --case case_002_file_watcher
+    # Test 2 — Speculative dispatch (plan + execute)
+    python eval_execution.py test2 --case case_003_data_pipeline
+
+    # Test 3 — Speculative dispatch + merge
+    python eval_execution.py test3 --case case_003_data_pipeline
 
     # Snapshot a run directory (files, LOC, pytest)
     python eval_execution.py snapshot --dir runs/test1_opus_3min
@@ -30,6 +39,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import ast
 import asyncio
 import json
 import logging
@@ -41,7 +51,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 log = logging.getLogger("eval_execution")
 
@@ -50,8 +60,9 @@ log = logging.getLogger("eval_execution")
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-RESULTS_DIR = SCRIPT_DIR / "results"
-CASES_DIR = SCRIPT_DIR / "cases"
+RESULTS_DIR = SCRIPT_DIR / "results_2"
+# CASES_DIR = SCRIPT_DIR / "cases"
+CASES_DIR = Path("/home/jye/publications/cases/")
 
 # Runs directory is OUTSIDE the Pythia project tree to avoid CLAUDE.md
 # contamination.  Claude Code walks up the directory tree looking for
@@ -64,7 +75,7 @@ RUNS_DIR = Path("/home/jye/publications/pythia_eval_runs")
 DEFAULT_PLAN = "claude_code__ollama__gpt-oss_20b.md"
 
 # Ollama endpoint
-OLLAMA_BASE_URL = "http://localhost:11434/v1"
+OLLAMA_BASE_URL = "http://localhost:11434"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -118,12 +129,18 @@ class EventTimeline:
     ) -> None:
         self._tool_use_count += 1
         summary = _summarise_tool_input(tool_name, tool_input)
+        extra: dict[str, Any] = {}
+        # For Agent calls, capture the full prompt so context docs can
+        # tell a follow-up agent exactly what each subagent was tasked with.
+        if tool_name == "Agent":
+            extra["agent_prompt"] = tool_input.get("prompt", "")
         self.record(
             "tool_start",
             tool=tool_name,
             tool_use_id=tool_use_id,
             agent_id=agent_id,
             input_summary=summary,
+            **extra,
         )
 
     def record_tool_end(
@@ -160,15 +177,20 @@ class EventTimeline:
         agent_id: str,
         agent_type: str,
         transcript_path: str = "",
+        transcript_stats: dict[str, Any] | None = None,
     ) -> None:
         start_info = self._active_subagents.pop(agent_id, {})
         duration = self.elapsed_s - start_info.get("start_t", 0.0)
+        extra: dict[str, Any] = {}
+        if transcript_stats:
+            extra.update(transcript_stats)
         self.record(
             "subagent_stop",
             agent_id=agent_id,
             agent_type=agent_type,
             duration_s=round(duration, 3),
             transcript_path=transcript_path,
+            **extra,
         )
 
     def record_task_progress(
@@ -300,6 +322,801 @@ class EventTimeline:
     def to_list(self) -> list[dict[str, Any]]:
         return list(self._events)
 
+    # -- Context generation for portable handoff --
+
+    SessionRole = Literal["solver", "speculative_dispatcher"]
+
+    def build_context(
+        self,
+        role: SessionRole,
+        model_name: str,
+        working_dir: Path,
+        timeout_s: float | None,
+        session_id: str | None,
+    ) -> str:
+        """Build a portable markdown context document from the timeline.
+
+        Args:
+            role: "solver" — single agent executing a plan.
+                  "speculative_dispatcher" — orchestrator that spawns workers.
+            model_name: Model that ran this session.
+            working_dir: Where files were written.
+            timeout_s: Timeout budget (None if completed naturally).
+            session_id: Claude Code session ID (for reference only).
+
+        Returns:
+            Markdown string suitable for writing to *_context.md.
+        """
+        if role == "solver":
+            return self._build_solver_context(
+                model_name, working_dir, timeout_s, session_id
+            )
+        else:
+            return self._build_dispatcher_context(
+                model_name, working_dir, timeout_s, session_id
+            )
+
+    # ── solver context ───────────────────────────────────────────────
+
+    def _build_solver_context(
+        self,
+        model_name: str,
+        working_dir: Path,
+        timeout_s: float | None,
+        session_id: str | None,
+    ) -> str:
+        """Context for a solver: per-subagent detail with prompts, files, status."""
+        lines: list[str] = []
+        elapsed = round(self.elapsed_s, 1)
+        timed_out = any(e["type"] == "session_timeout" for e in self._events)
+
+        lines.append("# Solver Execution Context")
+        lines.append("")
+        status = "INTERRUPTED (timeout)" if timed_out else "completed"
+        lines.append(f"- **Status**: {status}")
+        lines.append(f"- **Model**: {model_name}")
+        lines.append(f"- **Wall time**: {elapsed}s"
+                      + (f" / {timeout_s}s budget" if timeout_s else ""))
+        lines.append(f"- **Tokens**: {self.total_tokens:,}")
+        lines.append(f"- **Tool uses**: {self._tool_use_count}")
+        if session_id:
+            lines.append(f"- **Session ID**: {session_id}")
+        lines.append("")
+
+        # ── Build per-subagent records ──
+        # Collect: agent_id → {description, prompt, status, files_written,
+        #                      files_read, tokens, duration, errors}
+        agent_descs: dict[str, str] = {}   # task_id → description
+        agent_prompts: dict[str, str] = {} # tool_use_id → prompt
+        # Map tool_use_id (of Agent tool call) → agent_id
+        agent_tool_to_id: dict[str, str] = {}
+
+        for ev in self._events:
+            if ev["type"] == "task_started":
+                agent_descs[ev["task_id"]] = ev.get("description", "")
+            elif (ev["type"] == "tool_start" and ev["tool"] == "Agent"
+                  and ev.get("agent_prompt")):
+                agent_prompts[ev.get("tool_use_id", "")] = ev["agent_prompt"]
+
+        # Match Agent tool_use_id → agent_id via subagent_start events
+        # (subagent_start fires right after the Agent tool_start)
+        agent_tool_events = [
+            ev for ev in self._events
+            if ev["type"] == "tool_start" and ev["tool"] == "Agent"
+        ]
+        subagent_starts = [
+            ev for ev in self._events if ev["type"] == "subagent_start"
+        ]
+        # Pair them by order (Agent tool_start N → subagent_start N)
+        for atev, ssev in zip(agent_tool_events, subagent_starts):
+            tuid = atev.get("tool_use_id", "")
+            aid = ssev["agent_id"]
+            agent_tool_to_id[tuid] = aid
+
+        # Resolve prompt per agent_id
+        agent_id_prompts: dict[str, str] = {}
+        for tuid, aid in agent_tool_to_id.items():
+            if tuid in agent_prompts:
+                agent_id_prompts[aid] = agent_prompts[tuid]
+
+        # Collect files written/read per agent_id (None = main orchestrator)
+        files_by_agent: dict[str | None, list[str]] = {}   # agent_id → [rel_paths]
+        reads_by_agent: dict[str | None, list[str]] = {}
+
+        for ev in self._events:
+            if ev["type"] != "tool_start":
+                continue
+            summary = ev.get("input_summary", "")
+            aid = ev.get("agent_id")
+
+            if ev["tool"] == "Write":
+                parts = summary.split(" ", 1)
+                if len(parts) > 1:
+                    fp = parts[1].split(" (")[0]
+                    try:
+                        rel = str(Path(fp).relative_to(working_dir))
+                    except ValueError:
+                        rel = fp
+                    files_by_agent.setdefault(aid, [])
+                    if rel not in files_by_agent[aid]:
+                        files_by_agent[aid].append(rel)
+
+            elif ev["tool"] == "Read":
+                fp = summary.replace("read ", "", 1).strip()
+                try:
+                    rel = str(Path(fp).relative_to(working_dir))
+                except ValueError:
+                    rel = fp
+                reads_by_agent.setdefault(aid, [])
+                if rel not in reads_by_agent[aid]:
+                    reads_by_agent[aid].append(rel)
+
+        # Collect completed / in-progress subagents
+        completed_ids: set[str] = set()
+        completed_tokens: dict[str, int] = {}
+        for ev in self._events:
+            if ev["type"] == "task_notification" and ev.get("status") == "completed":
+                tid = ev["task_id"]
+                completed_ids.add(tid)
+                completed_tokens[tid] = ev.get("total_tokens", 0)
+
+        stopped_agents: dict[str, dict[str, Any]] = {}
+        for ev in self._events:
+            if ev["type"] == "subagent_stop":
+                stopped_agents[ev["agent_id"]] = ev
+
+        # All known agent_ids (from subagent_start events)
+        all_agent_ids: list[str] = [
+            ev["agent_id"] for ev in self._events
+            if ev["type"] == "subagent_start"
+        ]
+
+        # ── Render per-subagent sections ──
+        lines.append("## Subagents")
+        lines.append("")
+
+        for aid in all_agent_ids:
+            desc = agent_descs.get(aid, "unknown task")
+            is_done = aid in completed_ids
+            is_killed = aid in self._active_subagents
+            short_id = aid[:8]
+
+            if is_done:
+                checkbox = "[x]"
+                status_label = "COMPLETED"
+            elif is_killed:
+                checkbox = "[ ]"
+                status_label = "KILLED (timeout)"
+            else:
+                checkbox = "[?]"
+                status_label = "unknown"
+
+            lines.append(f"### {checkbox} {desc} (`{short_id}`)")
+            lines.append("")
+            lines.append(f"- **Status**: {status_label}")
+
+            if aid in stopped_agents:
+                sa = stopped_agents[aid]
+                lines.append(f"- **Duration**: {sa.get('duration_s', 0):.1f}s")
+                lines.append(f"- **Model**: {sa.get('model', '?')}")
+                tok_in = sa.get("input_tokens", 0)
+                tok_out = sa.get("output_tokens", 0)
+                lines.append(f"- **Tokens**: {tok_in}in / {tok_out}out")
+            elif is_killed:
+                started_at = self._active_subagents[aid].get("start_t", 0)
+                lines.append(
+                    f"- **Ran for**: {elapsed - started_at:.1f}s before kill"
+                )
+
+            # Prompt (the instructions the orchestrator gave this subagent)
+            prompt = agent_id_prompts.get(aid, "")
+            if prompt:
+                lines.append(f"- **Prompt**:")
+                # Indent the prompt as a blockquote for readability
+                for pline in prompt.strip().splitlines():
+                    lines.append(f"  > {pline}")
+
+            # Files this subagent wrote
+            written = files_by_agent.get(aid, [])
+            if written:
+                lines.append(f"- **Files written**: {', '.join(f'`{f}`' for f in written)}")
+
+            # Files this subagent read
+            read = reads_by_agent.get(aid, [])
+            if read:
+                lines.append(f"- **Files read**: {', '.join(f'`{f}`' for f in read)}")
+
+            lines.append("")
+
+        # ── Orchestrator (main agent) direct actions ──
+        main_written = files_by_agent.get(None, [])
+        main_read = reads_by_agent.get(None, [])
+        if main_written or main_read:
+            lines.append("## Orchestrator Direct Actions")
+            lines.append("")
+            if main_written:
+                lines.append(
+                    f"- **Files written**: "
+                    f"{', '.join(f'`{f}`' for f in main_written)}"
+                )
+            if main_read:
+                lines.append(
+                    f"- **Files read**: "
+                    f"{', '.join(f'`{f}`' for f in main_read)}"
+                )
+            lines.append("")
+
+        # ── Aggregate file inventory ──
+        all_written: list[str] = []
+        for flist in files_by_agent.values():
+            for f in flist:
+                if f not in all_written:
+                    all_written.append(f)
+
+        lines.append("## Files Present After Execution")
+        if all_written:
+            for f in all_written:
+                exists = (working_dir / f).exists()
+                marker = "exists" if exists else "MISSING"
+                lines.append(f"- `{f}` ({marker})")
+        else:
+            lines.append("- (none)")
+        lines.append("")
+
+        # ── Errors encountered ──
+        errors: list[dict[str, Any]] = [
+            ev for ev in self._events
+            if ev["type"] == "tool_end" and ev.get("error")
+        ]
+        if errors:
+            lines.append("## Errors Encountered")
+            for err in errors:
+                agent = err.get("agent_id")
+                prefix = f"[{agent[:8]}] " if agent else "[main] "
+                lines.append(f"- {prefix}`{err['tool']}`: {err['error']}")
+            lines.append("")
+
+        return "\n".join(lines)
+
+    # ── speculative dispatcher context ───────────────────────────────
+
+    def _build_dispatcher_context(
+        self,
+        model_name: str,
+        working_dir: Path,
+        timeout_s: float | None,
+        session_id: str | None,
+    ) -> str:
+        """Context for a speculative dispatcher: dispatch decisions, worker
+        outcomes, resource usage, and speculation results."""
+        lines: list[str] = []
+        elapsed = round(self.elapsed_s, 1)
+        timed_out = any(e["type"] == "session_timeout" for e in self._events)
+
+        lines.append("# Speculative Dispatcher Context")
+        lines.append("")
+        status = "INTERRUPTED (timeout)" if timed_out else "completed"
+        lines.append(f"- **Status**: {status}")
+        lines.append(f"- **Model**: {model_name}")
+        lines.append(f"- **Wall time**: {elapsed}s"
+                      + (f" / {timeout_s}s budget" if timeout_s else ""))
+        lines.append(f"- **Total tokens**: {self.total_tokens:,}")
+        lines.append(f"- **Workers spawned**: {self._subagent_count}")
+        if session_id:
+            lines.append(f"- **Session ID**: {session_id}")
+        lines.append("")
+
+        # ── Worker dispatch log ──
+        # Gather all subagent start/stop pairs with their stats
+        worker_starts: dict[str, dict[str, Any]] = {}
+        worker_stops: dict[str, dict[str, Any]] = {}
+        worker_descs: dict[str, str] = {}
+
+        for ev in self._events:
+            if ev["type"] == "subagent_start":
+                worker_starts[ev["agent_id"]] = ev
+            elif ev["type"] == "subagent_stop":
+                worker_stops[ev["agent_id"]] = ev
+            elif ev["type"] == "task_started":
+                worker_descs[ev["task_id"]] = ev.get("description", "")
+
+        lines.append("## Worker Dispatch Log")
+        lines.append("")
+        lines.append("| Worker | Task | Status | Duration | Tokens | Model |")
+        lines.append("|--------|------|--------|----------|--------|-------|")
+
+        for agent_id, start_ev in worker_starts.items():
+            desc = worker_descs.get(agent_id, "?")
+            short_id = agent_id[:8]
+            if agent_id in worker_stops:
+                stop_ev = worker_stops[agent_id]
+                dur = f"{stop_ev.get('duration_s', 0):.1f}s"
+                tok_in = stop_ev.get("input_tokens", 0)
+                tok_out = stop_ev.get("output_tokens", 0)
+                model = stop_ev.get("model", "?")
+                status_str = "done"
+            elif agent_id in self._active_subagents:
+                started_at = self._active_subagents[agent_id].get("start_t", 0)
+                dur = f"{elapsed - started_at:.1f}s (killed)"
+                tok_in = 0
+                tok_out = 0
+                model = "?"
+                status_str = "**KILLED**"
+            else:
+                dur = "?"
+                tok_in = 0
+                tok_out = 0
+                model = "?"
+                status_str = "unknown"
+            lines.append(
+                f"| {short_id} | {desc} | {status_str} | {dur} "
+                f"| {tok_in}in/{tok_out}out | {model} |"
+            )
+        lines.append("")
+
+        # ── Parallelism timeline ──
+        # Show which workers overlapped (useful for speculation analysis)
+        lines.append("## Parallelism Timeline")
+        lines.append("```")
+        if worker_starts:
+            # Find the time range
+            t_min = min(
+                ev.get("t", 0) for ev in worker_starts.values()
+            )
+            t_max = elapsed
+            for agent_id, start_ev in worker_starts.items():
+                desc = worker_descs.get(agent_id, agent_id[:8])[:30]
+                t_start = start_ev.get("t", 0)
+                if agent_id in worker_stops:
+                    t_end = worker_stops[agent_id].get("t", t_max)
+                else:
+                    t_end = t_max  # killed at timeout
+                lines.append(
+                    f"  {desc:<30s}  "
+                    f"[{t_start:6.1f}s — {t_end:6.1f}s]  "
+                    f"({t_end - t_start:.1f}s)"
+                )
+        lines.append("```")
+        lines.append("")
+
+        # ── Files produced with structural fingerprints ──
+        # Collect file paths, write times, and sizes from Write events.
+        # A file may be written multiple times (overwrite); keep last write.
+        file_meta: dict[str, dict[str, Any]] = {}  # rel_path -> {abs, t, chars}
+        for ev in self._events:
+            if ev["type"] == "tool_start" and ev["tool"] == "Write":
+                summary = ev.get("input_summary", "")
+                parts = summary.split(" ", 1)
+                if len(parts) > 1:
+                    fp = parts[1].split(" (")[0]
+                    # Extract char count from summary like "write /path (4223 chars)"
+                    chars = 0
+                    m = re.search(r"\((\d+)\s+chars?\)", summary)
+                    if m:
+                        chars = int(m.group(1))
+                    try:
+                        rel = str(Path(fp).relative_to(working_dir))
+                    except ValueError:
+                        rel = fp
+                    file_meta[rel] = {
+                        "abs": Path(fp),
+                        "t": ev.get("t"),
+                        "chars": chars,
+                    }
+
+        # Also detect files created via Bash (mkdir, cp, echo >, etc.)
+        # by scanning the working directory for files not in file_meta.
+        try:
+            for p in sorted(working_dir.rglob("*")):
+                if not p.is_file():
+                    continue
+                # Skip hidden files, __pycache__, and timeline/context artifacts
+                if any(
+                    part.startswith(".") or part == "__pycache__"
+                    for part in p.relative_to(working_dir).parts
+                ):
+                    continue
+                if p.name.startswith("_") or p.name.endswith("_context.md"):
+                    continue
+                if p.name.endswith("_PLAN.md"):
+                    continue
+                try:
+                    rel = str(p.relative_to(working_dir))
+                except ValueError:
+                    continue
+                if rel not in file_meta:
+                    file_meta[rel] = {
+                        "abs": p,
+                        "t": None,  # unknown — not from a Write event
+                        "chars": 0,
+                    }
+        except OSError:
+            pass
+
+        lines.append("## File Inventory")
+        lines.append("")
+
+        if not file_meta:
+            lines.append("No files produced.")
+            lines.append("")
+        else:
+            # Summary table first for quick scanning
+            lines.append("| File | Size | Lines | Written at | Status |")
+            lines.append("|------|------|-------|------------|--------|")
+            for rel in sorted(file_meta.keys()):
+                meta = file_meta[rel]
+                absp = meta["abs"]
+                exists = absp.exists()
+                if exists:
+                    sz = absp.stat().st_size
+                    try:
+                        lc = absp.read_text(
+                            encoding="utf-8", errors="replace"
+                        ).count("\n") + 1
+                    except Exception:
+                        lc = "?"
+                else:
+                    sz = meta["chars"]
+                    lc = "?"
+                t_str = f"T={meta['t']:.1f}s" if meta["t"] is not None else "—"
+                status = "on disk" if exists else "MISSING"
+                lines.append(
+                    f"| `{rel}` | {sz:,}B | {lc} | {t_str} | {status} |"
+                )
+            lines.append("")
+
+            # Detailed fingerprint per file
+            lines.append("## File Details")
+            lines.append("")
+            for rel in sorted(file_meta.keys()):
+                meta = file_meta[rel]
+                absp = meta["abs"]
+                if absp.exists():
+                    fp = _extract_file_fingerprint(absp)
+                    fp_lines = _format_fingerprint_md(
+                        rel, fp, write_time=meta["t"]
+                    )
+                    lines.extend(fp_lines)
+                else:
+                    lines.append(f"### `{rel}` (MISSING)")
+                    t_str = (f"Written at T={meta['t']:.1f}s"
+                             if meta["t"] is not None else "")
+                    if t_str:
+                        lines.append(f"- {t_str}, but file no longer on disk")
+                    lines.append("")
+
+        # ── Commands executed (Bash tool calls) ──
+        bash_events: list[dict[str, Any]] = []
+        for ev in self._events:
+            if ev["type"] == "tool_start" and ev["tool"] == "Bash":
+                cmd = ev.get("input_summary", "")
+                # Find matching tool_end for error/success
+                end_ev = next(
+                    (e for e in self._events
+                     if e["type"] == "tool_end"
+                     and e.get("tool_use_id") == ev.get("tool_use_id")),
+                    None,
+                )
+                bash_events.append({
+                    "t": ev.get("t"),
+                    "cmd": cmd,
+                    "error": end_ev.get("error") if end_ev else None,
+                })
+
+        if bash_events:
+            lines.append("## Commands Executed")
+            lines.append("")
+            lines.append("| Time | Command | Result |")
+            lines.append("|------|---------|--------|")
+            for be in bash_events:
+                t_str = f"T={be['t']:.1f}s" if be["t"] is not None else "—"
+                result = "ERROR" if be["error"] else "OK"
+                cmd = be["cmd"][:100]
+                lines.append(f"| {t_str} | `{cmd}` | {result} |")
+            lines.append("")
+
+        # ── Execution summary ──
+        lines.append("## Execution Summary")
+        total_files = len(file_meta)
+        existing = sum(1 for m in file_meta.values() if m["abs"].exists())
+        missing = total_files - existing
+        lines.append(f"- **Files produced**: {total_files}")
+        lines.append(f"- **On disk**: {existing}")
+        if missing:
+            lines.append(f"- **Missing/deleted**: {missing}")
+        tests_ran = any("pytest" in be.get("cmd", "") for be in bash_events)
+        lines.append(f"- **Tests executed**: {'yes' if tests_ran else 'no'}")
+        lines.append("")
+
+        # ── Errors ──
+        errors = [
+            ev for ev in self._events
+            if ev["type"] == "tool_end" and ev.get("error")
+        ]
+        if errors:
+            lines.append("## Errors")
+            for err in errors:
+                agent = err.get("agent_id", "main")
+                if agent:
+                    agent = agent[:8]
+                lines.append(f"- [{agent}] `{err['tool']}`: {err['error']}")
+            lines.append("")
+
+        return "\n".join(lines)
+
+
+def _extract_file_fingerprint(filepath: Path) -> dict[str, Any]:
+    """Extract structural fingerprint from a file on disk.
+
+    For Python files: uses ast to get imports, functions, classes, and
+    top-level variable assignments.
+    For YAML files: uses yaml.safe_load to get top-level keys and structure.
+    For CSV files: reads header row for column names and counts rows.
+    For other files: returns basic size info only.
+
+    Returns a dict with 'type' and type-specific fields.  Never raises;
+    returns a minimal dict on any parse error.
+    """
+    info: dict[str, Any] = {
+        "exists": filepath.exists(),
+        "size_bytes": 0,
+    }
+    if not filepath.exists():
+        return info
+    try:
+        info["size_bytes"] = filepath.stat().st_size
+    except OSError:
+        pass
+
+    suffix = filepath.suffix.lower()
+
+    # ── Python files ──
+    if suffix == ".py":
+        info["lang"] = "python"
+        try:
+            source = filepath.read_text(encoding="utf-8", errors="replace")
+            info["lines"] = source.count("\n") + 1
+            tree = ast.parse(source, filename=str(filepath))
+        except SyntaxError as exc:
+            info["parse_error"] = str(exc)
+            return info
+        except Exception:
+            return info
+
+        imports: list[str] = []
+        functions: list[str] = []
+        classes: list[str] = []
+        top_vars: list[str] = []
+
+        for node in ast.iter_child_nodes(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    imports.append(alias.name)
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                for alias in node.names:
+                    imports.append(f"{module}.{alias.name}")
+            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                sig_parts = [node.name + "("]
+                args = node.args
+                params: list[str] = []
+                for a in args.args:
+                    params.append(a.arg)
+                sig_parts.append(", ".join(params))
+                sig_parts.append(")")
+                functions.append("".join(sig_parts))
+            elif isinstance(node, ast.ClassDef):
+                bases = [
+                    (getattr(b, "id", None) or getattr(b, "attr", "?"))
+                    for b in node.bases
+                ]
+                base_str = f"({', '.join(bases)})" if bases else ""
+                methods = [
+                    n.name for n in ast.iter_child_nodes(node)
+                    if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)
+                ]
+                classes.append({
+                    "name": f"{node.name}{base_str}",
+                    "methods": methods,
+                })
+            elif isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        top_vars.append(target.id)
+
+        if imports:
+            info["imports"] = imports
+        if functions:
+            info["functions"] = functions
+        if classes:
+            info["classes"] = classes
+        if top_vars:
+            info["top_level_vars"] = top_vars
+
+        # Detect CLI entry point
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.If)
+                    and isinstance(node.test, ast.Compare)
+                    and isinstance(node.test.left, ast.Name)
+                    and node.test.left.id == "__name__"):
+                info["has_main_guard"] = True
+                break
+
+        # Detect fixtures and test functions (for test files)
+        if filepath.name.startswith("test_") or filepath.name.endswith("_test.py"):
+            fixtures: list[str] = []
+            test_funcs: list[str] = []
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    if node.name.startswith("test_"):
+                        test_funcs.append(node.name)
+                    for dec in node.decorator_list:
+                        dec_name = ""
+                        if isinstance(dec, ast.Attribute):
+                            dec_name = dec.attr
+                        elif isinstance(dec, ast.Name):
+                            dec_name = dec.id
+                        elif isinstance(dec, ast.Call):
+                            func = dec.func
+                            if isinstance(func, ast.Attribute):
+                                dec_name = func.attr
+                            elif isinstance(func, ast.Name):
+                                dec_name = func.id
+                        if dec_name == "fixture":
+                            fixtures.append(node.name)
+            if test_funcs:
+                info["test_functions"] = test_funcs
+            if fixtures:
+                info["fixtures"] = fixtures
+
+        return info
+
+    # ── YAML files ──
+    if suffix in (".yaml", ".yml"):
+        info["lang"] = "yaml"
+        try:
+            import yaml
+            source = filepath.read_text(encoding="utf-8", errors="replace")
+            info["lines"] = source.count("\n") + 1
+            data = yaml.safe_load(source)
+            if isinstance(data, dict):
+                info["top_level_keys"] = list(data.keys())
+                # For pipeline configs, show transform step types
+                if "transforms" in data and isinstance(data["transforms"], list):
+                    step_types = []
+                    for step in data["transforms"]:
+                        if isinstance(step, dict) and "type" in step:
+                            step_types.append(step["type"])
+                    if step_types:
+                        info["transform_steps"] = step_types
+            elif isinstance(data, list):
+                info["top_level_type"] = "list"
+                info["num_items"] = len(data)
+        except Exception:
+            pass
+        return info
+
+    # ── CSV files ──
+    if suffix == ".csv":
+        info["lang"] = "csv"
+        try:
+            import csv as csv_mod
+            with open(filepath, newline="", encoding="utf-8", errors="replace") as f:
+                reader = csv_mod.reader(f)
+                header = next(reader, None)
+                if header:
+                    info["columns"] = header
+                row_count = sum(1 for _ in reader)
+                info["num_rows"] = row_count
+        except Exception:
+            pass
+        return info
+
+    # ── JSON files ──
+    if suffix == ".json":
+        info["lang"] = "json"
+        try:
+            source = filepath.read_text(encoding="utf-8", errors="replace")
+            info["lines"] = source.count("\n") + 1
+            data = json.loads(source)
+            if isinstance(data, dict):
+                info["top_level_keys"] = list(data.keys())
+            elif isinstance(data, list):
+                info["top_level_type"] = "list"
+                info["num_items"] = len(data)
+        except Exception:
+            pass
+        return info
+
+    # ── Markdown / text files ──
+    if suffix in (".md", ".txt", ".rst"):
+        info["lang"] = "text"
+        try:
+            source = filepath.read_text(encoding="utf-8", errors="replace")
+            info["lines"] = source.count("\n") + 1
+            # Extract headings for markdown
+            if suffix == ".md":
+                headings = [
+                    line.strip()
+                    for line in source.splitlines()
+                    if line.strip().startswith("#")
+                ]
+                if headings:
+                    info["headings"] = headings[:20]
+        except Exception:
+            pass
+        return info
+
+    # ── Fallback ──
+    info["lang"] = suffix.lstrip(".") or "unknown"
+    try:
+        source = filepath.read_text(encoding="utf-8", errors="replace")
+        info["lines"] = source.count("\n") + 1
+    except Exception:
+        pass
+    return info
+
+
+def _format_fingerprint_md(relpath: str, fp: dict[str, Any],
+                           write_time: float | None = None) -> list[str]:
+    """Format a file fingerprint as markdown lines for the context doc."""
+    lines: list[str] = []
+    size = fp.get("size_bytes", 0)
+    line_count = fp.get("lines", "?")
+    time_str = f", written at T={write_time:.1f}s" if write_time is not None else ""
+
+    lines.append(f"### `{relpath}` ({size:,} bytes, {line_count} lines{time_str})")
+
+    if fp.get("parse_error"):
+        lines.append(f"- **Parse error**: {fp['parse_error']}")
+        return lines
+
+    lang = fp.get("lang", "")
+
+    if lang == "python":
+        if fp.get("imports"):
+            lines.append(f"- **Imports**: {', '.join(fp['imports'])}")
+        if fp.get("functions"):
+            lines.append(f"- **Functions**: {', '.join(fp['functions'])}")
+        if fp.get("classes"):
+            for cls in fp["classes"]:
+                methods_str = ", ".join(cls["methods"]) if cls["methods"] else "(none)"
+                lines.append(f"- **Class** `{cls['name']}`: {methods_str}")
+        if fp.get("top_level_vars"):
+            lines.append(f"- **Top-level vars**: {', '.join(fp['top_level_vars'])}")
+        if fp.get("has_main_guard"):
+            lines.append("- **CLI entry**: `if __name__ == '__main__'`")
+        if fp.get("test_functions"):
+            lines.append(f"- **Test functions** ({len(fp['test_functions'])}): "
+                         f"{', '.join(fp['test_functions'])}")
+        if fp.get("fixtures"):
+            lines.append(f"- **Fixtures**: {', '.join(fp['fixtures'])}")
+
+    elif lang == "yaml":
+        if fp.get("top_level_keys"):
+            lines.append(f"- **Top-level keys**: {', '.join(fp['top_level_keys'])}")
+        if fp.get("transform_steps"):
+            lines.append(f"- **Transform steps**: {', '.join(fp['transform_steps'])}")
+
+    elif lang == "csv":
+        if fp.get("columns"):
+            lines.append(f"- **Columns**: {', '.join(fp['columns'])}")
+        if "num_rows" in fp:
+            lines.append(f"- **Rows**: {fp['num_rows']}")
+
+    elif lang == "json":
+        if fp.get("top_level_keys"):
+            lines.append(f"- **Top-level keys**: {', '.join(fp['top_level_keys'])}")
+        elif fp.get("top_level_type") == "list":
+            lines.append(f"- **Type**: list ({fp.get('num_items', '?')} items)")
+
+    elif lang == "text":
+        if fp.get("headings"):
+            lines.append("- **Headings**: " + " / ".join(fp["headings"][:10]))
+
+    lines.append("")
+    return lines
+
 
 def _event_sort_key(ev: dict[str, Any]) -> int:
     """Secondary sort: turn_summary before tool_start before tool_end."""
@@ -340,6 +1157,88 @@ def _summarise_tool_input(tool_name: str, tool_input: dict[str, Any]) -> str:
     # Fallback: first 120 chars of JSON
     raw = json.dumps(tool_input, default=str)
     return raw[:120]
+
+
+def _parse_subagent_transcript(path: str) -> dict[str, Any]:
+    """Extract token usage, model, and first-token latency from a subagent transcript JSONL.
+
+    The transcript is a sequence of JSON lines. We look for:
+    - 'user' lines  → timestamps (the first is the prompt sent to the subagent)
+    - 'assistant' lines → message.model, message.usage (per-turn token counts),
+                          and timestamp (first assistant timestamp gives TTFT)
+
+    Returns a dict with:
+        model:               str   – model used by the subagent
+        input_tokens:        int   – total input tokens across all turns
+        output_tokens:       int   – total output tokens across all turns
+        cache_creation_tokens: int
+        cache_read_tokens:   int
+        num_turns:           int   – number of assistant turns
+        first_token_latency_s: float – time from first user message to first assistant response
+    """
+    stats: dict[str, Any] = {}
+    if not path:
+        return stats
+
+    transcript = Path(path)
+    if not transcript.exists():
+        return stats
+
+    model: str | None = None
+    total_input = 0
+    total_output = 0
+    total_cache_create = 0
+    total_cache_read = 0
+    num_turns = 0
+    first_user_ts: str | None = None
+    first_assistant_ts: str | None = None
+
+    try:
+        for line in transcript.read_text().splitlines():
+            if not line.strip():
+                continue
+            obj = json.loads(line)
+            msg_type = obj.get("type")
+
+            if msg_type == "user" and first_user_ts is None:
+                first_user_ts = obj.get("timestamp")
+
+            elif msg_type == "assistant":
+                msg = obj.get("message", {})
+                if model is None:
+                    model = msg.get("model")
+                if first_assistant_ts is None:
+                    first_assistant_ts = obj.get("timestamp")
+
+                usage = msg.get("usage", {})
+                total_input += usage.get("input_tokens", 0)
+                total_output += usage.get("output_tokens", 0)
+                total_cache_create += usage.get("cache_creation_input_tokens", 0)
+                total_cache_read += usage.get("cache_read_input_tokens", 0)
+                num_turns += 1
+    except Exception as exc:
+        log.warning(f"Failed to parse subagent transcript {path}: {exc}")
+        return stats
+
+    stats["model"] = model
+    stats["input_tokens"] = total_input
+    stats["output_tokens"] = total_output
+    stats["cache_creation_tokens"] = total_cache_create
+    stats["cache_read_tokens"] = total_cache_read
+    stats["num_turns"] = num_turns
+
+    # First-token latency: time between first user message and first assistant response
+    if first_user_ts and first_assistant_ts:
+        try:
+            t_user = datetime.fromisoformat(first_user_ts.replace("Z", "+00:00"))
+            t_asst = datetime.fromisoformat(first_assistant_ts.replace("Z", "+00:00"))
+            stats["first_token_latency_s"] = round(
+                (t_asst - t_user).total_seconds(), 3
+            )
+        except (ValueError, TypeError):
+            pass
+
+    return stats
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -409,8 +1308,16 @@ def build_hooks(timeline: EventTimeline) -> dict[str, list[Any]]:
         agent_id = hook_input.get("agent_id", "?")
         agent_type = hook_input.get("agent_type", "?")
         transcript = hook_input.get("agent_transcript_path", "")
-        timeline.record_subagent_stop(agent_id, agent_type, transcript)
-        log.info(f"    [hook] SubagentStop: {agent_type} ({agent_id[:8]})")
+        stats = _parse_subagent_transcript(transcript)
+        timeline.record_subagent_stop(
+            agent_id, agent_type, transcript, transcript_stats=stats
+        )
+        log.info(
+            f"    [hook] SubagentStop: {agent_type} ({agent_id[:8]}) "
+            f"model={stats.get('model', '?')} "
+            f"tokens={stats.get('input_tokens', 0)}in/{stats.get('output_tokens', 0)}out "
+            f"ttft={stats.get('first_token_latency_s', '?')}s"
+        )
         return {}
 
     return {
@@ -530,42 +1437,6 @@ def _strip_frontmatter(text: str) -> str:
     return text
 
 
-def prepare_workdir(
-    run_label: str,
-    case_name: str,
-    plan_path: Path,
-) -> Path:
-    """Create a fresh, isolated working directory and copy the plan into it.
-
-    The directory is placed OUTSIDE the Pythia project tree (in /tmp/) to
-    avoid CLAUDE.md contamination — otherwise Claude Code picks up project
-    rules (mentor role, TDD, WTF-P) that distort the experiment.
-    """
-    workdir = RUNS_DIR / run_label
-    if workdir.exists():
-        shutil.rmtree(workdir)
-    workdir.mkdir(parents=True, exist_ok=True)
-
-    # Copy case WorkingDir contents if any exist
-    case_workdir = CASES_DIR / case_name / "WorkingDir"
-    if case_workdir.exists():
-        for item in case_workdir.iterdir():
-            if item.name.startswith("."):
-                continue
-            dest = workdir / item.name
-            if item.is_dir():
-                shutil.copytree(item, dest)
-            else:
-                shutil.copy2(item, dest)
-
-    # Copy the plan, stripping eval1 metadata frontmatter
-    plan_text = plan_path.read_text()
-    clean_plan = _strip_frontmatter(plan_text)
-    (workdir / "PLAN.md").write_text(clean_plan)
-
-    log.info(f"Prepared working directory: {workdir}")
-    return workdir
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # §5  SNAPSHOT
@@ -642,6 +1513,195 @@ def snapshot_workdir(working_dir: Path) -> Snapshot:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# §5b  PLAN GENERATION SESSION — generate a plan via Claude Agent SDK
+# ═══════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class PlanGenResult:
+    """Result of a plan generation session."""
+
+    model_name: str
+    provider: str
+    plan_text: str | None = None
+    reasoning_text: str = ""
+    thinking_text: str = ""
+    plan_path: Path | None = None
+    session_id: str | None = None
+    duration_wall_s: float = 0.0
+    duration_ms: int = 0
+    total_cost_usd: float | None = None
+    num_turns: int = 0
+    usage: dict[str, Any] | None = None
+    error: str | None = None
+    timestamp: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "model_name": self.model_name,
+            "provider": self.provider,
+            "plan_text": self.plan_text,
+            "reasoning_text": self.reasoning_text,
+            "thinking_text": self.thinking_text,
+            "plan_path": str(self.plan_path) if self.plan_path else None,
+            "session_id": self.session_id,
+            "duration_wall_s": self.duration_wall_s,
+            "duration_ms": self.duration_ms,
+            "total_cost_usd": self.total_cost_usd,
+            "num_turns": self.num_turns,
+            "usage": self.usage,
+            "error": self.error,
+            "timestamp": self.timestamp,
+        }
+
+
+async def generate_plan_session(
+    model_name: str,
+    provider: str,
+    case_name: str,
+    working_dir: Path,
+    plan_filename: str = "PLAN.md",
+    api_base_url: str = "",
+) -> PlanGenResult:
+    """Generate a plan using Claude Agent SDK in planning mode.
+
+    Mirrors eval1.py ClaudeCodeFramework.generate_plan() but writes the
+    plan to working_dir/plan_filename and returns a PlanGenResult.
+    """
+    from claude_agent_sdk import (
+        ClaudeAgentOptions,
+        AssistantMessage,
+        ResultMessage,
+        TextBlock,
+        ThinkingBlock,
+        ToolUseBlock,
+        query,
+    )
+
+    result = PlanGenResult(
+        model_name=model_name,
+        provider=provider,
+        timestamp=datetime.now(timezone.utc).isoformat(),
+    )
+
+    # ── Load case prompt ──
+    case_prompt = (CASES_DIR / case_name / "PROMPT.md").read_text()
+
+    # ── Compose prompt (same as eval1.py) ──
+    prompt = (
+        "You are in planning mode. Read the objective below and produce "
+        "a detailed, step-by-step implementation plan. Do NOT execute "
+        "anything — only plan.\n\n"
+        "IMPORTANT: Do NOT ask clarifying questions. Do NOT use the "
+        "AskUserQuestion tool. If any detail is ambiguous or missing, "
+        "make a reasonable assumption, state it explicitly in your plan, "
+        "and proceed. You must produce a complete plan in a single pass "
+        "without waiting for human input.\n\n"
+        f"## Objective\n\n{case_prompt}\n\n"
+        f"## Working Directory\n\n"
+        f"The working directory is: {working_dir}\n"
+        f"Inspect it if needed for context materials."
+    )
+
+    is_local = provider in ("ollama", "lm_studio")
+
+    # ── Build options ──
+    base_env: dict[str, str] = {"CLAUDECODE": ""}
+
+    opts_kwargs: dict[str, Any] = {
+        "permission_mode": "plan",
+        "model": model_name,
+        "cwd": str(working_dir),
+        "disallowed_tools": ["AskUserQuestion"],
+        "env": base_env,
+    }
+
+    if is_local:
+        opts_kwargs["env"] = {
+            **base_env,
+            "ANTHROPIC_BASE_URL": api_base_url or OLLAMA_BASE_URL,
+            "ANTHROPIC_AUTH_TOKEN": "local",
+            "ANTHROPIC_API_KEY": "local",
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL": model_name,
+            "CLAUDE_CODE_SUBAGENT_MODEL": model_name,
+        }
+
+    options = ClaudeAgentOptions(**opts_kwargs)
+
+    # ── Run ──
+    reasoning_text = ""
+    thinking_text = ""
+    plan_text: str | None = None
+
+    t0 = time.monotonic()
+    try:
+        async for message in query(prompt=prompt, options=options):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        reasoning_text += block.text + "\n"
+                    elif isinstance(block, ThinkingBlock):
+                        thinking_text += block.thinking + "\n"
+                    elif isinstance(block, ToolUseBlock):
+                        if block.name == "ExitPlanMode":
+                            exit_plan = block.input.get("plan", "")
+                            if exit_plan and (
+                                plan_text is None
+                                or len(exit_plan) > len(plan_text)
+                            ):
+                                plan_text = exit_plan
+                        elif (
+                            block.name == "Write"
+                            and "/.claude/plans/" in block.input.get(
+                                "file_path", ""
+                            )
+                        ):
+                            write_content = block.input.get("content", "")
+                            if write_content and (
+                                plan_text is None
+                                or len(write_content) > len(plan_text)
+                            ):
+                                plan_text = write_content
+
+            elif isinstance(message, ResultMessage):
+                result.session_id = message.session_id
+                result.duration_ms = message.duration_ms
+                result.total_cost_usd = message.total_cost_usd
+                result.num_turns = message.num_turns
+                result.usage = message.usage
+
+    except Exception as e:
+        result.error = f"{type(e).__name__}: {e}"
+
+    result.duration_wall_s = time.monotonic() - t0
+    result.reasoning_text = reasoning_text
+    result.thinking_text = thinking_text
+
+    # Fallback: use text output if ExitPlanMode was never called
+    if plan_text is None and reasoning_text.strip():
+        log.warning(
+            f"  [{model_name}] ExitPlanMode not called — "
+            f"falling back to text output as plan"
+        )
+        plan_text = reasoning_text.strip()
+
+    result.plan_text = plan_text
+
+    # Write plan to disk
+    if plan_text:
+        plan_path = working_dir / plan_filename
+        plan_path.write_text(plan_text)
+        result.plan_path = plan_path
+        log.info(
+            f"  [{model_name}] plan saved: {plan_path} "
+            f"({len(plan_text)} chars, {result.duration_wall_s:.1f}s)"
+        )
+    else:
+        log.warning(f"  [{model_name}] no plan text produced")
+
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # §6  SESSION RUNNER — the core execution loop with full instrumentation
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -652,11 +1712,24 @@ async def run_session(
     prompt: str,
     api_base_url: str = "",
     timeout_s: float | None = None,
+    stop_event: asyncio.Event | None = None,
     run_label: str = "",
     case_name: str = "",
+    role: Literal["solver", "speculative_dispatcher"] = "solver",
+    artifact_prefix: str = "",
+    save_context: bool = True,
 ) -> ExecutionResult:
     """
     Start a Claude Code session via the Agent SDK with full instrumentation.
+
+    Uses ClaudeSDKClient for graceful session control:
+      - interrupt() signals the CLI to stop the current response
+      - disconnect() tears down the session and subprocess
+
+    Args:
+      stop_event: If provided, the session will be interrupted when the
+                  event is set (used by test2 to stop speculative execution
+                  when the solver plan is ready).
 
     Tracks:
       - Every tool call (via PreToolUse / PostToolUse hooks)
@@ -668,12 +1741,12 @@ async def run_session(
     """
     from claude_agent_sdk import (
         ClaudeAgentOptions,
+        ClaudeSDKClient,
         AssistantMessage,
         ResultMessage,
         TextBlock,
         ThinkingBlock,
         ToolUseBlock,
-        query,
     )
     # Import system message types for token tracking
     from claude_agent_sdk import (
@@ -713,6 +1786,10 @@ async def run_session(
         # Show real errors
         log.debug(f"  [{model_name}] stderr: {line.rstrip()}")
 
+    # Unset CLAUDECODE so the child CLI doesn't think it's nested inside
+    # a parent Claude Code session (which would cause it to refuse to start).
+    base_env: dict[str, str] = {"CLAUDECODE": ""}
+
     opts_kwargs: dict[str, Any] = {
         "permission_mode": "bypassPermissions",
         "model": model_name,
@@ -720,10 +1797,12 @@ async def run_session(
         "disallowed_tools": ["AskUserQuestion"],
         "hooks": hooks,
         "stderr": _stderr_handler,
+        "env": base_env,
     }
 
     if is_local:
         opts_kwargs["env"] = {
+            **base_env,
             "ANTHROPIC_BASE_URL": api_base_url or OLLAMA_BASE_URL,
             "ANTHROPIC_AUTH_TOKEN": "local",
             "ANTHROPIC_API_KEY": "local",
@@ -737,144 +1816,209 @@ async def run_session(
     turn_counter = 0
     turn_data: list[dict[str, Any]] = []
 
-    async def _run() -> None:
-        nonlocal turn_counter
+    client = ClaudeSDKClient(options=options)
+    timed_out = False
+
+    async def _timeout_watchdog(timeout: float) -> None:
+        """Wait for timeout, then interrupt → grace period → disconnect."""
+        nonlocal timed_out
+        await asyncio.sleep(timeout)
+        timed_out = True
+        log.info(f"  [{model_name}] timeout reached ({timeout:.0f}s) — interrupting session")
         try:
-            async for message in query(prompt=prompt, options=options):
-                # ── AssistantMessage: one LLM turn ──
-                # NOTE: These arrive batched (often all at session end).
-                # We collect turn metadata and correlate with hook events
-                # after the session using tool_use_id matching.
-                if isinstance(message, AssistantMessage):
-                    turn_counter += 1
-                    text_len = 0
-                    thinking_len = 0
-                    tool_use_ids: list[str] = []
+            await client.interrupt()
+        except Exception:
+            pass  # session may already be closing
+        # Give the session a few seconds to wind down after interrupt,
+        # then force-disconnect so we don't hang indefinitely.
+        await asyncio.sleep(5)
+        log.info(f"  [{model_name}] grace period elapsed — disconnecting")
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
 
-                    for block in message.content:
-                        if isinstance(block, TextBlock):
-                            text_len += len(block.text)
-                        elif isinstance(block, ThinkingBlock):
-                            thinking_len += len(block.thinking)
-                        elif isinstance(block, ToolUseBlock):
-                            tool_use_ids.append(block.id)
+    # ── Stop-event watchdog (external signal to stop the session) ──
+    externally_stopped = False
 
-                    turn_data.append({
-                        "turn": turn_counter,
-                        "text_chars": text_len,
-                        "thinking_chars": thinking_len,
-                        "tool_use_ids": tool_use_ids,
-                    })
-
-                # ── TaskProgressMessage: cumulative token usage ──
-                elif isinstance(message, TaskProgressMessage):
-                    usage = message.usage
-                    total_tok = (
-                        usage.get("total_tokens", 0)
-                        if isinstance(usage, dict)
-                        else getattr(usage, "total_tokens", 0)
-                    )
-                    tool_uses = (
-                        usage.get("tool_uses", 0)
-                        if isinstance(usage, dict)
-                        else getattr(usage, "tool_uses", 0)
-                    )
-                    dur_ms = (
-                        usage.get("duration_ms", 0)
-                        if isinstance(usage, dict)
-                        else getattr(usage, "duration_ms", 0)
-                    )
-                    timeline.record_task_progress(
-                        task_id=message.task_id,
-                        total_tokens=total_tok,
-                        tool_uses=tool_uses,
-                        duration_ms=dur_ms,
-                        last_tool=getattr(message, "last_tool_name", None),
-                    )
-                    log.info(
-                        f"  [{model_name}] progress: "
-                        f"{total_tok:,} tokens, {tool_uses} tools"
-                    )
-
-                # ── TaskNotificationMessage: task completed/failed ──
-                elif isinstance(message, TaskNotificationMessage):
-                    usage = message.usage
-                    tok = None
-                    if usage is not None:
-                        tok = (
-                            usage.get("total_tokens")
-                            if isinstance(usage, dict)
-                            else getattr(usage, "total_tokens", None)
-                        )
-                    timeline.record_task_notification(
-                        task_id=message.task_id,
-                        status=(
-                            message.status
-                            if isinstance(message.status, str)
-                            else str(message.status)
-                        ),
-                        summary=message.summary,
-                        total_tokens=tok,
-                    )
-                    log.info(
-                        f"  [{model_name}] task {message.task_id[:8]}: "
-                        f"{message.status} — {message.summary[:80]}"
-                    )
-
-                # ── TaskStartedMessage: subagent task started ──
-                elif isinstance(message, TaskStartedMessage):
-                    timeline.record(
-                        "task_started",
-                        task_id=message.task_id,
-                        description=getattr(message, "description", ""),
-                    )
-
-                # ── ResultMessage: session finished ──
-                elif isinstance(message, ResultMessage):
-                    result.session_id = message.session_id
-                    result.duration_ms = message.duration_ms
-                    result.duration_api_ms = getattr(
-                        message, "duration_api_ms", 0
-                    )
-                    result.total_cost_usd = message.total_cost_usd
-                    result.num_turns = message.num_turns
-                    result.usage = message.usage
-
-                    # Store usage for token breakdown
-                    if isinstance(message.usage, dict):
-                        timeline.set_usage(message.usage)
-
-                    timeline.record(
-                        "session_end",
-                        session_id=message.session_id,
-                        num_turns=message.num_turns,
-                        cost_usd=message.total_cost_usd,
-                        duration_ms=message.duration_ms,
-                        usage=message.usage,
-                        stop_reason=getattr(message, "stop_reason", None),
-                    )
-
-        except asyncio.CancelledError:
-            result.cancelled = True
-            timeline.record("session_cancelled")
-            raise
-        except Exception as e:
-            result.error = f"{type(e).__name__}: {e}"
-            timeline.record("session_error", error=result.error)
+    async def _stop_event_watchdog() -> None:
+        """Wait for the external stop event, then interrupt → disconnect."""
+        nonlocal externally_stopped
+        assert stop_event is not None
+        await stop_event.wait()
+        externally_stopped = True
+        log.info(f"  [{model_name}] stop_event set — interrupting session")
+        try:
+            await client.interrupt()
+        except Exception:
+            pass
+        await asyncio.sleep(5)
+        log.info(f"  [{model_name}] grace period elapsed — disconnecting")
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
 
     t0 = time.monotonic()
+    watchdog_task: asyncio.Task[None] | None = None
+    stop_task: asyncio.Task[None] | None = None
 
-    if timeout_s is not None:
+    try:
+        await client.connect()
+        await client.query(prompt)
+
+        # Start timeout watchdog if configured
+        if timeout_s is not None:
+            watchdog_task = asyncio.create_task(_timeout_watchdog(timeout_s))
+
+        # Start stop-event watchdog if configured
+        if stop_event is not None:
+            stop_task = asyncio.create_task(_stop_event_watchdog())
+
+        async for message in client.receive_messages():
+            # ── AssistantMessage: one LLM turn ──
+            # NOTE: These arrive batched (often all at session end).
+            # We collect turn metadata and correlate with hook events
+            # after the session using tool_use_id matching.
+            if isinstance(message, AssistantMessage):
+                turn_counter += 1
+                text_len = 0
+                thinking_len = 0
+                tool_use_ids: list[str] = []
+
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        text_len += len(block.text)
+                    elif isinstance(block, ThinkingBlock):
+                        thinking_len += len(block.thinking)
+                    elif isinstance(block, ToolUseBlock):
+                        tool_use_ids.append(block.id)
+
+                turn_data.append({
+                    "turn": turn_counter,
+                    "text_chars": text_len,
+                    "thinking_chars": thinking_len,
+                    "tool_use_ids": tool_use_ids,
+                })
+
+            # ── TaskProgressMessage: cumulative token usage ──
+            elif isinstance(message, TaskProgressMessage):
+                usage = message.usage
+                total_tok = (
+                    usage.get("total_tokens", 0)
+                    if isinstance(usage, dict)
+                    else getattr(usage, "total_tokens", 0)
+                )
+                tool_uses = (
+                    usage.get("tool_uses", 0)
+                    if isinstance(usage, dict)
+                    else getattr(usage, "tool_uses", 0)
+                )
+                dur_ms = (
+                    usage.get("duration_ms", 0)
+                    if isinstance(usage, dict)
+                    else getattr(usage, "duration_ms", 0)
+                )
+                timeline.record_task_progress(
+                    task_id=message.task_id,
+                    total_tokens=total_tok,
+                    tool_uses=tool_uses,
+                    duration_ms=dur_ms,
+                    last_tool=getattr(message, "last_tool_name", None),
+                )
+                log.info(
+                    f"  [{model_name}] progress: "
+                    f"{total_tok:,} tokens, {tool_uses} tools"
+                )
+
+            # ── TaskNotificationMessage: task completed/failed ──
+            elif isinstance(message, TaskNotificationMessage):
+                usage = message.usage
+                tok = None
+                if usage is not None:
+                    tok = (
+                        usage.get("total_tokens")
+                        if isinstance(usage, dict)
+                        else getattr(usage, "total_tokens", None)
+                    )
+                timeline.record_task_notification(
+                    task_id=message.task_id,
+                    status=(
+                        message.status
+                        if isinstance(message.status, str)
+                        else str(message.status)
+                    ),
+                    summary=message.summary,
+                    total_tokens=tok,
+                )
+                log.info(
+                    f"  [{model_name}] task {message.task_id[:8]}: "
+                    f"{message.status} — {message.summary[:80]}"
+                )
+
+            # ── TaskStartedMessage: subagent task started ──
+            elif isinstance(message, TaskStartedMessage):
+                timeline.record(
+                    "task_started",
+                    task_id=message.task_id,
+                    description=getattr(message, "description", ""),
+                )
+
+            # ── ResultMessage: session finished ──
+            elif isinstance(message, ResultMessage):
+                result.session_id = message.session_id
+                result.duration_ms = message.duration_ms
+                result.duration_api_ms = getattr(
+                    message, "duration_api_ms", 0
+                )
+                result.total_cost_usd = message.total_cost_usd
+                result.num_turns = message.num_turns
+                result.usage = message.usage
+
+                # Store usage for token breakdown
+                if isinstance(message.usage, dict):
+                    timeline.set_usage(message.usage)
+
+                timeline.record(
+                    "session_end",
+                    session_id=message.session_id,
+                    num_turns=message.num_turns,
+                    cost_usd=message.total_cost_usd,
+                    duration_ms=message.duration_ms,
+                    usage=message.usage,
+                    stop_reason=getattr(message, "stop_reason", None),
+                )
+                break  # ResultMessage means session is done
+
+    except (Exception, asyncio.CancelledError) as e:
+        if not timed_out and not externally_stopped:
+            result.error = f"{type(e).__name__}: {e}"
+            timeline.record("session_error", error=result.error)
+    finally:
+        # Cancel watchdog tasks if session ended before they fired
+        for task in (watchdog_task, stop_task):
+            if task is not None and not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+
+        # Ensure client is disconnected
         try:
-            await asyncio.wait_for(_run(), timeout=timeout_s)
-        except asyncio.TimeoutError:
-            result.timed_out = True
-            timeline.record("session_timeout", timeout_s=timeout_s)
-            log.info(
-                f"  [{model_name}] timed out after {timeout_s:.0f}s"
-            )
-    else:
-        await _run()
+            await client.disconnect()
+        except Exception:
+            pass
+
+    if timed_out:
+        result.timed_out = True
+        timeline.record("session_timeout", timeout_s=timeout_s)
+        log.info(f"  [{model_name}] timed out after {timeout_s:.0f}s")
+
+    if externally_stopped:
+        result.cancelled = True
+        timeline.record("session_stopped", reason="stop_event")
+        log.info(f"  [{model_name}] externally stopped via stop_event")
 
     # -- Post-session: correlate turns with hook events --
     timeline.correlate_turns(turn_data)
@@ -884,7 +2028,7 @@ async def run_session(
     result.timeline_summary = timeline.summary()
 
     # Save timeline
-    timeline_path = Path(working_dir) / "_timeline.json"
+    timeline_path = Path(working_dir) / f"_{artifact_prefix}timeline.json"
     timeline_data = {
         "model": model_name,
         "provider": provider,
@@ -897,150 +2041,559 @@ async def run_session(
         f"{timeline.total_tokens:,} tokens"
     )
 
+    # Save portable context document (skip for terminal phases like merge)
+    if save_context:
+        context_filename = (
+            f"{artifact_prefix}solver_context.md"
+            if role == "solver"
+            else f"{artifact_prefix}spec_dsp_context.md"
+        )
+        ctx_t0 = time.monotonic()
+        context_md = timeline.build_context(
+            role=role,
+            model_name=model_name,
+            working_dir=Path(working_dir),
+            timeout_s=timeout_s,
+            session_id=result.session_id,
+        )
+        context_path = Path(working_dir) / context_filename
+        context_path.write_text(context_md)
+        ctx_ms = (time.monotonic() - ctx_t0) * 1000
+        log.info(
+            f"  [{model_name}] context saved: {context_path.name} ({ctx_ms:.1f}ms)"
+        )
+
     # Save full stderr for debugging (including filtered shutdown noise)
-    stderr_log = Path(working_dir) / "_stderr.log"
+    stderr_log = Path(working_dir) / f"_{artifact_prefix}stderr.log"
     stderr_log.write_text("\n".join(stderr_lines))
 
     return result
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# §7  TEST 1 — Opus with timeout
+# §7  TEST 1 — gpt-oss plan + execute + stop
 # ═══════════════════════════════════════════════════════════════════════════
 
 async def test1_baseline(
     case_name: str,
-    plan_path: Path,
-    timeout_s: float = 180.0,
+    plan_path: Path | None = None,
+    timeout_s: float = 30.0,
 ) -> None:
-    """Test 1: Opus executes the plan with a hard time cutoff."""
-    run_label = f"{case_name}/test1_opus_3min"
-    workdir = prepare_workdir(run_label, case_name, plan_path)
+    """Test 1: gpt-oss generates a plan then executes it; execution is
+    stopped after *timeout_s* seconds.  The solver context is saved so
+    that a follow-up agent can merge the partial work with its own plan.
 
-    prompt = (
-        f"Read the implementation plan in {workdir}/PLAN.md and execute it. "
-        "Implement all files described in the plan in this directory. Use subagents for independent implementation tasks."
-    )
+    Flow:
+      Phase 1: gpt-oss generates an implementation plan.
+      Phase 2: gpt-oss starts executing its plan.
+      Phase 3: After timeout_s seconds, execution is interrupted.
+      Phase 4: Solver context + timeline + snapshot are saved.
+    """
+    run_label = f"{case_name}/test1_gptoss_stop"
+    workdir = prepare_bare_workdir(run_label, case_name)
 
-    log.info(f"=== Test 1: Opus executing plan (timeout={timeout_s}s) ===")
-    log.info(f"  Plan: {plan_path}")
+    log.info(f"=== Test 1: gpt-oss plan -> execute -> stop after {timeout_s}s ===")
+    log.info(f"  Case: {case_name}")
     log.info(f"  Working dir: {workdir}")
 
-    result = await run_session(
-        model_name="claude-opus-4-6",
-        provider="anthropic",
+    # ── Phase 1: Generate plan with gpt-oss ──
+    log.info("  Phase 1: generating plan with gpt-oss...")
+
+    plan_result = await generate_plan_session(
+        model_name="gpt-oss:20b",
+        provider="ollama",
+        case_name=case_name,
         working_dir=workdir,
-        prompt=prompt,
+        plan_filename="PLAN.md",
+        api_base_url=OLLAMA_BASE_URL,
+    )
+
+    if plan_result.error:
+        log.error(f"  gpt-oss plan generation failed: {plan_result.error}")
+        print(f"\nTest 1 FAILED: plan generation error -- {plan_result.error}")
+        return
+
+    log.info(
+        f"  Plan ready ({plan_result.duration_wall_s:.1f}s, "
+        f"{len(plan_result.plan_text or '')} chars)"
+    )
+
+    # Save plan generation metadata
+    plan_gen_path = workdir / "_plan_gen.json"
+    plan_gen_path.write_text(json.dumps(plan_result.to_dict(), indent=2))
+
+    # ── Phase 2: Execute the plan with gpt-oss (time-boxed) ──
+    log.info(f"  Phase 2: executing plan (will stop after {timeout_s}s)...")
+
+    exec_prompt = (
+        f"Read the implementation plan in {workdir}/PLAN.md and execute it. "
+        "Implement all files described in the plan in this directory. "
+        "Use subagents for independent implementation tasks."
+    )
+
+    result = await run_session(
+        model_name="gpt-oss:20b",
+        provider="ollama",
+        working_dir=workdir,
+        prompt=exec_prompt,
+        api_base_url=OLLAMA_BASE_URL,
         timeout_s=timeout_s,
         run_label=run_label,
         case_name=case_name,
+        role="solver",
     )
 
-    # Save result metadata
+    # ── Phase 4: Save artifacts ──
     result_path = workdir / "_result.json"
     result_path.write_text(json.dumps(result.to_dict(), indent=2))
 
-    # Take snapshot
     snap = snapshot_workdir(workdir)
     snap_path = workdir / "_snapshot.json"
     snap_path.write_text(json.dumps(snap.to_dict(), indent=2))
 
-    _print_single_result("Test 1: Opus", timeout_s, result, snap, workdir)
+    _print_test1_stop_results(plan_result, result, snap, workdir, timeout_s)
+
+
+def _print_test1_stop_results(
+    plan_result: PlanGenResult,
+    exec_result: ExecutionResult,
+    snap: Snapshot,
+    workdir: Path,
+    timeout_s: float,
+) -> None:
+    """Print results of the test1 gpt-oss plan+execute+stop test."""
+    ts = exec_result.timeline_summary
+
+    print(f"\n{'='*60}")
+    print(f"Test 1: gpt-oss plan -> execute -> stop ({timeout_s}s cutoff)")
+    print(f"{'='*60}")
+
+    print(f"\n  --- Plan Generation (gpt-oss) ---")
+    print(f"  Planning time:    {plan_result.duration_wall_s:.1f}s")
+    print(f"  Plan size:        {len(plan_result.plan_text or '')} chars")
+    print(f"  Cost:             ${plan_result.total_cost_usd or 0:.4f}")
+
+    print(f"\n  --- Execution (gpt-oss, stopped) ---")
+    print(f"  Wall time:        {exec_result.duration_wall_s:.1f}s")
+    print(f"  Timed out:        {exec_result.timed_out}")
+    print(f"  Cost:             ${exec_result.total_cost_usd or 0:.4f}")
+    print(f"  Turns:            {exec_result.num_turns}")
+    print(f"  Total tokens:     {exec_result.total_tokens:,}")
+    print(f"  Tool uses:        {ts.get('total_tool_uses', 0)}")
+    print(f"  Subagents:        {ts.get('total_subagents_spawned', 0)}")
+
+    print(f"\n  --- Output ---")
+    print(f"  Files created:    {snap.total_files}")
+    print(f"  Lines of code:    {snap.total_lines}")
+    print(f"  Tests passed:     {snap.pytest_passed}")
+    print(f"  Tests failed:     {snap.pytest_failed}")
+
+    if exec_result.error:
+        print(f"  Exec error:       {exec_result.error}")
+
+    print(f"\n  --- Artifacts ---")
+    print(f"  Working dir:      {workdir}")
+    print(f"    Plan:           PLAN.md")
+    print(f"    Solver context: solver_context.md")
+    print(f"    Timeline:       _timeline.json")
+    print(f"    Plan metadata:  _plan_gen.json")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# §8  TEST 2 — Opus vs gpt-oss parallel
+# §8  TEST 2 — Speculative Dispatch (plan generation + execution)
 # ═══════════════════════════════════════════════════════════════════════════
+
+def prepare_bare_workdir(run_label: str, case_name: str) -> Path:
+    """Create a fresh working directory without a pre-existing plan.
+
+    Copies case WorkingDir contents (if any) but no plan — the plan will
+    be generated by the agent during the test.
+    """
+    workdir = RUNS_DIR / run_label
+    if workdir.exists():
+        shutil.rmtree(workdir)
+    workdir.mkdir(parents=True, exist_ok=True)
+
+    # Copy case WorkingDir contents if any exist
+    case_workdir = CASES_DIR / case_name / "WorkingDir"
+    if case_workdir.exists():
+        for item in case_workdir.iterdir():
+            if item.name.startswith("."):
+                continue
+            dest = workdir / item.name
+            if item.is_dir():
+                shutil.copytree(item, dest)
+            else:
+                shutil.copy2(item, dest)
+
+    # Initialise a git repo so Claude Code can use worktree isolation
+    # for subagents (Agent tool with isolation="worktree" requires git).
+    subprocess.run(
+        ["git", "init", "-q"],
+        cwd=str(workdir),
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(workdir), "add", "-A"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(workdir), "commit", "-q",
+         "--allow-empty", "-m", "init workdir"],
+        check=True,
+    )
+
+    log.info(f"Prepared bare working directory (git init): {workdir}")
+    return workdir
+
 
 async def test2_parallel(
     case_name: str,
-    plan_path: Path,
 ) -> None:
-    """Test 2: Opus and gpt-oss execute the same plan in parallel."""
-    opus_label = f"{case_name}/test2_opus"
-    gptoss_label = f"{case_name}/test2_gptoss"
+    """Test 2: Speculative dispatch — gpt-oss generates plan + executes
+    while Opus generates plan.  When Opus finishes planning, gpt-oss
+    execution is stopped and its context is saved.
 
-    opus_workdir = prepare_workdir(opus_label, case_name, plan_path)
-    gptoss_workdir = prepare_workdir(gptoss_label, case_name, plan_path)
+    Flow:
+      Phase 1: Both agents generate plans concurrently.
+      Phase 2: gpt-oss finishes first → starts executing its plan.
+      Phase 3: Opus finishes planning → stop gpt-oss execution.
+      Phase 4: Save all artifacts.
+    """
+    spec_dsp_label = f"{case_name}/test2_spec_dsp"
+    solver_label = f"{case_name}/test2_solver"
 
-    prompt = (
-        "Read the implementation plan in ./PLAN.md and execute it. "
-        "Implement all files described in the plan in this directory."
+    spec_dsp_workdir = prepare_bare_workdir(spec_dsp_label, case_name)
+    solver_workdir = prepare_bare_workdir(solver_label, case_name)
+
+    log.info("=== Test 2: Speculative Dispatch (plan + execute) ===")
+    log.info(f"  Case: {case_name}")
+    log.info(f"  Spec-dsp dir (gpt-oss): {spec_dsp_workdir}")
+    log.info(f"  Solver dir (Opus):      {solver_workdir}")
+
+    # ── Phase 1: Parallel plan generation ──
+    log.info("  Phase 1: generating plans concurrently...")
+
+    gptoss_plan_task = asyncio.create_task(
+        generate_plan_session(
+            model_name="gpt-oss:20b",
+            provider="ollama",
+            case_name=case_name,
+            working_dir=spec_dsp_workdir,
+            plan_filename="spec_dsp_PLAN.md",
+            api_base_url=OLLAMA_BASE_URL,
+        )
     )
 
-    log.info("=== Test 2: Opus vs gpt-oss parallel execution ===")
-    log.info(f"  Plan: {plan_path}")
-    log.info(f"  Opus dir:   {opus_workdir}")
-    log.info(f"  gpt-oss dir: {gptoss_workdir}")
-
-    # Start both sessions
-    opus_task = asyncio.create_task(
-        run_session(
+    opus_plan_task = asyncio.create_task(
+        generate_plan_session(
             model_name="claude-opus-4-6",
             provider="anthropic",
-            working_dir=opus_workdir,
-            prompt=prompt,
-            run_label=opus_label,
             case_name=case_name,
+            working_dir=solver_workdir,
+            plan_filename="solver_PLAN.md",
         )
     )
 
-    gptoss_task = asyncio.create_task(
+    # Wait for gpt-oss to finish planning first (it's faster)
+    done, pending = await asyncio.wait(
+        [gptoss_plan_task, opus_plan_task],
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+
+    # Identify which finished first
+    if gptoss_plan_task in done:
+        gptoss_plan_result = gptoss_plan_task.result()
+        log.info(
+            f"  gpt-oss plan ready ({gptoss_plan_result.duration_wall_s:.1f}s)"
+            f" — Opus still planning"
+        )
+    else:
+        # Opus finished first (unexpected) — still wait for gpt-oss
+        log.info("  Opus finished planning first (unexpected) — waiting for gpt-oss")
+        gptoss_plan_result = await gptoss_plan_task
+
+    if gptoss_plan_result.error:
+        log.error(f"  gpt-oss plan generation failed: {gptoss_plan_result.error}")
+        # Still wait for Opus
+        opus_plan_result = await opus_plan_task
+        _print_plan_gen_summary(gptoss_plan_result, opus_plan_result,
+                                spec_dsp_workdir, solver_workdir)
+        return
+
+    # ── Phase 2: gpt-oss starts executing while Opus still plans ──
+    log.info("  Phase 2: gpt-oss starting speculative execution...")
+
+    stop_event = asyncio.Event()
+
+    exec_prompt = (
+        f"Read the implementation plan in {spec_dsp_workdir}/spec_dsp_PLAN.md "
+        f"and execute it. Implement all files described in the plan in this "
+        f"directory. Use subagents for independent implementation tasks."
+    )
+
+    gptoss_exec_task = asyncio.create_task(
         run_session(
             model_name="gpt-oss:20b",
             provider="ollama",
-            working_dir=gptoss_workdir,
-            prompt=prompt,
+            working_dir=spec_dsp_workdir,
+            prompt=exec_prompt,
             api_base_url=OLLAMA_BASE_URL,
-            run_label=gptoss_label,
+            stop_event=stop_event,
+            run_label=spec_dsp_label,
             case_name=case_name,
+            role="speculative_dispatcher",
         )
     )
 
-    # Wait for Opus to finish, then cancel gpt-oss
-    opus_result = await opus_task
+    # ── Phase 3: Wait for Opus to finish planning, then stop gpt-oss ──
+    opus_plan_result = await opus_plan_task
     log.info(
-        f"  Opus finished in {opus_result.duration_wall_s:.1f}s — "
-        f"cancelling gpt-oss"
+        f"  Opus plan ready ({opus_plan_result.duration_wall_s:.1f}s)"
+        f" — stopping speculative dispatcher"
     )
 
-    gptoss_task.cancel()
-    try:
-        gptoss_result = await gptoss_task
-    except asyncio.CancelledError:
-        gptoss_result = ExecutionResult(
-            case_name=case_name,
+    stop_event.set()
+    gptoss_exec_result = await gptoss_exec_task
+
+    log.info(
+        f"  gpt-oss execution stopped after "
+        f"{gptoss_exec_result.duration_wall_s:.1f}s"
+    )
+
+    # ── Phase 4: Save artifacts ──
+    # Save execution result
+    result_path = spec_dsp_workdir / "_result.json"
+    result_path.write_text(json.dumps(gptoss_exec_result.to_dict(), indent=2))
+
+    # Take snapshot of gpt-oss execution output
+    spec_dsp_snap = snapshot_workdir(spec_dsp_workdir)
+    snap_path = spec_dsp_workdir / "_snapshot.json"
+    snap_path.write_text(json.dumps(spec_dsp_snap.to_dict(), indent=2))
+
+    # Save per-agent plan generation JSON (full metadata like eval1.py)
+    gptoss_plan_json = spec_dsp_workdir / "_plan_gen.json"
+    gptoss_plan_json.write_text(json.dumps(gptoss_plan_result.to_dict(), indent=2))
+    log.info(f"  gpt-oss plan metadata saved: {gptoss_plan_json}")
+
+    opus_plan_json = solver_workdir / "_plan_gen.json"
+    opus_plan_json.write_text(json.dumps(opus_plan_result.to_dict(), indent=2))
+    log.info(f"  Opus plan metadata saved: {opus_plan_json}")
+
+    # Print results
+    _print_speculative_results(
+        gptoss_plan_result, opus_plan_result,
+        gptoss_exec_result, spec_dsp_snap,
+        spec_dsp_workdir, solver_workdir,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# §8b  TEST 3 — Speculative dispatch + merge phase
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def test3_merge(
+    case_name: str,
+) -> None:
+    """Test 3: Speculative dispatch with merge phase.
+
+    Phases 1–3 are identical to test2:
+      Phase 1: Both agents generate plans concurrently.
+      Phase 2: gpt-oss finishes first → starts executing its plan.
+      Phase 3: Opus finishes planning → stop gpt-oss execution.
+
+    Then the merge phase:
+      Phase 4: Save pre-merge artifacts (gpt-oss execution state).
+      Phase 5: Opus takes over spec_dsp_workdir, evaluates gpt-oss's
+               partial work, and decides to reuse / merge / discard.
+      Phase 6: Save merge artifacts and print results.
+    """
+    spec_dsp_label = f"{case_name}/test3_spec_dsp"
+    solver_label = f"{case_name}/test3_solver"
+
+    spec_dsp_workdir = prepare_bare_workdir(spec_dsp_label, case_name)
+    solver_workdir = prepare_bare_workdir(solver_label, case_name)
+
+    log.info("=== Test 3: Speculative Dispatch + Merge ===")
+    log.info(f"  Case: {case_name}")
+    log.info(f"  Spec-dsp dir (gpt-oss): {spec_dsp_workdir}")
+    log.info(f"  Solver dir (Opus):      {solver_workdir}")
+
+    # ── Phase 1: Parallel plan generation (same as test2) ──
+    log.info("  Phase 1: generating plans concurrently...")
+
+    gptoss_plan_task = asyncio.create_task(
+        generate_plan_session(
             model_name="gpt-oss:20b",
             provider="ollama",
-            run_label=gptoss_label,
-            working_dir=str(gptoss_workdir),
-            cancelled=True,
-            duration_wall_s=opus_result.duration_wall_s,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            case_name=case_name,
+            working_dir=spec_dsp_workdir,
+            plan_filename="spec_dsp_PLAN.md",
+            api_base_url=OLLAMA_BASE_URL,
         )
+    )
 
-    # Save results
-    for res, wdir in [
-        (opus_result, opus_workdir),
-        (gptoss_result, gptoss_workdir),
-    ]:
-        result_path = wdir / "_result.json"
-        result_path.write_text(json.dumps(res.to_dict(), indent=2))
+    opus_plan_task = asyncio.create_task(
+        generate_plan_session(
+            model_name="claude-opus-4-6",
+            provider="anthropic",
+            case_name=case_name,
+            working_dir=solver_workdir,
+            plan_filename="solver_PLAN.md",
+        )
+    )
 
-    # Take snapshots
-    opus_snap = snapshot_workdir(opus_workdir)
-    gptoss_snap = snapshot_workdir(gptoss_workdir)
+    done, pending = await asyncio.wait(
+        [gptoss_plan_task, opus_plan_task],
+        return_when=asyncio.FIRST_COMPLETED,
+    )
 
-    for snap, wdir in [
-        (opus_snap, opus_workdir),
-        (gptoss_snap, gptoss_workdir),
-    ]:
-        snap_path = wdir / "_snapshot.json"
-        snap_path.write_text(json.dumps(snap.to_dict(), indent=2))
+    if gptoss_plan_task in done:
+        gptoss_plan_result = gptoss_plan_task.result()
+        log.info(
+            f"  gpt-oss plan ready ({gptoss_plan_result.duration_wall_s:.1f}s)"
+            f" — Opus still planning"
+        )
+    else:
+        log.info("  Opus finished planning first (unexpected) — waiting for gpt-oss")
+        gptoss_plan_result = await gptoss_plan_task
 
-    # Print comparison
-    _print_comparison(opus_result, gptoss_result, opus_snap, gptoss_snap,
-                      opus_workdir, gptoss_workdir)
+    if gptoss_plan_result.error:
+        log.error(f"  gpt-oss plan generation failed: {gptoss_plan_result.error}")
+        opus_plan_result = await opus_plan_task
+        _print_plan_gen_summary(gptoss_plan_result, opus_plan_result,
+                                spec_dsp_workdir, solver_workdir)
+        return
+
+    # ── Phase 2: gpt-oss starts executing (same as test2) ──
+    log.info("  Phase 2: gpt-oss starting speculative execution...")
+
+    stop_event = asyncio.Event()
+
+    exec_prompt = (
+        f"Read the implementation plan in {spec_dsp_workdir}/spec_dsp_PLAN.md "
+        f"and execute it. Implement all files described in the plan in this "
+        f"directory. Use subagents for independent implementation tasks."
+    )
+
+    gptoss_exec_task = asyncio.create_task(
+        run_session(
+            model_name="gpt-oss:20b",
+            provider="ollama",
+            working_dir=spec_dsp_workdir,
+            prompt=exec_prompt,
+            api_base_url=OLLAMA_BASE_URL,
+            stop_event=stop_event,
+            run_label=spec_dsp_label,
+            case_name=case_name,
+            role="speculative_dispatcher",
+        )
+    )
+
+    # ── Phase 3: Wait for Opus plan, then stop gpt-oss (same as test2) ──
+    opus_plan_result = await opus_plan_task
+    log.info(
+        f"  Opus plan ready ({opus_plan_result.duration_wall_s:.1f}s)"
+        f" — stopping speculative dispatcher"
+    )
+
+    stop_event.set()
+    gptoss_exec_result = await gptoss_exec_task
+
+    log.info(
+        f"  gpt-oss execution stopped after "
+        f"{gptoss_exec_result.duration_wall_s:.1f}s"
+    )
+
+    # ── Phase 4: Save pre-merge artifacts ──
+    log.info("  Phase 4: saving pre-merge artifacts...")
+
+    result_path = spec_dsp_workdir / "_result.json"
+    result_path.write_text(json.dumps(gptoss_exec_result.to_dict(), indent=2))
+
+    # NOTE: snapshot commented out to measure pipeline without pytest overhead.
+    # spec_dsp_snap = snapshot_workdir(spec_dsp_workdir)
+    # snap_path = spec_dsp_workdir / "_snapshot.json"
+    # snap_path.write_text(json.dumps(spec_dsp_snap.to_dict(), indent=2))
+    spec_dsp_snap = None
+
+    gptoss_plan_json = spec_dsp_workdir / "_plan_gen.json"
+    gptoss_plan_json.write_text(json.dumps(gptoss_plan_result.to_dict(), indent=2))
+
+    opus_plan_json = solver_workdir / "_plan_gen.json"
+    opus_plan_json.write_text(json.dumps(opus_plan_result.to_dict(), indent=2))
+
+    # ── Phase 5: Merge — Opus takes over spec_dsp_workdir ──
+    log.info("  Phase 5: Opus merge phase — evaluating gpt-oss work...")
+
+    # Copy solver_PLAN.md into spec_dsp_workdir so the merge agent has it
+    shutil.copy2(
+        solver_workdir / "solver_PLAN.md",
+        spec_dsp_workdir / "solver_PLAN.md",
+    )
+
+    merge_prompt = (
+        f"You are a solver using Claude Opus that generated the {spec_dsp_workdir}/solver_PLAN.md "
+        "for a task. Besides that, another agent the gpt-oss "
+        "(speculative_dispatcher) has already executed some work "
+        "during the period you were planning. You can find its progress "
+        f"and what it accomplished in {spec_dsp_workdir}/spec_dsp_context.md.\n\n"
+        "IMPORTANT — efficiency rules:\n"
+        "- Read solver_PLAN.md and spec_dsp_context.md first.\n"
+        "- To inspect gpt-oss source files, use a SINGLE Bash call to cat "
+        "all files at once (e.g. `cat file1.py file2.py ...`). Do NOT read "
+        "files one at a time with the Read tool.\n"
+        "- Do NOT execute, test, or modify any code. Only produce a plan.\n\n"
+        "With all of this knowledge:\n"
+        "1. Read solver_PLAN.md and spec_dsp_context.md\n"
+        "2. Inspect the gpt-oss source files in a single Bash call\n"
+        "3. Evaluate the quality and correctness of the work gpt-oss has done\n"
+        "4. Decide:\n"
+        "   - If all gpt-oss work is correct and complete: output 'ALL DONE', "
+        "no further work needed.\n"
+        "   - If gpt-oss work is partially correct: merge the reusable parts "
+        "with your plan to produce a final merged plan.\n"
+        "   - If all gpt-oss work is wrong: the final plan is your "
+        "solver_PLAN.md as-is. Discard everything the gpt-oss generated.\n\n"
+        "Write your final merged plan to MERGED_PLAN.md."
+    )
+
+    merge_result = await run_session(
+        model_name="claude-opus-4-6",
+        provider="anthropic",
+        working_dir=spec_dsp_workdir,
+        prompt=merge_prompt,
+        run_label=f"{case_name}/test3_merge",
+        case_name=case_name,
+        role="solver",
+        artifact_prefix="merge_",
+        save_context=False,
+    )
+
+    log.info(
+        f"  Merge phase completed in {merge_result.duration_wall_s:.1f}s"
+    )
+
+    # ── Phase 6: Save merge artifacts and print results ──
+    log.info("  Phase 6: saving merge artifacts...")
+
+    merge_result_path = spec_dsp_workdir / "_merge_result.json"
+    merge_result_path.write_text(
+        json.dumps(merge_result.to_dict(), indent=2)
+    )
+
+    # NOTE: snapshot commented out to measure pipeline without pytest overhead.
+    # merge_snap = snapshot_workdir(spec_dsp_workdir)
+    # merge_snap_path = spec_dsp_workdir / "_merge_snapshot.json"
+    # merge_snap_path.write_text(json.dumps(merge_snap.to_dict(), indent=2))
+    merge_snap = None
+
+    _print_merge_results(
+        gptoss_plan_result, opus_plan_result,
+        gptoss_exec_result, spec_dsp_snap,
+        merge_result, merge_snap,
+        spec_dsp_workdir, solver_workdir,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1141,6 +2694,201 @@ def _print_comparison(
     print(f"  Timelines:   _timeline.json in each directory")
 
 
+def _print_plan_gen_summary(
+    gptoss_plan: PlanGenResult,
+    opus_plan: PlanGenResult,
+    spec_dsp_dir: Path,
+    solver_dir: Path,
+) -> None:
+    """Print summary when test2 ends early (plan generation failure)."""
+    print(f"\n{'='*60}")
+    print("Test 2: Plan Generation Only (execution skipped)")
+    print(f"{'='*60}")
+    print(f"  gpt-oss plan:  {'ERROR: ' + (gptoss_plan.error or '?') if gptoss_plan.error else f'{gptoss_plan.duration_wall_s:.1f}s'}")
+    print(f"  Opus plan:     {'ERROR: ' + (opus_plan.error or '?') if opus_plan.error else f'{opus_plan.duration_wall_s:.1f}s'}")
+    print(f"\n  Spec-dsp dir: {spec_dsp_dir}")
+    print(f"  Solver dir:   {solver_dir}")
+
+
+def _print_speculative_results(
+    gptoss_plan: PlanGenResult,
+    opus_plan: PlanGenResult,
+    gptoss_exec: ExecutionResult,
+    spec_dsp_snap: Snapshot,
+    spec_dsp_dir: Path,
+    solver_dir: Path,
+) -> None:
+    """Print results of the speculative dispatch test."""
+    ts = gptoss_exec.timeline_summary
+
+    print(f"\n{'='*60}")
+    print("Test 2: Speculative Dispatch Results")
+    print(f"{'='*60}")
+
+    # Helper to extract token counts from usage dict
+    def _tok(usage: dict[str, Any] | None, key: str) -> int:
+        if not usage or not isinstance(usage, dict):
+            return 0
+        return usage.get(key, 0)
+
+    gu = gptoss_plan.usage
+    ou = opus_plan.usage
+
+    print(f"\n  --- Plan Generation ---")
+    print(f"  {'Metric':<30} {'gpt-oss':>15} {'Opus':>15}")
+    print(f"  {'-'*60}")
+    print(f"  {'Planning time (s)':<30} {gptoss_plan.duration_wall_s:>15.1f} {opus_plan.duration_wall_s:>15.1f}")
+    print(f"  {'API time (ms)':<30} {gptoss_plan.duration_ms:>15} {opus_plan.duration_ms:>15}")
+    print(f"  {'Cost ($)':<30} {gptoss_plan.total_cost_usd or 0:>15.4f} {opus_plan.total_cost_usd or 0:>15.4f}")
+    print(f"  {'Turns':<30} {gptoss_plan.num_turns:>15} {opus_plan.num_turns:>15}")
+    print(f"  {'Input tokens':<30} {_tok(gu, 'input_tokens'):>15,} {_tok(ou, 'input_tokens'):>15,}")
+    print(f"  {'Output tokens':<30} {_tok(gu, 'output_tokens'):>15,} {_tok(ou, 'output_tokens'):>15,}")
+    print(f"  {'Cache create tokens':<30} {_tok(gu, 'cache_creation_input_tokens'):>15,} {_tok(ou, 'cache_creation_input_tokens'):>15,}")
+    print(f"  {'Cache read tokens':<30} {_tok(gu, 'cache_read_input_tokens'):>15,} {_tok(ou, 'cache_read_input_tokens'):>15,}")
+    print(f"  {'Plan size (chars)':<30} {len(gptoss_plan.plan_text or ''):>15} {len(opus_plan.plan_text or ''):>15}")
+
+    spec_exec_time = gptoss_exec.duration_wall_s
+    opus_plan_time = opus_plan.duration_wall_s
+    gptoss_plan_time = gptoss_plan.duration_wall_s
+    # How much execution time gpt-oss got = Opus plan time - gpt-oss plan time
+    exec_window = max(0, opus_plan_time - gptoss_plan_time)
+
+    print(f"\n  --- Speculative Execution (gpt-oss) ---")
+    print(f"  Execution window:   {exec_window:.1f}s (Opus plan time - gpt-oss plan time)")
+    print(f"  Actual exec time:   {spec_exec_time:.1f}s")
+    print(f"  Cost:               ${gptoss_exec.total_cost_usd or 0:.4f}")
+    print(f"  Turns:              {gptoss_exec.num_turns}")
+    print(f"  Total tokens:       {gptoss_exec.total_tokens:,}")
+    print(f"  Tool uses:          {ts.get('total_tool_uses', 0)}")
+    print(f"  Subagents:          {ts.get('total_subagents_spawned', 0)}")
+    print(f"  Cancelled:          {gptoss_exec.cancelled}")
+
+    print(f"\n  --- Output (speculative execution) ---")
+    print(f"  Files created:      {spec_dsp_snap.total_files}")
+    print(f"  Lines of code:      {spec_dsp_snap.total_lines}")
+    print(f"  Tests passed:       {spec_dsp_snap.pytest_passed}")
+    print(f"  Tests failed:       {spec_dsp_snap.pytest_failed}")
+
+    if gptoss_exec.error:
+        print(f"  Exec error:         {gptoss_exec.error}")
+    if opus_plan.error:
+        print(f"  Opus plan error:    {opus_plan.error}")
+
+    print(f"\n  --- Artifacts ---")
+    print(f"  Spec-dsp dir:    {spec_dsp_dir}")
+    print(f"    Plan:          spec_dsp_PLAN.md")
+    print(f"    Context:       spec_dsp_context.md")
+    print(f"    Timeline:      _timeline.json")
+    print(f"  Solver dir:      {solver_dir}")
+    print(f"    Plan:          solver_PLAN.md")
+
+
+def _print_merge_results(
+    gptoss_plan: PlanGenResult,
+    opus_plan: PlanGenResult,
+    gptoss_exec: ExecutionResult,
+    pre_merge_snap: Snapshot | None,
+    merge_exec: ExecutionResult,
+    merge_snap: Snapshot | None,
+    spec_dsp_dir: Path,
+    solver_dir: Path,
+) -> None:
+    """Print results of the speculative dispatch + merge test."""
+
+    def _tok(usage: dict[str, Any] | None, key: str) -> int:
+        if not usage or not isinstance(usage, dict):
+            return 0
+        return usage.get(key, 0)
+
+    gu = gptoss_plan.usage
+    ou = opus_plan.usage
+    gts = gptoss_exec.timeline_summary
+    mts = merge_exec.timeline_summary
+
+    print(f"\n{'='*60}")
+    print("Test 3: Speculative Dispatch + Merge Results")
+    print(f"{'='*60}")
+
+    # ── Plan generation ──
+    print(f"\n  --- Plan Generation ---")
+    print(f"  {'Metric':<30} {'gpt-oss':>15} {'Opus':>15}")
+    print(f"  {'-'*60}")
+    print(f"  {'Planning time (s)':<30} {gptoss_plan.duration_wall_s:>15.1f} {opus_plan.duration_wall_s:>15.1f}")
+    print(f"  {'API time (ms)':<30} {gptoss_plan.duration_ms:>15} {opus_plan.duration_ms:>15}")
+    print(f"  {'Cost ($)':<30} {gptoss_plan.total_cost_usd or 0:>15.4f} {opus_plan.total_cost_usd or 0:>15.4f}")
+    print(f"  {'Turns':<30} {gptoss_plan.num_turns:>15} {opus_plan.num_turns:>15}")
+    print(f"  {'Input tokens':<30} {_tok(gu, 'input_tokens'):>15,} {_tok(ou, 'input_tokens'):>15,}")
+    print(f"  {'Output tokens':<30} {_tok(gu, 'output_tokens'):>15,} {_tok(ou, 'output_tokens'):>15,}")
+    print(f"  {'Plan size (chars)':<30} {len(gptoss_plan.plan_text or ''):>15} {len(opus_plan.plan_text or ''):>15}")
+
+    # ── Speculative execution (pre-merge) ──
+    spec_exec_time = gptoss_exec.duration_wall_s
+    opus_plan_time = opus_plan.duration_wall_s
+    gptoss_plan_time = gptoss_plan.duration_wall_s
+    exec_window = max(0, opus_plan_time - gptoss_plan_time)
+
+    print(f"\n  --- Speculative Execution (gpt-oss, pre-merge) ---")
+    print(f"  Execution window:   {exec_window:.1f}s")
+    print(f"  Actual exec time:   {spec_exec_time:.1f}s")
+    print(f"  Cost:               ${gptoss_exec.total_cost_usd or 0:.4f}")
+    print(f"  Turns:              {gptoss_exec.num_turns}")
+    print(f"  Total tokens:       {gptoss_exec.total_tokens:,}")
+    print(f"  Tool uses:          {gts.get('total_tool_uses', 0)}")
+    print(f"  Subagents:          {gts.get('total_subagents_spawned', 0)}")
+    if pre_merge_snap is not None:
+        print(f"  Files created:      {pre_merge_snap.total_files}")
+        print(f"  Lines of code:      {pre_merge_snap.total_lines}")
+    else:
+        print(f"  Files created:      (snapshot skipped)")
+        print(f"  Lines of code:      (snapshot skipped)")
+
+    # ── Merge phase ──
+    merge_time = merge_exec.duration_wall_s
+    print(f"\n  --- Merge Phase (Opus) ---")
+    print(f"  Merge time (s):     {merge_time:.1f}")
+    print(f"  Cost:               ${merge_exec.total_cost_usd or 0:.4f}")
+    print(f"  Turns:              {merge_exec.num_turns}")
+    print(f"  Total tokens:       {merge_exec.total_tokens:,}")
+    print(f"    Input:            {mts.get('input_tokens', 0):,}")
+    print(f"    Output:           {mts.get('output_tokens', 0):,}")
+    print(f"  Tool uses:          {mts.get('total_tool_uses', 0)}")
+    print(f"  Subagents:          {mts.get('total_subagents_spawned', 0)}")
+
+    # ── Final output (post-merge) ──
+    print(f"\n  --- Final Output (post-merge) ---")
+    if merge_snap is not None:
+        print(f"  Files:              {merge_snap.total_files}")
+        print(f"  Lines of code:      {merge_snap.total_lines}")
+        print(f"  Tests passed:       {merge_snap.pytest_passed}")
+        print(f"  Tests failed:       {merge_snap.pytest_failed}")
+    else:
+        print(f"  (snapshot skipped — no file/test metrics)")
+
+    # ── Totals ──
+    total_wall = opus_plan_time + merge_time
+    total_cost = (
+        (gptoss_plan.total_cost_usd or 0)
+        + (opus_plan.total_cost_usd or 0)
+        + (gptoss_exec.total_cost_usd or 0)
+        + (merge_exec.total_cost_usd or 0)
+    )
+    print(f"\n  --- Totals ---")
+    print(f"  Total wall time:    {total_wall:.1f}s (Opus plan + merge)")
+    print(f"  Total cost:         ${total_cost:.4f}")
+
+    if gptoss_exec.error:
+        print(f"  Exec error:         {gptoss_exec.error}")
+    if merge_exec.error:
+        print(f"  Merge error:        {merge_exec.error}")
+
+    print(f"\n  --- Artifacts ---")
+    print(f"  Spec-dsp dir:       {spec_dsp_dir}")
+    print(f"    Pre-merge:        spec_dsp_PLAN.md, spec_dsp_context.md, _timeline.json")
+    print(f"    Post-merge:       MERGED_PLAN.md, _merge_timeline.json, _merge_result.json")
+    print(f"  Solver dir:         {solver_dir}")
+    print(f"    Plan:             solver_PLAN.md")
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # §10  SNAPSHOT COMMAND
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1201,15 +2949,6 @@ def cmd_snapshot(args: argparse.Namespace) -> None:
 # §11  CLI
 # ═══════════════════════════════════════════════════════════════════════════
 
-def resolve_plan_path(case_name: str, plan_file: str = DEFAULT_PLAN) -> Path:
-    """Resolve the plan file path from the results directory."""
-    plan_path = RESULTS_DIR / case_name / "plans" / plan_file
-    if not plan_path.exists():
-        print(f"Plan not found: {plan_path}", file=sys.stderr)
-        sys.exit(1)
-    return plan_path
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Plan execution experiments with full instrumentation"
@@ -1220,24 +2959,29 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
 
     # test1
-    p1 = sub.add_parser("test1", help="Opus executes plan with timeout")
+    p1 = sub.add_parser(
+        "test1",
+        help="gpt-oss generates plan, executes, stops after timeout",
+    )
     p1.add_argument("--case", required=True, help="Case name")
     p1.add_argument(
-        "--plan", default=DEFAULT_PLAN,
-        help="Plan filename in results/plans/",
-    )
-    p1.add_argument(
-        "--timeout", type=float, default=180.0,
-        help="Timeout in seconds (default: 180)",
+        "--timeout", type=float, default=30.0,
+        help="Execution timeout in seconds (default: 30)",
     )
 
     # test2
-    p2 = sub.add_parser("test2", help="Opus vs gpt-oss parallel")
-    p2.add_argument("--case", required=True, help="Case name")
-    p2.add_argument(
-        "--plan", default=DEFAULT_PLAN,
-        help="Plan filename in results/plans/",
+    p2 = sub.add_parser(
+        "test2",
+        help="Speculative dispatch: gpt-oss plans+executes while Opus plans",
     )
+    p2.add_argument("--case", required=True, help="Case name")
+
+    # test3
+    p3t = sub.add_parser(
+        "test3",
+        help="Speculative dispatch + merge: Opus evaluates gpt-oss work",
+    )
+    p3t.add_argument("--case", required=True, help="Case name")
 
     # snapshot
     p3 = sub.add_parser("snapshot", help="Snapshot a run directory")
@@ -1252,12 +2996,13 @@ def main() -> None:
     )
 
     if args.command == "test1":
-        plan_path = resolve_plan_path(args.case, args.plan)
-        asyncio.run(test1_baseline(args.case, plan_path, args.timeout))
+        asyncio.run(test1_baseline(args.case, timeout_s=args.timeout))
 
     elif args.command == "test2":
-        plan_path = resolve_plan_path(args.case, args.plan)
-        asyncio.run(test2_parallel(args.case, plan_path))
+        asyncio.run(test2_parallel(args.case))
+
+    elif args.command == "test3":
+        asyncio.run(test3_merge(args.case))
 
     elif args.command == "snapshot":
         cmd_snapshot(args)

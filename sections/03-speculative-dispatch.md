@@ -9,27 +9,33 @@ The Speculative Dispatch pipeline consists of five components with well-defined 
 **Intent Detector.**
 A lightweight classifier that transforms a natural-language user request into a structured intent representation: task type, estimated complexity, domain tags, decomposability score, and constraint annotations.
 The Intent Detector is deliberately shallow in order to perform fast classification not planning.
+We implement it as a rule-based classifier rather than a learned model to ensure deterministic, sub-millisecond classification latency since the Intent Detector must never become a bottleneck that offsets speculation gains.
 Its structured output together with the raw user request are fed to both the Dispatch Solver and the Speculative Dispatcher in parallel.
 
 **Dispatch Solver (Target).**
 The full optimization engine that computes the optimal dispatch plan given the complete system state: all classified intents, the current agent pool, fleet configuration, resource availability, and cost constraints.
 The Solver produces a `DispatchPlan` — a structured specification of which agents to invoke, on which resources, with what prompts, in what execution order, and under what budget constraints.
 Solver latency is the bottleneck that speculation aims to hide.
+The Solver will select the dispatch plan that minimizes a cost-latency objective subject to the resource and budget constraints formalized in §3.5.
 
 **Speculative Dispatcher (Draft).**
 A lightweight prediction model that runs in parallel with the Solver.
 It produces a draft dispatch plan using pattern matching on intent classifications, a historical dispatch cache, and a learned user-specific fingerprint maintained by the Learner.
 Upon generating its prediction, the Speculative Dispatcher immediately begins pre-execution steps according to the active speculation mode.
-<!-- For speculative dispatcher, do we predict the order. 
-Option A: Flat set + explicit execution order. The DispatchPlan is a list of (agent, resource, prompt, phase) tuples. Agents in the same phase run in parallel; phases run sequentially. Simple, not a full DAG, but captures the essential structure.                         
-                                                                  
-  dispatch_plan = [                                                                                                                                                                                                                                                              
-      {"agent": "Claude-code-gen",    "phase": 1},  # runs first                                                                                                                                                                                                                 
-      {"agent": "Slurm-template",     "phase": 2},  # waits for phase 1                                                                                                                                                                                                          
-      {"agent": "HPCToolkit-profiler", "phase": 2},  # also waits for phase 1                                                                                                                                                                                                    
-  ] 
-If you go with Option A (phased execution), how does reconciliation change? Think about it — the Speculative Dispatcher now needs to predict not just which agents but also which phase each agent belongs to. What does PARTIAL COMMIT look like when you   
-  get the agents right but the phases wrong?  -->
+
+<!-- Questions to clarify before rewrite: 
+1) What does "pattern matching on intent classifications" actually mean? A reader can't reproduce or evaluate this. Is it a lookup table? A nearest-neighbor search? A decision tree? 
+2) What is the "historical dispatch cache"? What's cached — full plans? Agent assignments? What's the eviction policy? What's the key?
+3) What is the "learned user-specific fingerprint"? 
+   Based onn explaination in section 4.1, it is a compressed representation of the user's recent dispatch history, correct?
+4) What does the Speculative Dispatcher output? The Solver produces a DispatchPlan. Does the Speculative Dispatcher produce the same data structure? If so, say it. If not, explain why.
+5) We mentioned Latency characterization. You say $L_{spec} \ll L_s$ in §3.4 but never justify why the Speculative Dispatcher is fast. The Intent Detector gets "sub-millisecond" — what's the Dispatcher's target?  
+
+------------------------------
+1. Mode 3 draft execution: Does the Speculative Dispatcher run a cheap model to produce actual output, or just predict the dispatch plan? This determines whether Mode 3 is in scope for the prototype.                                                                               
+  2. Plan prediction mechanism: Is cache lookup sufficient, or should the Learner's RL policy replace it as the prediction engine?
+  3. Scope of the evaluation: Will §6 evaluate all three modes or just Modes 1-2? 
+-->
 
 **Orchestrator (Reconciliation Engine).**
 Receives both the Solver's optimal plan and the Speculative Dispatcher's pre-executed work.
@@ -39,12 +45,16 @@ Performs reconciliation: comparing the two plans element-by-element and issuing 
 A reinforcement learning component that observes the full dispatch lifecycle — intent, solver plan, speculation result, reconciliation decision, and execution outcome — and continuously updates the Speculative Dispatcher's prediction model.
 The Learner is described in detail in Section 4.
 
-```
+<!-- ```
 [FIGURE 1: Five-layer architecture diagram. Request flows down through
 Intent Detector → parallel split to Solver and Speculative Dispatcher →
 Orchestrator reconciliation → Agent Execution → Learner feedback loop.
 Show data contracts at each interface.]
-```
+``` -->
+
+![Five-layer architecture of the Speculative Dispatch pipeline.](../paper/imgs/design/Pythia-5-layer-arch.png)
+
+*Figure: Five-layer architecture of the Speculative Dispatch pipeline. A user request flows through the Intent Detector, which feeds classified intents in parallel to the Dispatch Solver (target) and Speculative Dispatcher (draft). The Orchestrator reconciles both plans (COMMIT, PARTIAL COMMIT, or FLUSH) before final execution. The Learner observes the full lifecycle and updates the Speculative Dispatcher's prediction model.*
 
 ## 3.2 Speculation Modes
 
@@ -100,12 +110,18 @@ $$q > \frac{C_{draft} + C_{flush}^{M3}}{L_{target} + C_{flush}^{M3}} = \tau_3^*$
 
 This mirrors the acceptance rate threshold in speculative decoding, where the draft model must align with the target model above a minimum rate for net speedup.
 
-```
+<!-- ```
 [FIGURE 2: Three speculation modes shown as progressive layers.
 Mode 1 (always on) → Mode 2 (confidence-gated) → Mode 3 (high-confidence only).
 Show risk/reward tradeoff increasing with each mode.
 Annotate with CPU/LLM analogy labels.]
-```
+``` -->
+
+<!-- Figure X. Progressive speculation modes with confidence-gated activation. Mode 1 (context preparation) is unconditional. Mode 2 (agent pre-dispatch) activates when the Learner's rolling hit rate for the intent class exceeds τ₂. Mode 3 (speculative execution with verification) activates above τ₃. Each mode subsumes all lower modes. Thresholds τ₂ and τ₃ are break-even accuracies derived from the cost model (§3.4). -->
+
+![Progressive speculation modes with confidence-gated activation.](../paper/imgs/design/Speculate_modes.png)
+
+*Figure: Progressive speculation modes with confidence-gated activation. Mode 1 (context preparation) is unconditional. Mode 2 (agent pre-dispatch) activates when the Learner's rolling hit rate for the intent class exceeds τ₂. Mode 3 (speculative execution with verification) activates above τ₃. Each mode subsumes all lower modes. Thresholds τ₂ and τ₃ are break-even accuracies derived from the cost model (§3.4).*
 
 ## 3.3 Reconciliation Protocol
 

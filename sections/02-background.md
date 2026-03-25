@@ -91,7 +91,7 @@ To further characterize the dispatch bottleneck in existing frameworks, we profi
 - Agent initialization and warm-up: ~X ms (Y% of total)
 - TOTAL dispatch overhead: ~X ms (Y% of end-to-end)] -->
 
-![Dispatch vs. execution latency for six representative KramaBench queries processed by a LangGraph supervisor (qwen3.5:9b). Dark bars show supervisor routing overhead (1.6–3.8 s, 19–37% of total); light bars show agent execution time. Dispatch decisions are made by sequential LLM calls — one per agent handoff — constituting a fixed latency tax on every query.](../paper/img/motivation/dispatch_vs_execution_latency.png)
+![Dispatch vs. execution latency for six representative KramaBench queries processed by a LangGraph supervisor (qwen3.5:9b). Dark bars show supervisor routing overhead (1.6–3.8 s, 19–37% of total); light bars show agent execution time. Dispatch decisions are made by sequential LLM calls — one per agent handoff — constituting a fixed latency tax on every query.](../paper/imgs/motivation/dispatch_vs_execution_latency.png)
 *Figure: Dispatch vs. execution latency breakdown (§2.4). See `\label{fig:dispatch-latency}` in main.tex.*
 
 [PLACEHOLDER: Dispatch predictability analysis — show that for the top-K intent classes (which cover Z% of all requests), the dispatch plan has low conditional entropy given the intent. This is the empirical justification for why speculation can work.]

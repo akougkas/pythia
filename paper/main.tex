@@ -180,7 +180,7 @@ The gap is clear: the multi-agent orchestration layer lacks the predictive, spec
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{img/motivation/dispatch_vs_execution_latency.pdf}
+\includegraphics[width=\columnwidth]{imgs/motivation/dispatch_vs_execution_latency.pdf}
 \caption{Dispatch vs.\ execution latency for six representative KramaBench queries processed by a LangGraph supervisor (qwen3.5:9b). Dark bars show supervisor routing overhead (1.6--3.8\,s, 19--37\% of total); light bars show agent execution time. Dispatch decisions are made by sequential LLM calls---one per agent handoff---constituting a fixed latency tax on every query.}
 \label{fig:dispatch-latency}
 \end{figure}
@@ -236,7 +236,8 @@ The Pythia pipeline consists of five components with well-defined data contracts
 
 \textbf{Intent Detector.}
 A lightweight classifier that transforms a natural-language request into a structured intent: task type, complexity estimate, domain tags, decomposability score, and constraint annotations.
-The Intent Detector is deliberately shallow --- fast classification, not planning.
+The Intent Detector is deliberately shallow in order to perform fast classification not planning.
+Its structured output together with the raw user request are fed to both the Dispatch Solver and the Speculative Dispatcher in parallel.
 
 \textbf{Dispatch Solver (Target).}
 The full optimization engine computing the optimal dispatch plan given complete system state: all intents, the agent pool, fleet configuration, resource availability, and cost constraints.
@@ -251,9 +252,16 @@ Receives both plans, compares element-by-element, and issues COMMIT, PARTIAL COM
 \textbf{Learner.}
 A reinforcement learning component observing the full dispatch lifecycle and continuously updating the Speculative Dispatcher (Section~\ref{sec:learner}).
 
+% \begin{figure}[t]
+% \centering
+% \fbox{\parbox{0.95\columnwidth}{\centering\vspace{2em}\placeholder{Architecture diagram: 5-layer pipeline.\\Request $\rightarrow$ Intent Detector $\rightarrow$ parallel split to Solver \& Speculative Dispatcher $\rightarrow$ Orchestrator reconciliation $\rightarrow$ Agent Execution $\rightarrow$ Learner feedback loop.}\vspace{2em}}}
+% \caption{Pythia's five-layer speculative dispatch architecture. The Speculative Dispatcher races ahead of the Solver, and the Orchestrator reconciles their outputs.}
+% \label{fig:architecture}
+% \end{figure}
+
 \begin{figure}[t]
 \centering
-\fbox{\parbox{0.95\columnwidth}{\centering\vspace{2em}\placeholder{Architecture diagram: 5-layer pipeline.\\Request $\rightarrow$ Intent Detector $\rightarrow$ parallel split to Solver \& Speculative Dispatcher $\rightarrow$ Orchestrator reconciliation $\rightarrow$ Agent Execution $\rightarrow$ Learner feedback loop.}\vspace{2em}}}
+\includegraphics[width=\columnwidth]{imgs/design/Pythia-5-layer-arch.png}
 \caption{Pythia's five-layer speculative dispatch architecture. The Speculative Dispatcher races ahead of the Solver, and the Orchestrator reconciles their outputs.}
 \label{fig:architecture}
 \end{figure}
@@ -289,6 +297,13 @@ q > \frac{C_{draft} + C_{flush}^{M3}}{L_{target} + C_{flush}^{M3}} = \tau_3^*
 \label{eq:mode3}
 \end{equation}
 mirroring the acceptance rate threshold in speculative decoding.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{imgs/design/Speculate_modes.png}
+\caption{Progressive speculation modes with confidence-gated activation. Mode 1 (context preparation) is unconditional. Mode 2 (agent pre-dispatch) activates when the Learner's rolling hit rate for the intent class exceeds $\tau_2$. Mode 3 (speculative execution with verification) activates above $\tau_3$. Each mode subsumes all lower modes. Thresholds $\tau_2$ and $\tau_3$ are break-even accuracies derived from the cost model (§3.4).}
+\label{fig:architecture}
+\end{figure}
 
 \subsection{Reconciliation Protocol}
 
