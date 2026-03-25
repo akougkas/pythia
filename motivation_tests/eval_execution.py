@@ -62,14 +62,16 @@ log = logging.getLogger("eval_execution")
 SCRIPT_DIR = Path(__file__).resolve().parent
 RESULTS_DIR = SCRIPT_DIR / "results_2"
 # CASES_DIR = SCRIPT_DIR / "cases"
-CASES_DIR = Path("/home/jye/publications/cases/")
+# CASES_DIR = Path("/home/jye/publications/cases/")
+CASES_DIR = Path("/Users/yejie/publications/cases/")
 
 # Runs directory is OUTSIDE the Pythia project tree to avoid CLAUDE.md
 # contamination.  Claude Code walks up the directory tree looking for
 # project config — if the working directory is inside Pythia, it picks
 # up CLAUDE.md rules (mentor role, TDD, WTF-P gates) that distort the
 # experiment.
-RUNS_DIR = Path("/home/jye/publications/pythia_eval_runs")
+# RUNS_DIR = Path("/home/jye/publications/pythia_eval_runs")
+RUNS_DIR = Path("/Users/yejie/publications/pythia_eval_runs")
 
 # Default plan to execute (gpt-oss plan for case_002)
 DEFAULT_PLAN = "claude_code__ollama__gpt-oss_20b.md"
@@ -1513,7 +1515,7 @@ def snapshot_workdir(working_dir: Path) -> Snapshot:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# §5b  PLAN GENERATION SESSION — generate a plan via Claude Agent SDK
+# §5b  DATA TYPES — plan generation result
 # ═══════════════════════════════════════════════════════════════════════════
 
 @dataclass
@@ -1554,520 +1556,581 @@ class PlanGenResult:
         }
 
 
-async def generate_plan_session(
-    model_name: str,
-    provider: str,
-    case_name: str,
-    working_dir: Path,
-    plan_filename: str = "PLAN.md",
-    api_base_url: str = "",
-) -> PlanGenResult:
-    """Generate a plan using Claude Agent SDK in planning mode.
-
-    Mirrors eval1.py ClaudeCodeFramework.generate_plan() but writes the
-    plan to working_dir/plan_filename and returns a PlanGenResult.
-    """
-    from claude_agent_sdk import (
-        ClaudeAgentOptions,
-        AssistantMessage,
-        ResultMessage,
-        TextBlock,
-        ThinkingBlock,
-        ToolUseBlock,
-        query,
-    )
-
-    result = PlanGenResult(
-        model_name=model_name,
-        provider=provider,
-        timestamp=datetime.now(timezone.utc).isoformat(),
-    )
-
-    # ── Load case prompt ──
-    case_prompt = (CASES_DIR / case_name / "PROMPT.md").read_text()
-
-    # ── Compose prompt (same as eval1.py) ──
-    prompt = (
-        "You are in planning mode. Read the objective below and produce "
-        "a detailed, step-by-step implementation plan. Do NOT execute "
-        "anything — only plan.\n\n"
-        "IMPORTANT: Do NOT ask clarifying questions. Do NOT use the "
-        "AskUserQuestion tool. If any detail is ambiguous or missing, "
-        "make a reasonable assumption, state it explicitly in your plan, "
-        "and proceed. You must produce a complete plan in a single pass "
-        "without waiting for human input.\n\n"
-        f"## Objective\n\n{case_prompt}\n\n"
-        f"## Working Directory\n\n"
-        f"The working directory is: {working_dir}\n"
-        f"Inspect it if needed for context materials."
-    )
-
-    is_local = provider in ("ollama", "lm_studio")
-
-    # ── Build options ──
-    base_env: dict[str, str] = {"CLAUDECODE": ""}
-
-    opts_kwargs: dict[str, Any] = {
-        "permission_mode": "plan",
-        "model": model_name,
-        "cwd": str(working_dir),
-        "disallowed_tools": ["AskUserQuestion"],
-        "env": base_env,
-    }
-
-    if is_local:
-        opts_kwargs["env"] = {
-            **base_env,
-            "ANTHROPIC_BASE_URL": api_base_url or OLLAMA_BASE_URL,
-            "ANTHROPIC_AUTH_TOKEN": "local",
-            "ANTHROPIC_API_KEY": "local",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": model_name,
-            "CLAUDE_CODE_SUBAGENT_MODEL": model_name,
-        }
-
-    options = ClaudeAgentOptions(**opts_kwargs)
-
-    # ── Run ──
-    reasoning_text = ""
-    thinking_text = ""
-    plan_text: str | None = None
-
-    t0 = time.monotonic()
-    try:
-        async for message in query(prompt=prompt, options=options):
-            if isinstance(message, AssistantMessage):
-                for block in message.content:
-                    if isinstance(block, TextBlock):
-                        reasoning_text += block.text + "\n"
-                    elif isinstance(block, ThinkingBlock):
-                        thinking_text += block.thinking + "\n"
-                    elif isinstance(block, ToolUseBlock):
-                        if block.name == "ExitPlanMode":
-                            exit_plan = block.input.get("plan", "")
-                            if exit_plan and (
-                                plan_text is None
-                                or len(exit_plan) > len(plan_text)
-                            ):
-                                plan_text = exit_plan
-                        elif (
-                            block.name == "Write"
-                            and "/.claude/plans/" in block.input.get(
-                                "file_path", ""
-                            )
-                        ):
-                            write_content = block.input.get("content", "")
-                            if write_content and (
-                                plan_text is None
-                                or len(write_content) > len(plan_text)
-                            ):
-                                plan_text = write_content
-
-            elif isinstance(message, ResultMessage):
-                result.session_id = message.session_id
-                result.duration_ms = message.duration_ms
-                result.total_cost_usd = message.total_cost_usd
-                result.num_turns = message.num_turns
-                result.usage = message.usage
-
-    except Exception as e:
-        result.error = f"{type(e).__name__}: {e}"
-
-    result.duration_wall_s = time.monotonic() - t0
-    result.reasoning_text = reasoning_text
-    result.thinking_text = thinking_text
-
-    # Fallback: use text output if ExitPlanMode was never called
-    if plan_text is None and reasoning_text.strip():
-        log.warning(
-            f"  [{model_name}] ExitPlanMode not called — "
-            f"falling back to text output as plan"
-        )
-        plan_text = reasoning_text.strip()
-
-    result.plan_text = plan_text
-
-    # Write plan to disk
-    if plan_text:
-        plan_path = working_dir / plan_filename
-        plan_path.write_text(plan_text)
-        result.plan_path = plan_path
-        log.info(
-            f"  [{model_name}] plan saved: {plan_path} "
-            f"({len(plan_text)} chars, {result.duration_wall_s:.1f}s)"
-        )
-    else:
-        log.warning(f"  [{model_name}] no plan text produced")
-
-    return result
-
-
 # ═══════════════════════════════════════════════════════════════════════════
-# §6  SESSION RUNNER — the core execution loop with full instrumentation
+# §6  ClaudeCodeFramework — Agent SDK wrapper for plan generation & execution
 # ═══════════════════════════════════════════════════════════════════════════
 
-async def run_session(
-    model_name: str,
-    provider: str,
-    working_dir: Path,
-    prompt: str,
-    api_base_url: str = "",
-    timeout_s: float | None = None,
-    stop_event: asyncio.Event | None = None,
-    run_label: str = "",
-    case_name: str = "",
-    role: Literal["solver", "speculative_dispatcher"] = "solver",
-    artifact_prefix: str = "",
-    save_context: bool = True,
-) -> ExecutionResult:
-    """
-    Start a Claude Code session via the Agent SDK with full instrumentation.
+class ClaudeCodeFramework:
+    """Wraps the Claude Agent SDK for plan generation and instrumented execution.
 
-    Uses ClaudeSDKClient for graceful session control:
-      - interrupt() signals the CLI to stop the current response
-      - disconnect() tears down the session and subprocess
+    Centralises option building, provider handling (Anthropic vs Ollama/LM Studio),
+    and session lifecycle so that test functions only express orchestration logic.
 
-    Args:
-      stop_event: If provided, the session will be interrupted when the
-                  event is set (used by test2 to stop speculative execution
-                  when the solver plan is ready).
+    Usage::
 
-    Tracks:
-      - Every tool call (via PreToolUse / PostToolUse hooks)
-      - Subagent lifecycle (via SubagentStart / SubagentStop hooks)
-      - Token usage (via TaskProgressMessage / TaskNotificationMessage)
-      - LLM turns (via AssistantMessage counting)
+        fw = ClaudeCodeFramework(ollama_base_url="http://localhost:11434")
 
-    Returns an ExecutionResult.  Saves _timeline.json to working_dir.
-    """
-    from claude_agent_sdk import (
-        ClaudeAgentOptions,
-        ClaudeSDKClient,
-        AssistantMessage,
-        ResultMessage,
-        TextBlock,
-        ThinkingBlock,
-        ToolUseBlock,
-    )
-    # Import system message types for token tracking
-    from claude_agent_sdk import (
-        TaskProgressMessage,
-        TaskNotificationMessage,
-        TaskStartedMessage,
-    )
-
-    timeline = EventTimeline()
-    timeline.record("session_start", model=model_name, provider=provider)
-
-    result = ExecutionResult(
-        case_name=case_name,
-        model_name=model_name,
-        provider=provider,
-        run_label=run_label,
-        working_dir=str(working_dir),
-        timestamp=datetime.now(timezone.utc).isoformat(),
-    )
-
-    is_local = provider in ("ollama", "lm_studio")
-
-    # -- Build options with hooks --
-    hooks = build_hooks(timeline)
-
-    # The bundled CLI can close its stream before final hook responses
-    # are delivered, producing "Stream closed" + minified JS stack traces.
-    # This is a CLI-side shutdown race condition — harmless but noisy.
-    # We filter those out while keeping real errors visible.
-    stderr_lines: list[str] = []
-
-    def _stderr_handler(line: str) -> None:
-        stderr_lines.append(line)
-        # Suppress known shutdown noise
-        if "Stream closed" in line or "Error in hook callback" in line:
-            return
-        # Show real errors
-        log.debug(f"  [{model_name}] stderr: {line.rstrip()}")
-
-    # Unset CLAUDECODE so the child CLI doesn't think it's nested inside
-    # a parent Claude Code session (which would cause it to refuse to start).
-    base_env: dict[str, str] = {"CLAUDECODE": ""}
-
-    opts_kwargs: dict[str, Any] = {
-        "permission_mode": "bypassPermissions",
-        "model": model_name,
-        "cwd": str(working_dir),
-        "disallowed_tools": ["AskUserQuestion"],
-        "hooks": hooks,
-        "stderr": _stderr_handler,
-        "env": base_env,
-    }
-
-    if is_local:
-        opts_kwargs["env"] = {
-            **base_env,
-            "ANTHROPIC_BASE_URL": api_base_url or OLLAMA_BASE_URL,
-            "ANTHROPIC_AUTH_TOKEN": "local",
-            "ANTHROPIC_API_KEY": "local",
-            "ANTHROPIC_DEFAULT_HAIKU_MODEL": model_name,
-            "CLAUDE_CODE_SUBAGENT_MODEL": model_name,
-        }
-
-    options = ClaudeAgentOptions(**opts_kwargs)
-
-    # Collect turn data from AssistantMessages for post-session correlation
-    turn_counter = 0
-    turn_data: list[dict[str, Any]] = []
-
-    client = ClaudeSDKClient(options=options)
-    timed_out = False
-
-    async def _timeout_watchdog(timeout: float) -> None:
-        """Wait for timeout, then interrupt → grace period → disconnect."""
-        nonlocal timed_out
-        await asyncio.sleep(timeout)
-        timed_out = True
-        log.info(f"  [{model_name}] timeout reached ({timeout:.0f}s) — interrupting session")
-        try:
-            await client.interrupt()
-        except Exception:
-            pass  # session may already be closing
-        # Give the session a few seconds to wind down after interrupt,
-        # then force-disconnect so we don't hang indefinitely.
-        await asyncio.sleep(5)
-        log.info(f"  [{model_name}] grace period elapsed — disconnecting")
-        try:
-            await client.disconnect()
-        except Exception:
-            pass
-
-    # ── Stop-event watchdog (external signal to stop the session) ──
-    externally_stopped = False
-
-    async def _stop_event_watchdog() -> None:
-        """Wait for the external stop event, then interrupt → disconnect."""
-        nonlocal externally_stopped
-        assert stop_event is not None
-        await stop_event.wait()
-        externally_stopped = True
-        log.info(f"  [{model_name}] stop_event set — interrupting session")
-        try:
-            await client.interrupt()
-        except Exception:
-            pass
-        await asyncio.sleep(5)
-        log.info(f"  [{model_name}] grace period elapsed — disconnecting")
-        try:
-            await client.disconnect()
-        except Exception:
-            pass
-
-    t0 = time.monotonic()
-    watchdog_task: asyncio.Task[None] | None = None
-    stop_task: asyncio.Task[None] | None = None
-
-    try:
-        await client.connect()
-        await client.query(prompt)
-
-        # Start timeout watchdog if configured
-        if timeout_s is not None:
-            watchdog_task = asyncio.create_task(_timeout_watchdog(timeout_s))
-
-        # Start stop-event watchdog if configured
-        if stop_event is not None:
-            stop_task = asyncio.create_task(_stop_event_watchdog())
-
-        async for message in client.receive_messages():
-            # ── AssistantMessage: one LLM turn ──
-            # NOTE: These arrive batched (often all at session end).
-            # We collect turn metadata and correlate with hook events
-            # after the session using tool_use_id matching.
-            if isinstance(message, AssistantMessage):
-                turn_counter += 1
-                text_len = 0
-                thinking_len = 0
-                tool_use_ids: list[str] = []
-
-                for block in message.content:
-                    if isinstance(block, TextBlock):
-                        text_len += len(block.text)
-                    elif isinstance(block, ThinkingBlock):
-                        thinking_len += len(block.thinking)
-                    elif isinstance(block, ToolUseBlock):
-                        tool_use_ids.append(block.id)
-
-                turn_data.append({
-                    "turn": turn_counter,
-                    "text_chars": text_len,
-                    "thinking_chars": thinking_len,
-                    "tool_use_ids": tool_use_ids,
-                })
-
-            # ── TaskProgressMessage: cumulative token usage ──
-            elif isinstance(message, TaskProgressMessage):
-                usage = message.usage
-                total_tok = (
-                    usage.get("total_tokens", 0)
-                    if isinstance(usage, dict)
-                    else getattr(usage, "total_tokens", 0)
-                )
-                tool_uses = (
-                    usage.get("tool_uses", 0)
-                    if isinstance(usage, dict)
-                    else getattr(usage, "tool_uses", 0)
-                )
-                dur_ms = (
-                    usage.get("duration_ms", 0)
-                    if isinstance(usage, dict)
-                    else getattr(usage, "duration_ms", 0)
-                )
-                timeline.record_task_progress(
-                    task_id=message.task_id,
-                    total_tokens=total_tok,
-                    tool_uses=tool_uses,
-                    duration_ms=dur_ms,
-                    last_tool=getattr(message, "last_tool_name", None),
-                )
-                log.info(
-                    f"  [{model_name}] progress: "
-                    f"{total_tok:,} tokens, {tool_uses} tools"
-                )
-
-            # ── TaskNotificationMessage: task completed/failed ──
-            elif isinstance(message, TaskNotificationMessage):
-                usage = message.usage
-                tok = None
-                if usage is not None:
-                    tok = (
-                        usage.get("total_tokens")
-                        if isinstance(usage, dict)
-                        else getattr(usage, "total_tokens", None)
-                    )
-                timeline.record_task_notification(
-                    task_id=message.task_id,
-                    status=(
-                        message.status
-                        if isinstance(message.status, str)
-                        else str(message.status)
-                    ),
-                    summary=message.summary,
-                    total_tokens=tok,
-                )
-                log.info(
-                    f"  [{model_name}] task {message.task_id[:8]}: "
-                    f"{message.status} — {message.summary[:80]}"
-                )
-
-            # ── TaskStartedMessage: subagent task started ──
-            elif isinstance(message, TaskStartedMessage):
-                timeline.record(
-                    "task_started",
-                    task_id=message.task_id,
-                    description=getattr(message, "description", ""),
-                )
-
-            # ── ResultMessage: session finished ──
-            elif isinstance(message, ResultMessage):
-                result.session_id = message.session_id
-                result.duration_ms = message.duration_ms
-                result.duration_api_ms = getattr(
-                    message, "duration_api_ms", 0
-                )
-                result.total_cost_usd = message.total_cost_usd
-                result.num_turns = message.num_turns
-                result.usage = message.usage
-
-                # Store usage for token breakdown
-                if isinstance(message.usage, dict):
-                    timeline.set_usage(message.usage)
-
-                timeline.record(
-                    "session_end",
-                    session_id=message.session_id,
-                    num_turns=message.num_turns,
-                    cost_usd=message.total_cost_usd,
-                    duration_ms=message.duration_ms,
-                    usage=message.usage,
-                    stop_reason=getattr(message, "stop_reason", None),
-                )
-                break  # ResultMessage means session is done
-
-    except (Exception, asyncio.CancelledError) as e:
-        if not timed_out and not externally_stopped:
-            result.error = f"{type(e).__name__}: {e}"
-            timeline.record("session_error", error=result.error)
-    finally:
-        # Cancel watchdog tasks if session ended before they fired
-        for task in (watchdog_task, stop_task):
-            if task is not None and not task.done():
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-
-        # Ensure client is disconnected
-        try:
-            await client.disconnect()
-        except Exception:
-            pass
-
-    if timed_out:
-        result.timed_out = True
-        timeline.record("session_timeout", timeout_s=timeout_s)
-        log.info(f"  [{model_name}] timed out after {timeout_s:.0f}s")
-
-    if externally_stopped:
-        result.cancelled = True
-        timeline.record("session_stopped", reason="stop_event")
-        log.info(f"  [{model_name}] externally stopped via stop_event")
-
-    # -- Post-session: correlate turns with hook events --
-    timeline.correlate_turns(turn_data)
-
-    result.duration_wall_s = time.monotonic() - t0
-    result.total_tokens = timeline.total_tokens
-    result.timeline_summary = timeline.summary()
-
-    # Save timeline
-    timeline_path = Path(working_dir) / f"_{artifact_prefix}timeline.json"
-    timeline_data = {
-        "model": model_name,
-        "provider": provider,
-        "summary": timeline.summary(),
-        "events": timeline.to_list(),
-    }
-    timeline_path.write_text(json.dumps(timeline_data, indent=2))
-    log.info(
-        f"  [{model_name}] timeline saved: {len(timeline.to_list())} events, "
-        f"{timeline.total_tokens:,} tokens"
-    )
-
-    # Save portable context document (skip for terminal phases like merge)
-    if save_context:
-        context_filename = (
-            f"{artifact_prefix}solver_context.md"
-            if role == "solver"
-            else f"{artifact_prefix}spec_dsp_context.md"
+        plan = await fw.generate_plan(
+            model_name="gpt-oss:20b", provider="ollama",
+            case_name="case_002", working_dir=workdir,
         )
-        ctx_t0 = time.monotonic()
-        context_md = timeline.build_context(
-            role=role,
+
+        result = await fw.run_session(
+            model_name="gpt-oss:20b", provider="ollama",
+            working_dir=workdir, prompt="Execute the plan...",
+            timeout_s=30, stop_event=some_event,
+        )
+    """
+
+    def __init__(
+        self,
+        ollama_base_url: str = OLLAMA_BASE_URL,
+        cases_dir: Path = CASES_DIR,
+        disable_thinking: bool = True,
+        temperature: float | None = None,
+    ) -> None:
+        self.ollama_base_url = ollama_base_url
+        self.cases_dir = cases_dir
+        self.disable_thinking = disable_thinking
+        self.temperature = temperature
+
+    # ── shared helpers ──────────────────────────────────────────────────
+
+    def _is_local(self, provider: str) -> bool:
+        return provider in ("ollama", "lm_studio")
+
+    def _build_env(
+        self,
+        provider: str,
+        model_name: str,
+        api_base_url: str = "",
+    ) -> dict[str, str]:
+        """Build environment dict for the child CLI process.
+
+        Unsets CLAUDECODE so the child doesn't think it's nested inside a
+        parent Claude Code session (which would cause it to refuse to start).
+        """
+        base: dict[str, str] = {"CLAUDECODE": ""}
+        if self._is_local(provider):
+            base.update({
+                "ANTHROPIC_BASE_URL": api_base_url or self.ollama_base_url,
+                "ANTHROPIC_AUTH_TOKEN": "local",
+                "ANTHROPIC_API_KEY": "local",
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL": model_name,
+                "CLAUDE_CODE_SUBAGENT_MODEL": model_name,
+            })
+            if self.temperature is not None:
+                base["OLLAMA_TEMPERATURE"] = str(self.temperature)
+        return base
+
+    def _build_options(
+        self,
+        model_name: str,
+        provider: str,
+        working_dir: Path,
+        api_base_url: str = "",
+        *,
+        permission_mode: str = "bypassPermissions",
+        hooks: dict[str, list[Any]] | None = None,
+        stderr: Any | None = None,
+    ) -> Any:
+        """Build ClaudeAgentOptions with provider-appropriate config."""
+        from claude_agent_sdk import ClaudeAgentOptions
+
+        env = self._build_env(provider, model_name, api_base_url)
+
+        opts_kwargs: dict[str, Any] = {
+            "permission_mode": permission_mode,
+            "model": model_name,
+            "cwd": str(working_dir),
+            "disallowed_tools": ["AskUserQuestion"],
+            "env": env,
+        }
+        # Local models (e.g. gpt-oss via Ollama) produce thinking blocks
+        # without the Anthropic-proprietary 'signature' field, causing
+        # MessageParseError.  Disable thinking for local providers.
+        if self._is_local(provider) and self.disable_thinking:
+            opts_kwargs["thinking"] = {"type": "disabled"}
+            log.info(
+                f"  [{model_name}] thinking disabled for local provider "
+                f"({provider})"
+            )
+
+        if hooks is not None:
+            opts_kwargs["hooks"] = hooks
+        if stderr is not None:
+            opts_kwargs["stderr"] = stderr
+
+        return ClaudeAgentOptions(**opts_kwargs)
+
+    # ── plan generation ─────────────────────────────────────────────────
+
+    async def generate_plan(
+        self,
+        model_name: str,
+        provider: str,
+        case_name: str,
+        working_dir: Path,
+        plan_filename: str = "PLAN.md",
+        api_base_url: str = "",
+    ) -> PlanGenResult:
+        """Generate a plan using the Agent SDK in planning mode.
+
+        Runs the model with ``permission_mode="plan"`` so it cannot write
+        files; the plan is extracted from the ``ExitPlanMode`` tool call
+        (or a Write to ``/.claude/plans/``), then saved to
+        *working_dir/plan_filename*.
+        """
+        from claude_agent_sdk import (
+            AssistantMessage,
+            ResultMessage,
+            TextBlock,
+            ThinkingBlock,
+            ToolUseBlock,
+            query,
+        )
+
+        result = PlanGenResult(
             model_name=model_name,
-            working_dir=Path(working_dir),
-            timeout_s=timeout_s,
-            session_id=result.session_id,
+            provider=provider,
+            timestamp=datetime.now(timezone.utc).isoformat(),
         )
-        context_path = Path(working_dir) / context_filename
-        context_path.write_text(context_md)
-        ctx_ms = (time.monotonic() - ctx_t0) * 1000
+
+        # ── Load case prompt ──
+        case_prompt = (self.cases_dir / case_name / "PROMPT.md").read_text()
+
+        # ── Compose prompt ──
+        prompt = (
+            "You are in planning mode. Read the objective below and produce "
+            "a detailed, step-by-step implementation plan. Do NOT execute "
+            "anything — only plan.\n\n"
+            "IMPORTANT: Do NOT ask clarifying questions. Do NOT use the "
+            "AskUserQuestion tool. If any detail is ambiguous or missing, "
+            "make a reasonable assumption, state it explicitly in your plan, "
+            "and proceed. You must produce a complete plan in a single pass "
+            "without waiting for human input.\n\n"
+            f"## Objective\n\n{case_prompt}\n\n"
+            f"## Working Directory\n\n"
+            f"The working directory is: {working_dir}\n"
+            f"Inspect it if needed for context materials."
+        )
+
+        options = self._build_options(
+            model_name, provider, working_dir, api_base_url,
+            permission_mode="plan",
+        )
+
+        # ── Run ──
+        reasoning_text = ""
+        thinking_text = ""
+        plan_text: str | None = None
+
+        t0 = time.monotonic()
+        try:
+            async for message in query(prompt=prompt, options=options):
+                if isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if isinstance(block, TextBlock):
+                            reasoning_text += block.text + "\n"
+                        elif isinstance(block, ThinkingBlock):
+                            thinking_text += block.thinking + "\n"
+                        elif isinstance(block, ToolUseBlock):
+                            if block.name == "ExitPlanMode":
+                                exit_plan = block.input.get("plan", "")
+                                if exit_plan and (
+                                    plan_text is None
+                                    or len(exit_plan) > len(plan_text)
+                                ):
+                                    plan_text = exit_plan
+                            elif (
+                                block.name == "Write"
+                                and "/.claude/plans/" in block.input.get(
+                                    "file_path", ""
+                                )
+                            ):
+                                write_content = block.input.get("content", "")
+                                if write_content and (
+                                    plan_text is None
+                                    or len(write_content) > len(plan_text)
+                                ):
+                                    plan_text = write_content
+
+                elif isinstance(message, ResultMessage):
+                    result.session_id = message.session_id
+                    result.duration_ms = message.duration_ms
+                    result.total_cost_usd = message.total_cost_usd
+                    result.num_turns = message.num_turns
+                    result.usage = message.usage
+
+        except Exception as e:
+            result.error = f"{type(e).__name__}: {e}"
+
+        result.duration_wall_s = time.monotonic() - t0
+        result.reasoning_text = reasoning_text
+        result.thinking_text = thinking_text
+
+        # Fallback: use text output if ExitPlanMode was never called
+        if plan_text is None and reasoning_text.strip():
+            log.warning(
+                f"  [{model_name}] ExitPlanMode not called — "
+                f"falling back to text output as plan"
+            )
+            plan_text = reasoning_text.strip()
+
+        result.plan_text = plan_text
+
+        # Write plan to disk
+        if plan_text:
+            plan_path = working_dir / plan_filename
+            plan_path.write_text(plan_text)
+            result.plan_path = plan_path
+            log.info(
+                f"  [{model_name}] plan saved: {plan_path} "
+                f"({len(plan_text)} chars, {result.duration_wall_s:.1f}s)"
+            )
+        else:
+            log.warning(f"  [{model_name}] no plan text produced")
+
+        return result
+
+    # ── instrumented execution session ──────────────────────────────────
+
+    async def run_session(
+        self,
+        model_name: str,
+        provider: str,
+        working_dir: Path,
+        prompt: str,
+        api_base_url: str = "",
+        timeout_s: float | None = None,
+        stop_event: asyncio.Event | None = None,
+        run_label: str = "",
+        case_name: str = "",
+        role: Literal["solver", "speculative_dispatcher"] = "solver",
+        artifact_prefix: str = "",
+        save_context: bool = True,
+    ) -> ExecutionResult:
+        """Start an instrumented Claude Code session via the Agent SDK.
+
+        Uses ``ClaudeSDKClient`` for graceful session control:
+          - ``interrupt()`` signals the CLI to stop the current response
+          - ``disconnect()`` tears down the session and subprocess
+
+        Args:
+            stop_event: If provided, the session will be interrupted when
+                the event is set (used by test2/test3 to stop speculative
+                execution when the solver plan is ready).
+            timeout_s: Hard timeout — session is interrupted then disconnected.
+
+        Tracks:
+          - Every tool call (via PreToolUse / PostToolUse hooks)
+          - Subagent lifecycle (via SubagentStart / SubagentStop hooks)
+          - Token usage (via TaskProgressMessage / TaskNotificationMessage)
+          - LLM turns (via AssistantMessage counting)
+
+        Returns an ExecutionResult.  Saves ``_timeline.json`` to *working_dir*.
+        """
+        from claude_agent_sdk import (
+            ClaudeSDKClient,
+            AssistantMessage,
+            ResultMessage,
+            TextBlock,
+            ThinkingBlock,
+            ToolUseBlock,
+        )
+        from claude_agent_sdk import (
+            TaskProgressMessage,
+            TaskNotificationMessage,
+            TaskStartedMessage,
+        )
+
+        timeline = EventTimeline()
+        timeline.record("session_start", model=model_name, provider=provider)
+
+        result = ExecutionResult(
+            case_name=case_name,
+            model_name=model_name,
+            provider=provider,
+            run_label=run_label,
+            working_dir=str(working_dir),
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
+
+        # -- Build options with hooks --
+        hooks = build_hooks(timeline)
+
+        # The bundled CLI can close its stream before final hook responses
+        # are delivered, producing "Stream closed" + minified JS stack traces.
+        # This is a CLI-side shutdown race condition — harmless but noisy.
+        # We filter those out while keeping real errors visible.
+        stderr_lines: list[str] = []
+
+        def _stderr_handler(line: str) -> None:
+            stderr_lines.append(line)
+            if "Stream closed" in line or "Error in hook callback" in line:
+                return
+            log.debug(f"  [{model_name}] stderr: {line.rstrip()}")
+
+        options = self._build_options(
+            model_name, provider, working_dir, api_base_url,
+            hooks=hooks, stderr=_stderr_handler,
+        )
+
+        # Collect turn data from AssistantMessages for post-session correlation
+        turn_counter = 0
+        turn_data: list[dict[str, Any]] = []
+
+        client = ClaudeSDKClient(options=options)
+        timed_out = False
+
+        async def _timeout_watchdog(timeout: float) -> None:
+            """Wait for timeout, then interrupt → grace period → disconnect."""
+            nonlocal timed_out
+            await asyncio.sleep(timeout)
+            timed_out = True
+            log.info(
+                f"  [{model_name}] timeout reached ({timeout:.0f}s) "
+                f"— interrupting session"
+            )
+            try:
+                await client.interrupt()
+            except Exception:
+                pass
+            await asyncio.sleep(5)
+            log.info(f"  [{model_name}] grace period elapsed — disconnecting")
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+
+        # ── Stop-event watchdog (external signal to stop the session) ──
+        externally_stopped = False
+
+        async def _stop_event_watchdog() -> None:
+            """Wait for the external stop event, then interrupt → disconnect."""
+            nonlocal externally_stopped
+            assert stop_event is not None
+            await stop_event.wait()
+            externally_stopped = True
+            log.info(
+                f"  [{model_name}] stop_event set — interrupting session"
+            )
+            try:
+                await client.interrupt()
+            except Exception:
+                pass
+            await asyncio.sleep(5)
+            log.info(f"  [{model_name}] grace period elapsed — disconnecting")
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+
+        t0 = time.monotonic()
+        watchdog_task: asyncio.Task[None] | None = None
+        stop_task: asyncio.Task[None] | None = None
+
+        try:
+            await client.connect()
+            await client.query(prompt)
+
+            if timeout_s is not None:
+                watchdog_task = asyncio.create_task(
+                    _timeout_watchdog(timeout_s)
+                )
+            if stop_event is not None:
+                stop_task = asyncio.create_task(_stop_event_watchdog())
+
+            async for message in client.receive_messages():
+                # ── AssistantMessage: one LLM turn ──
+                if isinstance(message, AssistantMessage):
+                    turn_counter += 1
+                    text_len = 0
+                    thinking_len = 0
+                    tool_use_ids: list[str] = []
+
+                    for block in message.content:
+                        if isinstance(block, TextBlock):
+                            text_len += len(block.text)
+                        elif isinstance(block, ThinkingBlock):
+                            thinking_len += len(block.thinking)
+                        elif isinstance(block, ToolUseBlock):
+                            tool_use_ids.append(block.id)
+
+                    turn_data.append({
+                        "turn": turn_counter,
+                        "text_chars": text_len,
+                        "thinking_chars": thinking_len,
+                        "tool_use_ids": tool_use_ids,
+                    })
+
+                # ── TaskProgressMessage: cumulative token usage ──
+                elif isinstance(message, TaskProgressMessage):
+                    usage = message.usage
+                    total_tok = (
+                        usage.get("total_tokens", 0)
+                        if isinstance(usage, dict)
+                        else getattr(usage, "total_tokens", 0)
+                    )
+                    tool_uses = (
+                        usage.get("tool_uses", 0)
+                        if isinstance(usage, dict)
+                        else getattr(usage, "tool_uses", 0)
+                    )
+                    dur_ms = (
+                        usage.get("duration_ms", 0)
+                        if isinstance(usage, dict)
+                        else getattr(usage, "duration_ms", 0)
+                    )
+                    timeline.record_task_progress(
+                        task_id=message.task_id,
+                        total_tokens=total_tok,
+                        tool_uses=tool_uses,
+                        duration_ms=dur_ms,
+                        last_tool=getattr(message, "last_tool_name", None),
+                    )
+                    log.info(
+                        f"  [{model_name}] progress: "
+                        f"{total_tok:,} tokens, {tool_uses} tools"
+                    )
+
+                # ── TaskNotificationMessage: task completed/failed ──
+                elif isinstance(message, TaskNotificationMessage):
+                    usage = message.usage
+                    tok = None
+                    if usage is not None:
+                        tok = (
+                            usage.get("total_tokens")
+                            if isinstance(usage, dict)
+                            else getattr(usage, "total_tokens", None)
+                        )
+                    timeline.record_task_notification(
+                        task_id=message.task_id,
+                        status=(
+                            message.status
+                            if isinstance(message.status, str)
+                            else str(message.status)
+                        ),
+                        summary=message.summary,
+                        total_tokens=tok,
+                    )
+                    log.info(
+                        f"  [{model_name}] task {message.task_id[:8]}: "
+                        f"{message.status} — {message.summary[:80]}"
+                    )
+
+                # ── TaskStartedMessage: subagent task started ──
+                elif isinstance(message, TaskStartedMessage):
+                    timeline.record(
+                        "task_started",
+                        task_id=message.task_id,
+                        description=getattr(message, "description", ""),
+                    )
+
+                # ── ResultMessage: session finished ──
+                elif isinstance(message, ResultMessage):
+                    result.session_id = message.session_id
+                    result.duration_ms = message.duration_ms
+                    result.duration_api_ms = getattr(
+                        message, "duration_api_ms", 0
+                    )
+                    result.total_cost_usd = message.total_cost_usd
+                    result.num_turns = message.num_turns
+                    result.usage = message.usage
+
+                    if isinstance(message.usage, dict):
+                        timeline.set_usage(message.usage)
+
+                    timeline.record(
+                        "session_end",
+                        session_id=message.session_id,
+                        num_turns=message.num_turns,
+                        cost_usd=message.total_cost_usd,
+                        duration_ms=message.duration_ms,
+                        usage=message.usage,
+                        stop_reason=getattr(message, "stop_reason", None),
+                    )
+                    break
+
+        except (Exception, asyncio.CancelledError) as e:
+            if not timed_out and not externally_stopped:
+                result.error = f"{type(e).__name__}: {e}"
+                timeline.record("session_error", error=result.error)
+        finally:
+            for task in (watchdog_task, stop_task):
+                if task is not None and not task.done():
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+
+        if timed_out:
+            result.timed_out = True
+            timeline.record("session_timeout", timeout_s=timeout_s)
+            log.info(f"  [{model_name}] timed out after {timeout_s:.0f}s")
+
+        if externally_stopped:
+            result.cancelled = True
+            timeline.record("session_stopped", reason="stop_event")
+            log.info(
+                f"  [{model_name}] externally stopped via stop_event"
+            )
+
+        # -- Post-session: correlate turns with hook events --
+        timeline.correlate_turns(turn_data)
+
+        result.duration_wall_s = time.monotonic() - t0
+        result.total_tokens = timeline.total_tokens
+        result.timeline_summary = timeline.summary()
+
+        # Save timeline
+        timeline_path = Path(working_dir) / f"_{artifact_prefix}timeline.json"
+        timeline_data = {
+            "model": model_name,
+            "provider": provider,
+            "summary": timeline.summary(),
+            "events": timeline.to_list(),
+        }
+        timeline_path.write_text(json.dumps(timeline_data, indent=2))
         log.info(
-            f"  [{model_name}] context saved: {context_path.name} ({ctx_ms:.1f}ms)"
+            f"  [{model_name}] timeline saved: "
+            f"{len(timeline.to_list())} events, "
+            f"{timeline.total_tokens:,} tokens"
         )
 
-    # Save full stderr for debugging (including filtered shutdown noise)
-    stderr_log = Path(working_dir) / f"_{artifact_prefix}stderr.log"
-    stderr_log.write_text("\n".join(stderr_lines))
+        # Save portable context document (skip for terminal phases like merge)
+        if save_context:
+            context_filename = (
+                f"{artifact_prefix}solver_context.md"
+                if role == "solver"
+                else f"{artifact_prefix}spec_dsp_context.md"
+            )
+            ctx_t0 = time.monotonic()
+            context_md = timeline.build_context(
+                role=role,
+                model_name=model_name,
+                working_dir=Path(working_dir),
+                timeout_s=timeout_s,
+                session_id=result.session_id,
+            )
+            context_path = Path(working_dir) / context_filename
+            context_path.write_text(context_md)
+            ctx_ms = (time.monotonic() - ctx_t0) * 1000
+            log.info(
+                f"  [{model_name}] context saved: "
+                f"{context_path.name} ({ctx_ms:.1f}ms)"
+            )
 
-    return result
+        # Save full stderr for debugging (including filtered shutdown noise)
+        stderr_log = Path(working_dir) / f"_{artifact_prefix}stderr.log"
+        stderr_log.write_text("\n".join(stderr_lines))
+
+        return result
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2089,6 +2152,7 @@ async def test1_baseline(
       Phase 3: After timeout_s seconds, execution is interrupted.
       Phase 4: Solver context + timeline + snapshot are saved.
     """
+    fw = ClaudeCodeFramework()
     run_label = f"{case_name}/test1_gptoss_stop"
     workdir = prepare_bare_workdir(run_label, case_name)
 
@@ -2099,13 +2163,12 @@ async def test1_baseline(
     # ── Phase 1: Generate plan with gpt-oss ──
     log.info("  Phase 1: generating plan with gpt-oss...")
 
-    plan_result = await generate_plan_session(
+    plan_result = await fw.generate_plan(
         model_name="gpt-oss:20b",
         provider="ollama",
         case_name=case_name,
         working_dir=workdir,
         plan_filename="PLAN.md",
-        api_base_url=OLLAMA_BASE_URL,
     )
 
     if plan_result.error:
@@ -2131,12 +2194,11 @@ async def test1_baseline(
         "Use subagents for independent implementation tasks."
     )
 
-    result = await run_session(
+    result = await fw.run_session(
         model_name="gpt-oss:20b",
         provider="ollama",
         working_dir=workdir,
         prompt=exec_prompt,
-        api_base_url=OLLAMA_BASE_URL,
         timeout_s=timeout_s,
         run_label=run_label,
         case_name=case_name,
@@ -2260,6 +2322,7 @@ async def test2_parallel(
       Phase 3: Opus finishes planning → stop gpt-oss execution.
       Phase 4: Save all artifacts.
     """
+    fw = ClaudeCodeFramework()
     spec_dsp_label = f"{case_name}/test2_spec_dsp"
     solver_label = f"{case_name}/test2_solver"
 
@@ -2275,18 +2338,17 @@ async def test2_parallel(
     log.info("  Phase 1: generating plans concurrently...")
 
     gptoss_plan_task = asyncio.create_task(
-        generate_plan_session(
+        fw.generate_plan(
             model_name="gpt-oss:20b",
             provider="ollama",
             case_name=case_name,
             working_dir=spec_dsp_workdir,
             plan_filename="spec_dsp_PLAN.md",
-            api_base_url=OLLAMA_BASE_URL,
         )
     )
 
     opus_plan_task = asyncio.create_task(
-        generate_plan_session(
+        fw.generate_plan(
             model_name="claude-opus-4-6",
             provider="anthropic",
             case_name=case_name,
@@ -2333,12 +2395,11 @@ async def test2_parallel(
     )
 
     gptoss_exec_task = asyncio.create_task(
-        run_session(
+        fw.run_session(
             model_name="gpt-oss:20b",
             provider="ollama",
             working_dir=spec_dsp_workdir,
             prompt=exec_prompt,
-            api_base_url=OLLAMA_BASE_URL,
             stop_event=stop_event,
             run_label=spec_dsp_label,
             case_name=case_name,
@@ -2408,6 +2469,7 @@ async def test3_merge(
                partial work, and decides to reuse / merge / discard.
       Phase 6: Save merge artifacts and print results.
     """
+    fw = ClaudeCodeFramework()
     spec_dsp_label = f"{case_name}/test3_spec_dsp"
     solver_label = f"{case_name}/test3_solver"
 
@@ -2423,18 +2485,17 @@ async def test3_merge(
     log.info("  Phase 1: generating plans concurrently...")
 
     gptoss_plan_task = asyncio.create_task(
-        generate_plan_session(
+        fw.generate_plan(
             model_name="gpt-oss:20b",
             provider="ollama",
             case_name=case_name,
             working_dir=spec_dsp_workdir,
             plan_filename="spec_dsp_PLAN.md",
-            api_base_url=OLLAMA_BASE_URL,
         )
     )
 
     opus_plan_task = asyncio.create_task(
-        generate_plan_session(
+        fw.generate_plan(
             model_name="claude-opus-4-6",
             provider="anthropic",
             case_name=case_name,
@@ -2477,12 +2538,11 @@ async def test3_merge(
     )
 
     gptoss_exec_task = asyncio.create_task(
-        run_session(
+        fw.run_session(
             model_name="gpt-oss:20b",
             provider="ollama",
             working_dir=spec_dsp_workdir,
             prompt=exec_prompt,
-            api_base_url=OLLAMA_BASE_URL,
             stop_event=stop_event,
             run_label=spec_dsp_label,
             case_name=case_name,
@@ -2558,7 +2618,7 @@ async def test3_merge(
         "Write your final merged plan to MERGED_PLAN.md."
     )
 
-    merge_result = await run_session(
+    merge_result = await fw.run_session(
         model_name="claude-opus-4-6",
         provider="anthropic",
         working_dir=spec_dsp_workdir,

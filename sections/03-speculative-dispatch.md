@@ -109,11 +109,24 @@ Notes:
 -->
 
 **Learner.**
-A reinforcement learning component that observes the full dispatch lifecycle of each request — intent, solver plan, speculation result, reconciliation decision, and execution outcome — and continuously updates the Speculative Dispatcher's prediction model.
+A reinforcement learning component that observes the full dispatch lifecycle of each request — intent, solver plan, speculation result, reconciliation decision, and execution outcome — and continuously updates the Speculative Dispatcher's prediction model. 
+The learner produces two outputs: 1) an updated policy for the Speculative Dispatcher to make prediction; and 2) a per-intent-class confidence scores that used to gate Spective Mode 2/3 activation. 
 The Learner is described in detail in Section 4.
 <!-- Question:
 1. what the Learner produces? that is its output?
-   The Learner's output is the updated prediction model (policy $\pi_\theta$) and the confidence scores that gate Mode 2/3 activation, correct?
+   The Learner's output is a) an updated policy $\pi_\theta$ that the Speculative Dispatcher uses for prediction; b) confidence scores that gate Mode 2/3 activation, correct?
+2. No data contract with adjacent components. The Learner has two interfaces the reader
+   needs: (a) what it receives from the Orchestrator (reconciliation outcome, salvage ratio — the reward signal), and (b) what it feeds back to the Speculative Dispatcher (updated policy, per-intent-class confidence).
+3. No design rationale.
+   - because the learning timescale is different from the prediction timescale — the Learner updates asynchronously after execution completes, while the Dispatcher must predict synchronously at request time. That separation is a design decision worth one sentence.
+4. The "closing the loop" role is invisible. 
+   - The Learner is what makes this a system rather than five independent boxes. It's the feedback mechanism. A reader should understand from §3.1 alone that the architecture is a closed-loop control system, not an open-loop pipeline.
+Suggest: expanding to ~6–8 sentences covering: what it observes (you have this), what it produces (policy + confidence scores), who consumes those outputs (Speculative Dispatcher), what triggers updates (asynchronous, post-execution), and why it's a separate component (different timescale from prediction).
+
+Extra Questions:
+- 1. When the update fires. Is it after every single reconciliation? In mini-batches? At the end of a session? The contextual bandit formulation (line 8) implies per-interaction updates, but that's an inference — it's never stated as a design decision.
+-   2. Whether it's synchronous or asynchronous. Does the Learner update block the next request? Or does it update in the background while the system continues serving? This matters architecturally — if synchronous, the Learner adds latency to the pipeline. If asynchronous, there's a staleness window where the Dispatcher uses a stale policy.
+-   3. Update frequency vs. learning rate. §4.3 line 85 mentions "increases the learning rate to accelerate adaptation" during drift — which implies the learning rate is normally lower. But lower than what? There's no baseline update cadence defined. 
 -->
 
 <!-- ```
