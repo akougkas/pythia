@@ -62,22 +62,57 @@ log = logging.getLogger("eval_execution")
 SCRIPT_DIR = Path(__file__).resolve().parent
 RESULTS_DIR = SCRIPT_DIR / "results_2"
 # CASES_DIR = SCRIPT_DIR / "cases"
-# CASES_DIR = Path("/home/jye/publications/cases/")
-CASES_DIR = Path("/Users/yejie/publications/cases/")
+CASES_DIR = Path("/home/jye/publications/cases/")
+# CASES_DIR = Path("/Users/yejie/publications/cases/")
 
 # Runs directory is OUTSIDE the Pythia project tree to avoid CLAUDE.md
 # contamination.  Claude Code walks up the directory tree looking for
 # project config — if the working directory is inside Pythia, it picks
 # up CLAUDE.md rules (mentor role, TDD, WTF-P gates) that distort the
 # experiment.
-# RUNS_DIR = Path("/home/jye/publications/pythia_eval_runs")
-RUNS_DIR = Path("/Users/yejie/publications/pythia_eval_runs")
+RUNS_DIR = Path("/home/jye/publications/pythia_eval_runs")
+# RUNS_DIR = Path("/Users/yejie/publications/pythia_eval_runs")
 
 # Default plan to execute (gpt-oss plan for case_002)
 DEFAULT_PLAN = "claude_code__ollama__gpt-oss_20b.md"
 
 # Ollama endpoint
 OLLAMA_BASE_URL = "http://localhost:11434"
+
+
+# ---------------------------------------------------------------------------
+# SDK patch: tolerate missing 'signature' in thinking blocks from local models
+# ---------------------------------------------------------------------------
+# Local models (e.g. gpt-oss via Ollama) may emit thinking blocks that lack
+# the Anthropic-proprietary 'signature' field.  The SDK's message parser
+# raises MessageParseError in this case.  We patch it so missing signatures
+# are replaced with an empty string instead of crashing.
+
+def _patch_sdk_thinking_signature() -> None:
+    """Monkey-patch claude_agent_sdk message parser to tolerate missing signature."""
+    try:
+        import claude_agent_sdk._internal.message_parser as mp
+        _original_parse = mp.parse_message
+
+        def _patched_parse(data: dict) -> Any:
+            # Inject empty signature into thinking blocks that lack it
+            if isinstance(data, dict) and data.get("type") == "assistant":
+                msg = data.get("message", {})
+                for block in msg.get("content", []):
+                    if (
+                        isinstance(block, dict)
+                        and block.get("type") == "thinking"
+                        and "signature" not in block
+                    ):
+                        block["signature"] = ""
+            return _original_parse(data)
+
+        mp.parse_message = _patched_parse
+        log.debug("Patched SDK message parser for missing thinking signatures")
+    except Exception as e:
+        log.warning(f"Could not patch SDK message parser: {e}")
+
+_patch_sdk_thinking_signature()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1346,6 +1381,39 @@ def build_hooks(timeline: EventTimeline) -> dict[str, list[Any]]:
 # ═══════════════════════════════════════════════════════════════════════════
 
 @dataclass
+class TestConfig:
+    """Model role assignments for a test run.
+
+    Each test (test1, test2, test3) can be run with different model
+    combinations.  The config_id is used as the directory name under
+    the test folder, and configs.json provides the manifest.
+    """
+
+    config_id: str                          # e.g. "cfg_001"
+    solver: str = "claude-opus-4-6"         # model for planning (high-quality)
+    solver_provider: str = "anthropic"
+    dispatcher: str = "gpt-oss:20b"         # model for speculative planning + execution
+    dispatcher_provider: str = "ollama"
+    executor: str = "gpt-oss:20b"           # model for executing the dispatcher plan
+    executor_provider: str = "ollama"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "config_id": self.config_id,
+            "solver": self.solver,
+            "solver_provider": self.solver_provider,
+            "dispatcher": self.dispatcher,
+            "dispatcher_provider": self.dispatcher_provider,
+            "executor": self.executor,
+            "executor_provider": self.executor_provider,
+        }
+
+
+# Default config: Opus + gpt-oss (current test setup)
+DEFAULT_CONFIG = TestConfig(config_id="cfg_001")
+
+
+@dataclass
 class ExecutionResult:
     """Result of a single execution run."""
 
@@ -1594,6 +1662,52 @@ class ClaudeCodeFramework:
         self.disable_thinking = disable_thinking
         self.temperature = temperature
 
+    # ── warmup ─────────────────────────────────────────────────────────
+
+    async def warmup_model(
+        self,
+        model_name: str,
+        provider: str,
+        keep_alive: str = "10m",
+    ) -> None:
+        """Pre-load a local model into GPU/RAM so the first real call is warm.
+
+        Uses Ollama's /api/generate with an empty prompt, which loads the
+        model weights without producing any output.  No-op for cloud providers.
+        """
+        if not self._is_local(provider):
+            return
+
+        import urllib.request
+
+        url = f"{self.ollama_base_url}/api/generate"
+        payload = json.dumps({
+            "model": model_name,
+            "prompt": "",
+            "keep_alive": keep_alive,
+        }).encode()
+
+        req = urllib.request.Request(
+            url, data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        log.info(f"  Warming up {model_name} on Ollama (keep_alive={keep_alive})...")
+        t0 = time.monotonic()
+
+        # Run the blocking HTTP call in a thread so we don't stall the loop
+        loop = asyncio.get_running_loop()
+        try:
+            await loop.run_in_executor(
+                None,
+                lambda: urllib.request.urlopen(req, timeout=120).read(),
+            )
+            dt = time.monotonic() - t0
+            log.info(f"  {model_name} warm ({dt:.1f}s)")
+        except Exception as e:
+            dt = time.monotonic() - t0
+            log.warning(f"  Warmup failed for {model_name} after {dt:.1f}s: {e}")
+
     # ── shared helpers ──────────────────────────────────────────────────
 
     def _is_local(self, provider: str) -> bool:
@@ -1649,12 +1763,12 @@ class ClaudeCodeFramework:
         # Local models (e.g. gpt-oss via Ollama) produce thinking blocks
         # without the Anthropic-proprietary 'signature' field, causing
         # MessageParseError.  Disable thinking for local providers.
-        if self._is_local(provider) and self.disable_thinking:
-            opts_kwargs["thinking"] = {"type": "disabled"}
-            log.info(
-                f"  [{model_name}] thinking disabled for local provider "
-                f"({provider})"
-            )
+        # if self._is_local(provider) and self.disable_thinking:
+        #     opts_kwargs["thinking"] = {"type": "disabled"}
+        #     log.info(
+        #         f"  [{model_name}] thinking disabled for local provider "
+        #         f"({provider})"
+        #     )
 
         if hooks is not None:
             opts_kwargs["hooks"] = hooks
@@ -1809,6 +1923,7 @@ class ClaudeCodeFramework:
         role: Literal["solver", "speculative_dispatcher"] = "solver",
         artifact_prefix: str = "",
         save_context: bool = True,
+        artifacts_dir: Path | None = None,
     ) -> ExecutionResult:
         """Start an instrumented Claude Code session via the Agent SDK.
 
@@ -2089,7 +2204,8 @@ class ClaudeCodeFramework:
         result.timeline_summary = timeline.summary()
 
         # Save timeline
-        timeline_path = Path(working_dir) / f"_{artifact_prefix}timeline.json"
+        _adir = Path(artifacts_dir) if artifacts_dir else Path(working_dir)
+        timeline_path = _adir / f"{artifact_prefix}timeline.json"
         timeline_data = {
             "model": model_name,
             "provider": provider,
@@ -2118,7 +2234,7 @@ class ClaudeCodeFramework:
                 timeout_s=timeout_s,
                 session_id=result.session_id,
             )
-            context_path = Path(working_dir) / context_filename
+            context_path = _adir / context_filename
             context_path.write_text(context_md)
             ctx_ms = (time.monotonic() - ctx_t0) * 1000
             log.info(
@@ -2127,7 +2243,7 @@ class ClaudeCodeFramework:
             )
 
         # Save full stderr for debugging (including filtered shutdown noise)
-        stderr_log = Path(working_dir) / f"_{artifact_prefix}stderr.log"
+        stderr_log = _adir / f"{artifact_prefix}stderr.log"
         stderr_log.write_text("\n".join(stderr_lines))
 
         return result
@@ -2141,6 +2257,7 @@ async def test1_baseline(
     case_name: str,
     plan_path: Path | None = None,
     timeout_s: float = 30.0,
+    config: TestConfig | None = None,
 ) -> None:
     """Test 1: gpt-oss generates a plan then executes it; execution is
     stopped after *timeout_s* seconds.  The solver context is saved so
@@ -2152,27 +2269,35 @@ async def test1_baseline(
       Phase 3: After timeout_s seconds, execution is interrupted.
       Phase 4: Solver context + timeline + snapshot are saved.
     """
+    if config is None:
+        config = DEFAULT_CONFIG
+
     fw = ClaudeCodeFramework()
-    run_label = f"{case_name}/test1_gptoss_stop"
-    workdir = prepare_bare_workdir(run_label, case_name)
+    dirs = prepare_test_dirs(
+        case_name, "test1", config,
+        ["phase1_planning", "phase2_execution"],
+    )
+    workdir = dirs["workdir"]
+    run_label = f"{case_name}/test1/{config.config_id}"
 
     log.info(f"=== Test 1: gpt-oss plan -> execute -> stop after {timeout_s}s ===")
     log.info(f"  Case: {case_name}")
+    log.info(f"  Config: {config.config_id}")
     log.info(f"  Working dir: {workdir}")
 
-    # ── Phase 1: Generate plan with gpt-oss ──
-    log.info("  Phase 1: generating plan with gpt-oss...")
+    # ── Phase 1: Generate plan with dispatcher ──
+    log.info("  Phase 1: generating plan with dispatcher...")
 
     plan_result = await fw.generate_plan(
-        model_name="gpt-oss:20b",
-        provider="ollama",
+        model_name=config.dispatcher,
+        provider=config.dispatcher_provider,
         case_name=case_name,
         working_dir=workdir,
         plan_filename="PLAN.md",
     )
 
     if plan_result.error:
-        log.error(f"  gpt-oss plan generation failed: {plan_result.error}")
+        log.error(f"  Plan generation failed: {plan_result.error}")
         print(f"\nTest 1 FAILED: plan generation error -- {plan_result.error}")
         return
 
@@ -2181,11 +2306,13 @@ async def test1_baseline(
         f"{len(plan_result.plan_text or '')} chars)"
     )
 
-    # Save plan generation metadata
-    plan_gen_path = workdir / "_plan_gen.json"
+    # Save plan and metadata to phase1_planning/
+    phase1 = dirs["phase1_planning"]
+    shutil.copy2(workdir / "PLAN.md", phase1 / "PLAN.md")
+    plan_gen_path = phase1 / "plan_gen.json"
     plan_gen_path.write_text(json.dumps(plan_result.to_dict(), indent=2))
 
-    # ── Phase 2: Execute the plan with gpt-oss (time-boxed) ──
+    # ── Phase 2: Execute the plan (time-boxed) ──
     log.info(f"  Phase 2: executing plan (will stop after {timeout_s}s)...")
 
     exec_prompt = (
@@ -2195,25 +2322,27 @@ async def test1_baseline(
     )
 
     result = await fw.run_session(
-        model_name="gpt-oss:20b",
-        provider="ollama",
+        model_name=config.executor,
+        provider=config.executor_provider,
         working_dir=workdir,
         prompt=exec_prompt,
         timeout_s=timeout_s,
         run_label=run_label,
         case_name=case_name,
         role="solver",
+        artifacts_dir=dirs["phase2_execution"],
     )
 
-    # ── Phase 4: Save artifacts ──
-    result_path = workdir / "_result.json"
+    # ── Save execution artifacts to phase2_execution/ ──
+    phase2 = dirs["phase2_execution"]
+    result_path = phase2 / "result.json"
     result_path.write_text(json.dumps(result.to_dict(), indent=2))
 
     snap = snapshot_workdir(workdir)
-    snap_path = workdir / "_snapshot.json"
+    snap_path = phase2 / "snapshot.json"
     snap_path.write_text(json.dumps(snap.to_dict(), indent=2))
 
-    _print_test1_stop_results(plan_result, result, snap, workdir, timeout_s)
+    _print_test1_stop_results(plan_result, result, snap, dirs["root"], timeout_s)
 
 
 def _print_test1_stop_results(
@@ -2254,11 +2383,10 @@ def _print_test1_stop_results(
         print(f"  Exec error:       {exec_result.error}")
 
     print(f"\n  --- Artifacts ---")
-    print(f"  Working dir:      {workdir}")
-    print(f"    Plan:           PLAN.md")
-    print(f"    Solver context: solver_context.md")
-    print(f"    Timeline:       _timeline.json")
-    print(f"    Plan metadata:  _plan_gen.json")
+    print(f"  Run dir:          {workdir}")
+    print(f"    workdir/                 (generated code)")
+    print(f"    phase1_planning/         (PLAN.md, plan_gen.json)")
+    print(f"    phase2_execution/        (result.json, timeline.json, snapshot.json)")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2309,143 +2437,230 @@ def prepare_bare_workdir(run_label: str, case_name: str) -> Path:
     return workdir
 
 
+def prepare_test_dirs(
+    case_name: str,
+    test_name: str,
+    config: TestConfig,
+    phases: list[str],
+) -> dict[str, Path]:
+    """Create the directory structure for a test run.
+
+    Layout::
+
+        RUNS_DIR / case_name / test_name / config.config_id /
+            workdir/            ← agents execute here (generated code)
+            phase1_planning/    ← plans + plan-gen metadata
+            phase2_execution/   ← execution metadata
+            phase3_merge/       ← merge metadata (test3 only)
+
+    Also creates/updates ``configs.json`` at the test level so that all
+    config→model mappings are discoverable.
+
+    Returns a dict with keys: "root", "workdir", and one key per phase name.
+    """
+    test_dir = RUNS_DIR / case_name / test_name
+    test_dir.mkdir(parents=True, exist_ok=True)
+
+    config_dir = test_dir / config.config_id
+    if config_dir.exists():
+        shutil.rmtree(config_dir)
+    config_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create workdir (populated from case WorkingDir + git init)
+    workdir = config_dir / "workdir"
+    workdir.mkdir(parents=True, exist_ok=True)
+
+    case_workdir = CASES_DIR / case_name / "WorkingDir"
+    if case_workdir.exists():
+        for item in case_workdir.iterdir():
+            if item.name.startswith("."):
+                continue
+            dest = workdir / item.name
+            if item.is_dir():
+                shutil.copytree(item, dest)
+            else:
+                shutil.copy2(item, dest)
+
+    subprocess.run(["git", "init", "-q"], cwd=str(workdir), check=True)
+    subprocess.run(["git", "-C", str(workdir), "add", "-A"], check=True)
+    subprocess.run(
+        ["git", "-C", str(workdir), "commit", "-q",
+         "--allow-empty", "-m", "init workdir"],
+        check=True,
+    )
+
+    # Create phase directories
+    dirs: dict[str, Path] = {"root": config_dir, "workdir": workdir}
+    for phase in phases:
+        phase_dir = config_dir / phase
+        phase_dir.mkdir(parents=True, exist_ok=True)
+        dirs[phase] = phase_dir
+
+    # Update configs.json manifest
+    configs_path = test_dir / "configs.json"
+    if configs_path.exists():
+        existing = json.loads(configs_path.read_text())
+    else:
+        existing = {}
+    existing[config.config_id] = config.to_dict()
+    configs_path.write_text(json.dumps(existing, indent=2))
+
+    log.info(
+        f"Prepared test dirs: {config_dir} "
+        f"(phases: {', '.join(phases)})"
+    )
+    return dirs
+
+
 async def test2_parallel(
     case_name: str,
+    config: TestConfig | None = None,
 ) -> None:
-    """Test 2: Speculative dispatch — gpt-oss generates plan + executes
-    while Opus generates plan.  When Opus finishes planning, gpt-oss
+    """Test 2: Speculative dispatch — dispatcher generates plan + executes
+    while solver generates plan.  When solver finishes planning, dispatcher
     execution is stopped and its context is saved.
 
     Flow:
       Phase 1: Both agents generate plans concurrently.
-      Phase 2: gpt-oss finishes first → starts executing its plan.
-      Phase 3: Opus finishes planning → stop gpt-oss execution.
+      Phase 2: Dispatcher finishes first → starts executing its plan.
+      Phase 3: Solver finishes planning → stop dispatcher execution.
       Phase 4: Save all artifacts.
     """
-    fw = ClaudeCodeFramework()
-    spec_dsp_label = f"{case_name}/test2_spec_dsp"
-    solver_label = f"{case_name}/test2_solver"
+    if config is None:
+        config = DEFAULT_CONFIG
 
-    spec_dsp_workdir = prepare_bare_workdir(spec_dsp_label, case_name)
-    solver_workdir = prepare_bare_workdir(solver_label, case_name)
+    fw = ClaudeCodeFramework()
+    dirs = prepare_test_dirs(
+        case_name, "test2", config,
+        ["phase1_planning", "phase2_execution"],
+    )
+    workdir = dirs["workdir"]
+    run_label = f"{case_name}/test2/{config.config_id}"
 
     log.info("=== Test 2: Speculative Dispatch (plan + execute) ===")
     log.info(f"  Case: {case_name}")
-    log.info(f"  Spec-dsp dir (gpt-oss): {spec_dsp_workdir}")
-    log.info(f"  Solver dir (Opus):      {solver_workdir}")
+    log.info(f"  Config: {config.config_id}")
+    log.info(f"  Working dir: {workdir}")
 
     # ── Phase 1: Parallel plan generation ──
     log.info("  Phase 1: generating plans concurrently...")
 
-    gptoss_plan_task = asyncio.create_task(
+    dispatcher_plan_task = asyncio.create_task(
         fw.generate_plan(
-            model_name="gpt-oss:20b",
-            provider="ollama",
+            model_name=config.dispatcher,
+            provider=config.dispatcher_provider,
             case_name=case_name,
-            working_dir=spec_dsp_workdir,
+            working_dir=workdir,
             plan_filename="spec_dsp_PLAN.md",
         )
     )
 
-    opus_plan_task = asyncio.create_task(
+    solver_plan_task = asyncio.create_task(
         fw.generate_plan(
-            model_name="claude-opus-4-6",
-            provider="anthropic",
+            model_name=config.solver,
+            provider=config.solver_provider,
             case_name=case_name,
-            working_dir=solver_workdir,
+            working_dir=workdir,
             plan_filename="solver_PLAN.md",
         )
     )
 
-    # Wait for gpt-oss to finish planning first (it's faster)
+    # Wait for dispatcher to finish planning first (it's faster)
     done, pending = await asyncio.wait(
-        [gptoss_plan_task, opus_plan_task],
+        [dispatcher_plan_task, solver_plan_task],
         return_when=asyncio.FIRST_COMPLETED,
     )
 
     # Identify which finished first
-    if gptoss_plan_task in done:
-        gptoss_plan_result = gptoss_plan_task.result()
+    if dispatcher_plan_task in done:
+        dispatcher_plan_result = dispatcher_plan_task.result()
         log.info(
-            f"  gpt-oss plan ready ({gptoss_plan_result.duration_wall_s:.1f}s)"
-            f" — Opus still planning"
+            f"  Dispatcher plan ready "
+            f"({dispatcher_plan_result.duration_wall_s:.1f}s)"
+            f" — solver still planning"
         )
     else:
-        # Opus finished first (unexpected) — still wait for gpt-oss
-        log.info("  Opus finished planning first (unexpected) — waiting for gpt-oss")
-        gptoss_plan_result = await gptoss_plan_task
+        log.info("  Solver finished planning first (unexpected) — waiting for dispatcher")
+        dispatcher_plan_result = await dispatcher_plan_task
 
-    if gptoss_plan_result.error:
-        log.error(f"  gpt-oss plan generation failed: {gptoss_plan_result.error}")
-        # Still wait for Opus
-        opus_plan_result = await opus_plan_task
-        _print_plan_gen_summary(gptoss_plan_result, opus_plan_result,
-                                spec_dsp_workdir, solver_workdir)
+    if dispatcher_plan_result.error:
+        log.error(f"  Dispatcher plan generation failed: {dispatcher_plan_result.error}")
+        solver_plan_result = await solver_plan_task
+        _print_plan_gen_summary(dispatcher_plan_result, solver_plan_result,
+                                dirs["root"], dirs["root"],
+                                test_name="Test 2")
         return
 
-    # ── Phase 2: gpt-oss starts executing while Opus still plans ──
-    log.info("  Phase 2: gpt-oss starting speculative execution...")
+    # ── Phase 2: Dispatcher starts executing while solver still plans ──
+    log.info("  Phase 2: dispatcher starting speculative execution...")
 
     stop_event = asyncio.Event()
 
     exec_prompt = (
-        f"Read the implementation plan in {spec_dsp_workdir}/spec_dsp_PLAN.md "
+        f"Read the implementation plan in {workdir}/spec_dsp_PLAN.md "
         f"and execute it. Implement all files described in the plan in this "
         f"directory. Use subagents for independent implementation tasks."
     )
 
-    gptoss_exec_task = asyncio.create_task(
+    dispatcher_exec_task = asyncio.create_task(
         fw.run_session(
-            model_name="gpt-oss:20b",
-            provider="ollama",
-            working_dir=spec_dsp_workdir,
+            model_name=config.executor,
+            provider=config.executor_provider,
+            working_dir=workdir,
             prompt=exec_prompt,
             stop_event=stop_event,
-            run_label=spec_dsp_label,
+            run_label=run_label,
             case_name=case_name,
             role="speculative_dispatcher",
+            artifacts_dir=dirs["phase2_execution"],
         )
     )
 
-    # ── Phase 3: Wait for Opus to finish planning, then stop gpt-oss ──
-    opus_plan_result = await opus_plan_task
+    # ── Phase 3: Wait for solver to finish planning, then stop dispatcher ──
+    solver_plan_result = await solver_plan_task
     log.info(
-        f"  Opus plan ready ({opus_plan_result.duration_wall_s:.1f}s)"
+        f"  Solver plan ready ({solver_plan_result.duration_wall_s:.1f}s)"
         f" — stopping speculative dispatcher"
     )
 
     stop_event.set()
-    gptoss_exec_result = await gptoss_exec_task
+    dispatcher_exec_result = await dispatcher_exec_task
 
     log.info(
-        f"  gpt-oss execution stopped after "
-        f"{gptoss_exec_result.duration_wall_s:.1f}s"
+        f"  Dispatcher execution stopped after "
+        f"{dispatcher_exec_result.duration_wall_s:.1f}s"
     )
 
     # ── Phase 4: Save artifacts ──
+    phase1 = dirs["phase1_planning"]
+    phase2 = dirs["phase2_execution"]
+
     # Save execution result
-    result_path = spec_dsp_workdir / "_result.json"
-    result_path.write_text(json.dumps(gptoss_exec_result.to_dict(), indent=2))
+    result_path = phase2 / "result.json"
+    result_path.write_text(json.dumps(dispatcher_exec_result.to_dict(), indent=2))
 
-    # Take snapshot of gpt-oss execution output
-    spec_dsp_snap = snapshot_workdir(spec_dsp_workdir)
-    snap_path = spec_dsp_workdir / "_snapshot.json"
-    snap_path.write_text(json.dumps(spec_dsp_snap.to_dict(), indent=2))
+    # Take snapshot of execution output
+    snap = snapshot_workdir(workdir)
+    snap_path = phase2 / "snapshot.json"
+    snap_path.write_text(json.dumps(snap.to_dict(), indent=2))
 
-    # Save per-agent plan generation JSON (full metadata like eval1.py)
-    gptoss_plan_json = spec_dsp_workdir / "_plan_gen.json"
-    gptoss_plan_json.write_text(json.dumps(gptoss_plan_result.to_dict(), indent=2))
-    log.info(f"  gpt-oss plan metadata saved: {gptoss_plan_json}")
+    # Save plan generation metadata to phase1_planning/
+    shutil.copy2(workdir / "spec_dsp_PLAN.md", phase1 / "spec_dsp_PLAN.md")
+    shutil.copy2(workdir / "solver_PLAN.md", phase1 / "solver_PLAN.md")
 
-    opus_plan_json = solver_workdir / "_plan_gen.json"
-    opus_plan_json.write_text(json.dumps(opus_plan_result.to_dict(), indent=2))
-    log.info(f"  Opus plan metadata saved: {opus_plan_json}")
+    dsp_plan_json = phase1 / "spec_dsp_plan_gen.json"
+    dsp_plan_json.write_text(json.dumps(dispatcher_plan_result.to_dict(), indent=2))
+    log.info(f"  Dispatcher plan metadata saved: {dsp_plan_json}")
+
+    solver_plan_json = phase1 / "solver_plan_gen.json"
+    solver_plan_json.write_text(json.dumps(solver_plan_result.to_dict(), indent=2))
+    log.info(f"  Solver plan metadata saved: {solver_plan_json}")
 
     # Print results
     _print_speculative_results(
-        gptoss_plan_result, opus_plan_result,
-        gptoss_exec_result, spec_dsp_snap,
-        spec_dsp_workdir, solver_workdir,
+        dispatcher_plan_result, solver_plan_result,
+        dispatcher_exec_result, snap,
+        dirs["root"], dirs["root"],
     )
 
 
@@ -2455,149 +2670,175 @@ async def test2_parallel(
 
 async def test3_merge(
     case_name: str,
+    config: TestConfig | None = None,
 ) -> None:
     """Test 3: Speculative dispatch with merge phase.
 
     Phases 1–3 are identical to test2:
       Phase 1: Both agents generate plans concurrently.
-      Phase 2: gpt-oss finishes first → starts executing its plan.
-      Phase 3: Opus finishes planning → stop gpt-oss execution.
+      Phase 2: Dispatcher finishes first → starts executing its plan.
+      Phase 3: Solver finishes planning → stop dispatcher execution.
 
     Then the merge phase:
-      Phase 4: Save pre-merge artifacts (gpt-oss execution state).
-      Phase 5: Opus takes over spec_dsp_workdir, evaluates gpt-oss's
+      Phase 4: Save pre-merge artifacts (dispatcher execution state).
+      Phase 5: Solver takes over workdir, evaluates dispatcher's
                partial work, and decides to reuse / merge / discard.
       Phase 6: Save merge artifacts and print results.
     """
-    fw = ClaudeCodeFramework()
-    spec_dsp_label = f"{case_name}/test3_spec_dsp"
-    solver_label = f"{case_name}/test3_solver"
+    if config is None:
+        config = DEFAULT_CONFIG
 
-    spec_dsp_workdir = prepare_bare_workdir(spec_dsp_label, case_name)
-    solver_workdir = prepare_bare_workdir(solver_label, case_name)
+    fw = ClaudeCodeFramework()
+    dirs = prepare_test_dirs(
+        case_name, "test3", config,
+        ["phase1_planning", "phase2_execution", "phase3_merge"],
+    )
+    workdir = dirs["workdir"]
+    run_label = f"{case_name}/test3/{config.config_id}"
 
     log.info("=== Test 3: Speculative Dispatch + Merge ===")
     log.info(f"  Case: {case_name}")
-    log.info(f"  Spec-dsp dir (gpt-oss): {spec_dsp_workdir}")
-    log.info(f"  Solver dir (Opus):      {solver_workdir}")
+    log.info(f"  Config: {config.config_id}")
+    log.info(f"  Working dir: {workdir}")
+
+    # ── Warmup: pre-load local models so timing reflects pure inference ──
+    # Warmup dispatcher (used in Phase 1 planning) first, then kick off
+    # executor warmup concurrently with Phase 1 so it's ready for Phase 2.
+    await fw.warmup_model(config.dispatcher, config.dispatcher_provider)
 
     # ── Phase 1: Parallel plan generation (same as test2) ──
     log.info("  Phase 1: generating plans concurrently...")
 
-    gptoss_plan_task = asyncio.create_task(
+    dispatcher_plan_task = asyncio.create_task(
         fw.generate_plan(
-            model_name="gpt-oss:20b",
-            provider="ollama",
+            model_name=config.dispatcher,
+            provider=config.dispatcher_provider,
             case_name=case_name,
-            working_dir=spec_dsp_workdir,
+            working_dir=workdir,
             plan_filename="spec_dsp_PLAN.md",
         )
     )
 
-    opus_plan_task = asyncio.create_task(
+    solver_plan_task = asyncio.create_task(
         fw.generate_plan(
-            model_name="claude-opus-4-6",
-            provider="anthropic",
+            model_name=config.solver,
+            provider=config.solver_provider,
             case_name=case_name,
-            working_dir=solver_workdir,
+            working_dir=workdir,
             plan_filename="solver_PLAN.md",
         )
     )
 
     done, pending = await asyncio.wait(
-        [gptoss_plan_task, opus_plan_task],
+        [dispatcher_plan_task, solver_plan_task],
         return_when=asyncio.FIRST_COMPLETED,
     )
 
-    if gptoss_plan_task in done:
-        gptoss_plan_result = gptoss_plan_task.result()
+    if dispatcher_plan_task in done:
+        dispatcher_plan_result = dispatcher_plan_task.result()
         log.info(
-            f"  gpt-oss plan ready ({gptoss_plan_result.duration_wall_s:.1f}s)"
-            f" — Opus still planning"
+            f"  Dispatcher plan ready "
+            f"({dispatcher_plan_result.duration_wall_s:.1f}s)"
+            f" — solver still planning"
         )
     else:
-        log.info("  Opus finished planning first (unexpected) — waiting for gpt-oss")
-        gptoss_plan_result = await gptoss_plan_task
+        log.info("  Solver finished planning first (unexpected) — waiting for dispatcher")
+        dispatcher_plan_result = await dispatcher_plan_task
 
-    if gptoss_plan_result.error:
-        log.error(f"  gpt-oss plan generation failed: {gptoss_plan_result.error}")
-        opus_plan_result = await opus_plan_task
-        _print_plan_gen_summary(gptoss_plan_result, opus_plan_result,
-                                spec_dsp_workdir, solver_workdir)
+    if dispatcher_plan_result.error:
+        log.error(f"  Dispatcher plan generation failed: {dispatcher_plan_result.error}")
+        solver_plan_result = await solver_plan_task
+        _print_plan_gen_summary(dispatcher_plan_result, solver_plan_result,
+                                dirs["root"], dirs["root"],
+                                test_name="Test 3")
         return
 
-    # ── Phase 2: gpt-oss starts executing (same as test2) ──
-    log.info("  Phase 2: gpt-oss starting speculative execution...")
+    # Warmup executor model before Phase 2 if it differs from dispatcher.
+    # Done AFTER Phase 1 planning completes — not concurrently — because
+    # Ollama evicts the running model when GPU memory is insufficient for
+    # two models, which would slow down Phase 1 inference.
+    if (config.executor != config.dispatcher
+            or config.executor_provider != config.dispatcher_provider):
+        await fw.warmup_model(config.executor, config.executor_provider)
+
+    # ── Phase 2: Dispatcher starts executing (same as test2) ──
+    log.info("  Phase 2: dispatcher starting speculative execution...")
 
     stop_event = asyncio.Event()
 
     exec_prompt = (
-        f"Read the implementation plan in {spec_dsp_workdir}/spec_dsp_PLAN.md "
+        f"Read the implementation plan in {workdir}/spec_dsp_PLAN.md "
         f"and execute it. Implement all files described in the plan in this "
         f"directory. Use subagents for independent implementation tasks."
     )
 
-    gptoss_exec_task = asyncio.create_task(
+    dispatcher_exec_task = asyncio.create_task(
         fw.run_session(
-            model_name="gpt-oss:20b",
-            provider="ollama",
-            working_dir=spec_dsp_workdir,
+            model_name=config.executor,
+            provider=config.executor_provider,
+            working_dir=workdir,
             prompt=exec_prompt,
             stop_event=stop_event,
-            run_label=spec_dsp_label,
+            run_label=run_label,
             case_name=case_name,
             role="speculative_dispatcher",
+            artifacts_dir=dirs["phase2_execution"],
         )
     )
 
-    # ── Phase 3: Wait for Opus plan, then stop gpt-oss (same as test2) ──
-    opus_plan_result = await opus_plan_task
+    # ── Phase 3: Wait for solver plan, then stop dispatcher (same as test2) ──
+    solver_plan_result = await solver_plan_task
     log.info(
-        f"  Opus plan ready ({opus_plan_result.duration_wall_s:.1f}s)"
+        f"  Solver plan ready ({solver_plan_result.duration_wall_s:.1f}s)"
         f" — stopping speculative dispatcher"
     )
 
     stop_event.set()
-    gptoss_exec_result = await gptoss_exec_task
+    dispatcher_exec_result = await dispatcher_exec_task
 
     log.info(
-        f"  gpt-oss execution stopped after "
-        f"{gptoss_exec_result.duration_wall_s:.1f}s"
+        f"  Dispatcher execution stopped after "
+        f"{dispatcher_exec_result.duration_wall_s:.1f}s"
     )
 
     # ── Phase 4: Save pre-merge artifacts ──
     log.info("  Phase 4: saving pre-merge artifacts...")
 
-    result_path = spec_dsp_workdir / "_result.json"
-    result_path.write_text(json.dumps(gptoss_exec_result.to_dict(), indent=2))
+    phase1 = dirs["phase1_planning"]
+    phase2 = dirs["phase2_execution"]
+    phase3 = dirs["phase3_merge"]
+
+    # Save execution result to phase2
+    result_path = phase2 / "result.json"
+    result_path.write_text(json.dumps(dispatcher_exec_result.to_dict(), indent=2))
 
     # NOTE: snapshot commented out to measure pipeline without pytest overhead.
-    # spec_dsp_snap = snapshot_workdir(spec_dsp_workdir)
-    # snap_path = spec_dsp_workdir / "_snapshot.json"
-    # snap_path.write_text(json.dumps(spec_dsp_snap.to_dict(), indent=2))
-    spec_dsp_snap = None
+    # pre_merge_snap = snapshot_workdir(workdir)
+    # snap_path = phase2 / "snapshot.json"
+    # snap_path.write_text(json.dumps(pre_merge_snap.to_dict(), indent=2))
+    pre_merge_snap = None
 
-    gptoss_plan_json = spec_dsp_workdir / "_plan_gen.json"
-    gptoss_plan_json.write_text(json.dumps(gptoss_plan_result.to_dict(), indent=2))
+    # Save plans and plan metadata to phase1_planning/
+    for plan_file in ("spec_dsp_PLAN.md", "solver_PLAN.md"):
+        src = workdir / plan_file
+        if src.exists():
+            shutil.copy2(src, phase1 / plan_file)
 
-    opus_plan_json = solver_workdir / "_plan_gen.json"
-    opus_plan_json.write_text(json.dumps(opus_plan_result.to_dict(), indent=2))
+    dsp_plan_json = phase1 / "spec_dsp_plan_gen.json"
+    dsp_plan_json.write_text(json.dumps(dispatcher_plan_result.to_dict(), indent=2))
 
-    # ── Phase 5: Merge — Opus takes over spec_dsp_workdir ──
-    log.info("  Phase 5: Opus merge phase — evaluating gpt-oss work...")
+    solver_plan_json = phase1 / "solver_plan_gen.json"
+    solver_plan_json.write_text(json.dumps(solver_plan_result.to_dict(), indent=2))
 
-    # Copy solver_PLAN.md into spec_dsp_workdir so the merge agent has it
-    shutil.copy2(
-        solver_workdir / "solver_PLAN.md",
-        spec_dsp_workdir / "solver_PLAN.md",
-    )
+    # ── Phase 5: Merge — Solver takes over workdir ──
+    log.info("  Phase 5: Solver merge phase — evaluating dispatcher work...")
 
     merge_prompt = (
-        f"You are a solver using Claude Opus that generated the {spec_dsp_workdir}/solver_PLAN.md "
+        f"You are a solver using Claude Opus that generated the {workdir}/solver_PLAN.md "
         "for a task. Besides that, another agent the gpt-oss "
         "(speculative_dispatcher) has already executed some work "
         "during the period you were planning. You can find its progress "
-        f"and what it accomplished in {spec_dsp_workdir}/spec_dsp_context.md.\n\n"
+        f"and what it accomplished in {workdir}/spec_dsp_context.md.\n\n"
         "IMPORTANT — efficiency rules:\n"
         "- Read solver_PLAN.md and spec_dsp_context.md first.\n"
         "- To inspect gpt-oss source files, use a SINGLE Bash call to cat "
@@ -2619,15 +2860,15 @@ async def test3_merge(
     )
 
     merge_result = await fw.run_session(
-        model_name="claude-opus-4-6",
-        provider="anthropic",
-        working_dir=spec_dsp_workdir,
+        model_name=config.solver,
+        provider=config.solver_provider,
+        working_dir=workdir,
         prompt=merge_prompt,
-        run_label=f"{case_name}/test3_merge",
+        run_label=f"{case_name}/test3/{config.config_id}/merge",
         case_name=case_name,
         role="solver",
-        artifact_prefix="merge_",
         save_context=False,
+        artifacts_dir=phase3,
     )
 
     log.info(
@@ -2637,22 +2878,27 @@ async def test3_merge(
     # ── Phase 6: Save merge artifacts and print results ──
     log.info("  Phase 6: saving merge artifacts...")
 
-    merge_result_path = spec_dsp_workdir / "_merge_result.json"
+    merge_result_path = phase3 / "result.json"
     merge_result_path.write_text(
         json.dumps(merge_result.to_dict(), indent=2)
     )
 
+    # Copy MERGED_PLAN.md from workdir to phase3 if it was created there
+    merged_plan_src = workdir / "MERGED_PLAN.md"
+    if merged_plan_src.exists():
+        shutil.copy2(merged_plan_src, phase3 / "MERGED_PLAN.md")
+
     # NOTE: snapshot commented out to measure pipeline without pytest overhead.
-    # merge_snap = snapshot_workdir(spec_dsp_workdir)
-    # merge_snap_path = spec_dsp_workdir / "_merge_snapshot.json"
+    # merge_snap = snapshot_workdir(workdir)
+    # merge_snap_path = phase3 / "snapshot.json"
     # merge_snap_path.write_text(json.dumps(merge_snap.to_dict(), indent=2))
     merge_snap = None
 
     _print_merge_results(
-        gptoss_plan_result, opus_plan_result,
-        gptoss_exec_result, spec_dsp_snap,
+        dispatcher_plan_result, solver_plan_result,
+        dispatcher_exec_result, pre_merge_snap,
         merge_result, merge_snap,
-        spec_dsp_workdir, solver_workdir,
+        dirs["root"], dirs["root"],
     )
 
 
@@ -2759,15 +3005,15 @@ def _print_plan_gen_summary(
     opus_plan: PlanGenResult,
     spec_dsp_dir: Path,
     solver_dir: Path,
+    test_name: str = "Test 2",
 ) -> None:
-    """Print summary when test2 ends early (plan generation failure)."""
+    """Print summary when a test ends early (plan generation failure)."""
     print(f"\n{'='*60}")
-    print("Test 2: Plan Generation Only (execution skipped)")
+    print(f"{test_name}: Plan Generation Only (execution skipped)")
     print(f"{'='*60}")
-    print(f"  gpt-oss plan:  {'ERROR: ' + (gptoss_plan.error or '?') if gptoss_plan.error else f'{gptoss_plan.duration_wall_s:.1f}s'}")
-    print(f"  Opus plan:     {'ERROR: ' + (opus_plan.error or '?') if opus_plan.error else f'{opus_plan.duration_wall_s:.1f}s'}")
-    print(f"\n  Spec-dsp dir: {spec_dsp_dir}")
-    print(f"  Solver dir:   {solver_dir}")
+    print(f"  Dispatcher plan:  {'ERROR: ' + (gptoss_plan.error or '?') if gptoss_plan.error else f'{gptoss_plan.duration_wall_s:.1f}s'}")
+    print(f"  Solver plan:      {'ERROR: ' + (opus_plan.error or '?') if opus_plan.error else f'{opus_plan.duration_wall_s:.1f}s'}")
+    print(f"\n  Run dir: {spec_dsp_dir}")
 
 
 def _print_speculative_results(
@@ -2835,12 +3081,10 @@ def _print_speculative_results(
         print(f"  Opus plan error:    {opus_plan.error}")
 
     print(f"\n  --- Artifacts ---")
-    print(f"  Spec-dsp dir:    {spec_dsp_dir}")
-    print(f"    Plan:          spec_dsp_PLAN.md")
-    print(f"    Context:       spec_dsp_context.md")
-    print(f"    Timeline:      _timeline.json")
-    print(f"  Solver dir:      {solver_dir}")
-    print(f"    Plan:          solver_PLAN.md")
+    print(f"  Run dir:         {spec_dsp_dir}")
+    print(f"    workdir/                 (generated code)")
+    print(f"    phase1_planning/         (plans, plan_gen.json)")
+    print(f"    phase2_execution/        (result.json, timeline.json, snapshot.json)")
 
 
 def _print_merge_results(
@@ -2942,11 +3186,11 @@ def _print_merge_results(
         print(f"  Merge error:        {merge_exec.error}")
 
     print(f"\n  --- Artifacts ---")
-    print(f"  Spec-dsp dir:       {spec_dsp_dir}")
-    print(f"    Pre-merge:        spec_dsp_PLAN.md, spec_dsp_context.md, _timeline.json")
-    print(f"    Post-merge:       MERGED_PLAN.md, _merge_timeline.json, _merge_result.json")
-    print(f"  Solver dir:         {solver_dir}")
-    print(f"    Plan:             solver_PLAN.md")
+    print(f"  Run dir:            {spec_dsp_dir}")
+    print(f"    workdir/                 (generated code)")
+    print(f"    phase1_planning/         (plans, plan_gen.json)")
+    print(f"    phase2_execution/        (result.json, timeline.json)")
+    print(f"    phase3_merge/            (MERGED_PLAN.md, result.json, timeline.json)")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -3009,6 +3253,51 @@ def cmd_snapshot(args: argparse.Namespace) -> None:
 # §11  CLI
 # ═══════════════════════════════════════════════════════════════════════════
 
+def _add_config_args(parser: argparse.ArgumentParser) -> None:
+    """Add common --config/--solver/--dispatcher/--executor args to a parser."""
+    parser.add_argument(
+        "--config", default="cfg_001",
+        help="Config ID (default: cfg_001)",
+    )
+    parser.add_argument(
+        "--solver", default="claude-opus-4-6",
+        help="Solver model name (default: claude-opus-4-6)",
+    )
+    parser.add_argument(
+        "--solver-provider", default="anthropic",
+        help="Solver provider (default: anthropic)",
+    )
+    parser.add_argument(
+        "--dispatcher", default="gpt-oss:20b",
+        help="Dispatcher model name (default: gpt-oss:20b)",
+    )
+    parser.add_argument(
+        "--dispatcher-provider", default="ollama",
+        help="Dispatcher provider (default: ollama)",
+    )
+    parser.add_argument(
+        "--executor", default=None,
+        help="Executor model name (default: same as dispatcher)",
+    )
+    parser.add_argument(
+        "--executor-provider", default=None,
+        help="Executor provider (default: same as dispatcher-provider)",
+    )
+
+
+def _build_config(args: argparse.Namespace) -> TestConfig:
+    """Build a TestConfig from parsed CLI args."""
+    return TestConfig(
+        config_id=args.config,
+        solver=args.solver,
+        solver_provider=args.solver_provider,
+        dispatcher=args.dispatcher,
+        dispatcher_provider=args.dispatcher_provider,
+        executor=args.executor or args.dispatcher,
+        executor_provider=args.executor_provider or args.dispatcher_provider,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Plan execution experiments with full instrumentation"
@@ -3021,27 +3310,30 @@ def main() -> None:
     # test1
     p1 = sub.add_parser(
         "test1",
-        help="gpt-oss generates plan, executes, stops after timeout",
+        help="Dispatcher generates plan, executes, stops after timeout",
     )
     p1.add_argument("--case", required=True, help="Case name")
     p1.add_argument(
         "--timeout", type=float, default=30.0,
         help="Execution timeout in seconds (default: 30)",
     )
+    _add_config_args(p1)
 
     # test2
     p2 = sub.add_parser(
         "test2",
-        help="Speculative dispatch: gpt-oss plans+executes while Opus plans",
+        help="Speculative dispatch: dispatcher plans+executes while solver plans",
     )
     p2.add_argument("--case", required=True, help="Case name")
+    _add_config_args(p2)
 
     # test3
     p3t = sub.add_parser(
         "test3",
-        help="Speculative dispatch + merge: Opus evaluates gpt-oss work",
+        help="Speculative dispatch + merge: solver evaluates dispatcher work",
     )
     p3t.add_argument("--case", required=True, help="Case name")
+    _add_config_args(p3t)
 
     # snapshot
     p3 = sub.add_parser("snapshot", help="Snapshot a run directory")
@@ -3056,13 +3348,16 @@ def main() -> None:
     )
 
     if args.command == "test1":
-        asyncio.run(test1_baseline(args.case, timeout_s=args.timeout))
+        config = _build_config(args)
+        asyncio.run(test1_baseline(args.case, timeout_s=args.timeout, config=config))
 
     elif args.command == "test2":
-        asyncio.run(test2_parallel(args.case))
+        config = _build_config(args)
+        asyncio.run(test2_parallel(args.case, config=config))
 
     elif args.command == "test3":
-        asyncio.run(test3_merge(args.case))
+        config = _build_config(args)
+        asyncio.run(test3_merge(args.case, config=config))
 
     elif args.command == "snapshot":
         cmd_snapshot(args)

@@ -103,36 +103,38 @@ Section~\ref{sec:conclusion} concludes.
 \section{Background and Motivation}
 \label{sec:background}
 
-This section establishes the technical foundations for speculative dispatch by reviewing speculation in CPU architecture and LLM inference, surveying the multi-agent orchestration landscape, and presenting empirical evidence that dispatch planning is both a bottleneck and predictable.
+This section establishes the technical foundations for speculative dispatch by reviewing speculation in CPU architecture and LLM inference, surveying the multi-agent orchestration landscape, analyzing why existing agentic speculation systems leave the dispatch level unaddressed, and presenting empirical evidence that dispatch planning is both a latency bottleneck and a predictable one.
 
 \subsection{Speculative Execution in CPU Architecture}
 
 Modern out-of-order processors routinely execute instructions before all dependencies are resolved.
-When the processor encounters a conditional branch, rather than stalling the pipeline, a branch predictor predicts the outcome and the processor speculatively executes along the predicted path~\cite{hennessy2017computer}.
-If correct, speculative results commit; if wrong, the work is flushed, incurring a penalty of 10--20 cycles on modern microarchitectures.
+When the processor encounters a conditional branch, rather than stalling the pipeline until the branch condition is evaluated, a branch predictor predicts the likely outcome and the processor speculatively executes along the predicted path~\cite{hennessy2017computer}.
+If the prediction is correct, the speculative results commit --- the processor gains the full latency of the branch resolution for free.
+If wrong, the speculative work is flushed and execution restarts on the correct path, incurring a pipeline flush penalty of 10--20 cycles on modern microarchitectures.
 
 Branch prediction has evolved through four generations.
-Static heuristics gave way to two-level adaptive predictors~\cite{yeh1991two}, then to tournament predictors combining multiple strategies~\cite{mcfarling1993combining}, and finally to TAGE predictors using tagged geometric history lengths that achieve accuracy exceeding 95\%~\cite{seznec2006tage, seznec2011tage}.
-Neural branch prediction introduced perceptrons as an alternative, enabling linear scaling with history length~\cite{jimenez2001perceptron}.
+Static heuristics (e.g., ``backward branches taken'') gave way to two-level adaptive predictors that correlate branch outcomes with recent history~\cite{yeh1991two}, then to tournament predictors combining multiple strategies~\cite{mcfarling1993combining}, and finally to TAGE predictors using tagged geometric history lengths that achieve accuracy exceeding 95\% on realistic workloads~\cite{seznec2006tage, seznec2011tage}.
+Neural branch prediction introduced perceptrons as an alternative to table-based predictors, enabling linear scaling with history length~\cite{jimenez2001perceptron}.
 
-The cost model is fundamental: speculation is net-positive when prediction accuracy exceeds $\frac{C_{flush}}{L_{saved} + C_{flush}}$, where $C_{flush}$ is the misprediction penalty and $L_{saved}$ is the latency avoided.
-For typical pipeline depths, the break-even accuracy is approximately 70--75\% --- well below modern predictor performance.
+Critically, speculation in modern processors extends well beyond branch outcomes.
+Recent microarchitectural analyses have uncovered speculative predictors for load addresses~\cite{kim2025slap}, load values~\cite{kim2025flop}, and data-dependent memory access patterns~\cite{chen2024gofetch}. Each independently instantiates the same predict-execute-verify pattern on a different data domain.
+This repeated rediscovery suggests the abstraction is fundamental rather than artifact-specific, a premise central to the transfer we formalize in Section~\ref{sec:design}.
 
-The security implications are equally instructive.
-Spectre demonstrated that speculative memory accesses, even when architecturally rolled back, leave observable traces that can leak data across security boundaries~\cite{kocher2019spectre}.
-This lesson transfers directly: speculative resource access at the dispatch layer may similarly leak context in multi-tenant deployments (Section~\ref{sec:discussion}).
+The cost model is fundamental: speculation is net-positive when prediction accuracy exceeds $\frac{C_{flush}}{L_{saved} + C_{flush}}$, where $C_{flush}$ is the misprediction penalty and $L_{saved}$ is the latency avoided by correct speculation~\cite{hennessy2017computer}.
+For typical pipeline depths and flush costs, the break-even accuracy is approximately 70--75\%, well below what modern predictors achieve.
+
+The security implications of speculative execution are equally instructive.
+Spectre demonstrated that speculative memory accesses, even when architecturally rolled back, leave observable traces in microarchitectural state (e.g., cache lines) that can be exploited to leak data across security boundaries~\cite{kocher2019spectre}.
+This lesson transfers directly to multi-agent orchestration: speculative resource access at the dispatch layer may similarly leak context across isolation boundaries in multi-tenant deployments (Section~\ref{sec:discussion}).
 
 \subsection{Speculative Decoding in LLM Inference}
 
 Speculative decoding adapts the draft-verify paradigm to autoregressive language model inference.
-A small draft model generates $\gamma$ candidate tokens, then the larger target model scores all candidates in a single forward pass --- exploiting the asymmetry between generation ($O(\gamma)$ passes) and verification ($O(1)$ pass)~\cite{leviathan2023fast, chen2023accelerating}.
+A small, fast \emph{draft model} generates $\gamma$ candidate tokens autoregressively, then the larger \emph{target model} scores all candidates in a single forward pass --- exploiting the asymmetry between generation (sequential, $O(\gamma)$ forward passes) and verification (parallel, $O(1)$ forward pass)~\cite{leviathan2023fast, chen2023accelerating}.
 
-% A modified rejection sampling scheme ensures the output distribution is identical to the target model alone~\cite{leviathan2023fast}.
-% The field has diversified: SpecInfer uses tree-based speculation with model ensembles~\cite{miao2024specinfer}; Medusa adds lightweight MLP heads for self-drafting~\cite{cai2024medusa}; EAGLE conditions drafting on the target's hidden states~\cite{li2024eagle, li2024eagle2}; and online speculative decoding continuously updates the draft from observed queries~\cite{liu2024online} --- a direct precedent for our Learner's online adaptation.
+A modified rejection sampling scheme ensures the output distribution is \emph{identical} to the target model alone: at each position, the draft token is accepted with probability $\min(1, p_{target}/p_{draft})$, and on first rejection a correction token is sampled from the residual distribution~\cite{leviathan2023fast}.
+In the worst case, one token is produced per target forward pass (no worse than standard decoding); in the best case, $\gamma + 1$ tokens are produced, yielding up to $\gamma + 1$ times throughput.
 
-% The speedup is governed by three parameters: the mean acceptance rate $\alpha$, the speculation depth $\gamma$ (i.e., the number of draft tokens), and the cost ratio $c$ between draft and target forward passes. Leviathan et al.~\cite{leviathan2023fast} derived the closed-form expected walltime speedup (Theorem 3.8): $E(\text{Speedup}) = \frac{1 - \alpha^{\gamma+1}}{(1-\alpha)(\gamma c + 1)}$. Note that as $c \to 0$ (negligible draft cost), it approaches $1/(1-\alpha)$, demonstrating the theoretical upper bound on speedup. Increasing $\gamma$ raises tokens per cycle but increases wasted computation when $\alpha$ is low (early rejection invalidates all subsequent draft tokens). \placeholder{Confirm source and metric for practical speedup range, likely 2--3$\times$ walltime improvement.}
-
-A modified rejection sampling scheme ensures the output distribution is identical to the target model alone~\cite{leviathan2023fast}.
 The field has diversified rapidly.
 SpecInfer and Sequoia employ tree-based speculation with hardware-aware optimal tree construction, generating candidate trees from multiple drafts and verifying them in a single pass~\cite{miao2024specinfer, chen2024sequoia}.
 Medusa eliminates the separate draft model entirely, adding lightweight MLP heads to the target model for multi-position prediction~\cite{cai2024medusa}.
@@ -141,36 +143,30 @@ Online speculative decoding continuously updates the draft model from observed q
 Recent analysis reveals that verification --- not drafting --- dominates speculative decoding cost~\cite{liu2025verification}, while TurboSpec formalizes ``goodput'' as a unifying metric for adaptive runtime tuning~\cite{liu2024turbospec}.
 These three developments --- online adaptation, verification-centric cost analysis, and adaptive parameter control --- directly inform our Learner design (Section~\ref{sec:learner}).
 
-
-The speedup is governed by three parameters: the mean acceptance rate $\alpha$, the speculation depth $\gamma$ (i.e., the number of draft tokens), and the cost ratio $c$ between draft and target forward passes. Leviathan et al. \cite{leviathan2023fast} derived the closed-form expected walltime speedup (Theorem 3.8): $E(\text{Speedup}) = \frac{1 - \alpha^{\gamma+1}}{(1-\alpha)(\gamma c + 1)}$. Note that as $c \to 0$ (negligible draft cost), it approaches $1/(1-\alpha)$, demonstrating the theoretical upper bound on speedup. Increasing $\gamma$ raises tokens per cycle but increases wasted computation when $\alpha$ is low (early rejection invalidates all subsequent draft tokens). Practical systems achieve 2--3$\times$ walltime improvement with acceptance rates in the range 0.6--0.85 \cite{xia2024survey}.
+The speedup is governed by three parameters: the mean acceptance rate $\alpha$, the speculation depth $\gamma$ (i.e., the number of draft tokens), and the cost ratio $c$ between draft and target forward passes. Leviathan et al.~\cite{leviathan2023fast} derived the closed-form expected walltime speedup (Theorem 3.8): $E(\text{Speedup}) = \frac{1 - \alpha^{\gamma+1}}{(1-\alpha)(\gamma c + 1)}$. Note that as $c \to 0$ (negligible draft cost), it approaches $1/(1-\alpha)$, demonstrating the theoretical upper bound on speedup. Increasing $\gamma$ raises tokens per cycle but increases wasted computation when $\alpha$ is low (early rejection invalidates all subsequent draft tokens). Practical systems achieve 2--3$\times$ walltime improvement with acceptance rates in the range 0.6--0.85~\cite{xia2024survey}.
 
 \subsection{Multi-Agent Orchestration}
 
-Multi-agent LLM systems assign specialized roles to agents that collaborate through structured communication.
-AutoGen organizes conversable agent groups~\cite{wu2023autogen}; MetaGPT encodes standardized procedures into assembly-line workflows~\cite{hong2024metagpt}; ChatDev decomposes software development into chat chains~\cite{qian2024chatdev}.
-Patterns such as ReAct interleave reasoning with tool use~\cite{yao2023react}, while Reflexion adds verbal self-reflection~\cite{shinn2023reflexion}.
-Beyond these centralized designs, AgentNet enables agents to self-organize into dynamic DAGs without a central controller, using retrieval-augmented memory for continual specialization~\cite{yang2025agentnet}.
-A controlled evaluation across 180 configurations and five canonical architectures found that centralized designs outperform independent and decentralized alternatives on decomposition-heavy tasks while incurring $O(k)$ LLM calls~\cite{qian2025scaling}.
+Multi-agent LLM systems assign specialized roles to distinct agents that collaborate through structured communication.
+Frameworks such as AutoGen~\cite{wu2023autogen}, MetaGPT~\cite{hong2024metagpt}, and ChatDev~\cite{qian2024chatdev} differ in coordination topology but all follow the same sequential pipeline: intent recognition $\rightarrow$ task decomposition $\rightarrow$ agent assignment $\rightarrow$ execution.
+CrewAI, LangGraph, and OpenAI's Agents SDK similarly organize workflows around sequential or parallel dispatch with explicit handoff primitives.
+A controlled evaluation across 180 configurations found that centralized designs outperform decentralized alternatives on decomposition-heavy tasks while incurring $O(k)$ LLM calls~\cite{qian2025scaling}.
 
-All existing frameworks follow the same sequential pipeline: intent recognition $\rightarrow$ task decomposition $\rightarrow$ agent assignment $\rightarrow$ execution.
-CrewAI organizes agents into role-based ``crews'' with sequential or parallel execution.
-LangGraph models workflows as directed state machines.
-OpenAI's Swarm (and its successor Agents SDK) introduced lightweight handoff primitives.
+Recent works have made this pipeline increasingly dynamic along two axes.
+In task allocation, TDAG~\cite{qiao2024tdag} generates task-specific subagents on the fly rather than relying on pre-defined roles;
+COLA~\cite{zhang2025cola} combines coarse planning with scenario-aware scheduling for fine-grained refinement;
+MasRouter~\cite{li2025masrouter} jointly optimizes collaboration mode, role allocation, and LLM backbone selection, reducing orchestration overhead by up to 52\%.
+On the routing side, systems have progressed from simple model cascading~\cite{chen2023frugalgpt} through binary strong/weak selection~\cite{ong2024routellm} and difficulty-aware heterogeneous routing~\cite{huang2024diffrouting} to confidence-aware routing that dynamically selects agent roles and model scales as reasoning unfolds~\cite{wang2026oimas}. Yet even the most adaptive of these systems triggers a fresh planning cycle for every request based on observed state; none predict or pre-execute future dispatch decisions.
 
-Task allocation within this pipeline has grown increasingly dynamic.
-TDAG dynamically generates task-specific subagents on the fly rather than relying on pre-defined roles~\cite{qiao2024tdag}.
-COLA combines a planner for coarse decomposition with a scenario-aware task scheduler and decision agents for fine-grained refinement~\cite{zhang2025cola}.
-MasRouter jointly optimizes collaboration mode, role allocation, and LLM backbone selection, reducing orchestration overhead by up to 52\%~\cite{li2025masrouter}.
-Yet even the most dynamic allocation systems trigger a fresh planning cycle for every request, regardless of how similar it is to prior requests; none predict or pre-execute.
+\subsection{Speculative Execution in Agentic Systems} \label{sec:spec-agents}
 
-Routing efficiency has evolved through four generations.
-FrugalGPT introduced simple cascading across models to minimize cost~\cite{chen2023frugalgpt}.
-RouteLLM advanced to binary strong/weak model selection using preference data~\cite{ong2024routellm}.
-Difficulty-aware orchestration routes across heterogeneous LLMs, achieving 11\% accuracy improvement at 64\% cost~\cite{huang2024diffrouting}.
-Most recently, OI-MAS introduced confidence-aware routing that dynamically selects agent roles and model scales as reasoning unfolds~\cite{wang2026oimas}.
-Yet even OI-MAS --- the most adaptive router to date --- reroutes based on observed state; it never predicts or pre-executes future dispatch decisions.
+Recently, a nascent line of work has begun applying speculative execution to agentic planning and action execution.
+However, all existing systems speculate \emph{within a single agent's execution trace; none target the dispatch decision itself}.
 
-The gap is clear: the multi-agent orchestration layer lacks the predictive, speculative, and adaptive capabilities that have proven transformative in CPU architecture and LLM inference.
+Several systems speculate at the \textbf{planning-step} granularity. Interactive Speculative Planning (ISP)~\cite{hua2024isp} first transferred the draft-verify pattern from speculative decoding to agent workflows. It uses a fast approximation agent to generate candidate action plans while a stronger target agent verifies in parallel, committing accepted steps immediately and re-planning on rejection. Dynamic Speculative Planning (DSP)~\cite{guan2025dsp} extended ISP with online reinforcement learning to adaptively adjust speculation depth per episode, explicitly navigating the Pareto frontier of the latency--cost trade-off rather than fixing the look-ahead window. SPAgent pushed further by selectively omitting verification when reasoning demand is low via a two-phase adaptive mechanism, crossing from lossless into lossy speculation and achieving up to $1.65\times$ speedup on search-agent workloads~\cite{spagent2025}. Others speculate at the \textbf{tool or API} level. Speculative Actions~\cite{ye2025specactions} generalized the paradigm from LLM planning steps to the entire agentic environment (e.g., tool calls, MCP-server requests, and human-in-the-loop responses) with formal losslessness guarantees via semantic guards and rollback repair paths. PASTE~\cite{paste2026} specifically targets the LLM--tool serial loop, predicting application-level control flows and pre-executing tool calls (e.g., next tool call) while the LLM is still reasoning by analyzing the historical execution traces. Moreover, Sherlock~\cite{sherlock2025} speculates at the \textbf{workflow-node} level. It combined speculation with reliability by learning which workflow nodes require verification and speculatively executing downstream nodes while verification runs in the background, reducing workflow latency by up to 48.7\%.
+
+Despite spanning different granularities (i.e., from planning steps to tool calls to workflow nodes), these systems share a structural limitation:
+speculation operates within a single agent's execution loop after the dispatch decision is already made. No system speculates at the \emph{dispatch level}, that is predicting which agents, from a heterogeneous pool, should be assigned to which subtasks before the dispatch plan is fully computed.
 
 \subsection{Empirical Motivation}
 
@@ -191,7 +187,9 @@ The profiling reveals two findings: (1) dispatch overhead is a substantial fract
 
 \subsection{Positioning}
 
-Table~\ref{tab:parallel} summarizes the structural parallel across domains.
+Recent agentic speculation systems (\S\ref{sec:spec-agents}) instantiate the same draft-verify pattern at the planning-step and tool-call levels within a single agent's loop. However, Speculative Dispatch lifts the paradigm to the orchestration layer, where the speculation target is the dispatch plan, a qualitatively different scope that requires reasoning over agent pools, resource constraints, and task decompositions simultaneously.
+
+Table~\ref{tab:parallel} summarizes the structural parallel across the three speculation domains.
 
 \begin{table}[t]
 \centering

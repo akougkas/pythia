@@ -1,6 +1,6 @@
 # 2. Background and Motivation
 
-This section establishes the technical foundations for speculative dispatch by reviewing speculation in CPU architecture and LLM inference, surveying the multi-agent orchestration landscape, and presenting empirical evidence that dispatch planning is both a latency bottleneck and a predictable one.
+This section establishes the technical foundations for speculative dispatch by reviewing speculation in CPU architecture and LLM inference, surveying the multi-agent orchestration landscape, analyzing why existing agentic speculation systems leave the dispatch level unaddressed, and presenting empirical evidence that dispatch planning is both a latency bottleneck and a predictable one.
 
 ## 2.1 Speculative Execution in CPU Architecture
 
@@ -48,7 +48,18 @@ The speedup is governed by three parameters: the mean acceptance rate $\alpha$, 
 
 ## 2.3 Multi-Agent Orchestration
 
-Multi-agent LLM systems assign specialized roles to distinct agents that collaborate through structured communication.
+Multi-agent LLM systems assign specialized roles to distinct agents that collaborate through structured communication. 
+Frameworks such as AutoGen [wu2023autogen], MetaGPT [hong2024metagpt], and ChatDev [qian2024chatdev] differ in coordination topology but all follow the same sequential pipeline: intent recognition → task decomposition → agent assignment → execution. 
+CrewAI, LangGraph, and OpenAI's Agents SDK similarly organize workflows around sequential or parallel dispatch with explicit handoff primitives. 
+A controlled evaluation across 180 configurations found that centralized designs outperform decentralized alternatives on decomposition-heavy tasks while incurring $O(k)$ LLM calls [qian2025scaling].
+
+Recent works have made this pipeline increasingly dynamic along two axes.
+In task allocation, TDAG [qiao2024tdag] generates task-specific subagents on the fly rather than relying on pre-defined roles;
+COLA [zhang2025cola] combines coarse planning with scenario-aware scheduling for fine-grained refinement;
+MasRouter [li2025masrouter] jointly optimizes collaboration mode, role allocation, and LLM backbone selection, reducing orchestration overhead by up to 52\%. 
+On the routing side, systems have progressed from simple model cascading [chen2023frugalgpt] through binary strong/weak selection [ong2024routellm] and difficulty-aware heterogeneous routing [huang2024diffrouting] to confidence-aware routing that dynamically selects agent roles and model scales as reasoning unfolds [wang2026oimas]. Yet even the most adaptive of these systems triggers a fresh planning cycle for every request based on observed state; none predict or pre-execute future dispatch decisions.
+
+<!-- Multi-agent LLM systems assign specialized roles to distinct agents that collaborate through structured communication.
 AutoGen organizes agents into conversable groups with human-in-the-loop capabilities [wu2023autogen].
 MetaGPT encodes standardized operating procedures into an assembly-line paradigm with verification at each stage [hong2024metagpt].
 ChatDev decomposes software development into chat chains across design, coding, and testing phases [qian2024chatdev].
@@ -72,11 +83,21 @@ FrugalGPT introduced simple cascading across models to minimize cost [chen2023fr
 RouteLLM advanced to binary strong/weak model selection using preference data [ong2024routellm].
 Difficulty-aware orchestration routes across heterogeneous LLMs, achieving 11\% accuracy improvement at 64\% cost [huang2024diffrouting].
 Most recently, OI-MAS introduced confidence-aware routing that dynamically selects agent roles and model scales as reasoning unfolds [wang2026oimas].
-Yet even OI-MAS — the most adaptive router to date — reroutes based on observed state; it never predicts or pre-executes future dispatch decisions.
+Yet even OI-MAS — the most adaptive router to date — reroutes based on observed state; it never predicts or pre-executes future dispatch decisions. -->
 
-The gap is clear: the multi-agent orchestration layer lacks the predictive, speculative, and adaptive capabilities that have proven transformative in CPU architecture and LLM inference.
+## 2.4 Speculative Execution in Agentic Systems
 
-## 2.4 Empirical Motivation
+Recently, a nascent line of work has begun applying speculative execution to agentic planning and action execution.
+However, all existing systems speculate \emph{within a single agent's execution trace; none target the dispatch decision itself}.
+
+Several systems speculate at the \textbf{planning-step} granularity. Interactive Speculative Planning (ISP) [hua2024isp] first transferred the draft-verify pattern from speculative decoding to agent workflows. It uses a fast approximation agent to generate candidate action plans while a stronger target agent verifies in parallel, committing accepted steps immediately and re-planning on rejection. Dynamic Speculative Planning (DSP) [guan2025dsp] extended ISP with online reinforcement learning to adaptively adjust speculation depth per episode, explicitly navigating the Pareto frontier of the latency--cost trade-off rather than fixing the look-ahead window. SPAgent pushed further by selectively omitting verification when reasoning demand is low via a two-phase adaptive mechanism, crossing from lossless into lossy speculation and achieving up to $1.65\times$ speedup on search-agent workloads [spagent2025]. Others speculate at the \textbf{tool or API} level. Speculative Actions [ye2025specactions] generalized the paradigm from LLM planning steps to the entire agentic environment (e.g., tool calls, MCP-server requests, and human-in-the-loop responses) with formal losslessness guarantees via semantic guards and rollback repair paths. PASTE [paste2026] specifically targets the LLM--tool serial loop, predicting application-level control flows and pre-executing tool calls (e.g., next tool call) while the LLM is still reasoning by analyzing the historical execution traces. Moreover, Sherlock [sherlock2025] speculates at the \textbf{workflow-node} level. It combined speculation with reliability by learning which workflow nodes require verification and speculatively executing downstream nodes while verification runs in the background, reducing workflow latency by up to 48.7\%.
+
+Despite spanning different granularities (i.e., from planning steps to tool calls to workflow nodes), these systems share a structural limitation: 
+speculation operates within a single agent's execution loop after the dispatch decision is already made. No system speculates at the \emph{dispatch level}, that is predicting which agents, from a heterogeneous pool, should be assigned to which subtasks before the dispatch plan is fully computed.
+
+<!-- The gap is clear: the multi-agent orchestration layer lacks the predictive, speculative, and adaptive capabilities that have proven transformative in CPU architecture and LLM inference. -->
+
+## 2.5 Empirical Motivation
 
 To quantify the dispatch bottleneck, we profiled Clio Coder — the multi-agent orchestration component of the IOWarp scientific computing platform — handling realistic HPC-adjacent workloads including MPI code generation, scientific data pipeline construction, and research workflow automation.
 <!-- [PLACEHOLDER: Insert Clio Coder profiling methodology — instrument dispatch pipeline stages, collect timing data across N requests over M days] -->
@@ -92,13 +113,15 @@ To further characterize the dispatch bottleneck in existing frameworks, we profi
 - TOTAL dispatch overhead: ~X ms (Y% of end-to-end)] -->
 
 ![Dispatch vs. execution latency for six representative KramaBench queries processed by a LangGraph supervisor (qwen3.5:9b). Dark bars show supervisor routing overhead (1.6–3.8 s, 19–37% of total); light bars show agent execution time. Dispatch decisions are made by sequential LLM calls — one per agent handoff — constituting a fixed latency tax on every query.](../paper/imgs/motivation/dispatch_vs_execution_latency.png)
-*Figure: Dispatch vs. execution latency breakdown (§2.4). See `\label{fig:dispatch-latency}` in main.tex.*
+*Figure: Dispatch vs. execution latency breakdown. See `\label{fig:dispatch-latency}` in main.tex.*
 
 [PLACEHOLDER: Dispatch predictability analysis — show that for the top-K intent classes (which cover Z% of all requests), the dispatch plan has low conditional entropy given the intent. This is the empirical justification for why speculation can work.]
 
 The profiling reveals two key findings: (1) dispatch overhead constitutes a substantial fraction of end-to-end latency, particularly for shorter tasks where dispatch time approaches or exceeds execution time; and (2) dispatch decisions exhibit strong temporal locality — recurring intent patterns map to consistent dispatch plans, making prediction tractable.
 
-## 2.5 Positioning
+## 2.6 Positioning
+
+Recent agentic speculation systems (§2.4) instantiate the same draft-verify pattern at the planning-step and tool-call levels within a single agent's loop. However, Speculative Dispatch lifts the paradigm to the orchestration layer, where the speculation target is the dispatch plan, a qualitatively different scope that requires reasoning over agent pools, resource constraints, and task decompositions simultaneously.
 
 Table 1 summarizes the structural parallel across the three speculation domains.
 
