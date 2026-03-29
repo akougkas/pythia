@@ -123,8 +123,6 @@ The profiling reveals two key findings: (1) dispatch overhead constitutes a subs
 
 Recent agentic speculation systems (§2.4) instantiate the same draft-verify pattern at the planning-step and tool-call levels within a single agent's loop. However, Speculative Dispatch lifts the paradigm to the orchestration layer, where the speculation target is the dispatch plan, a qualitatively different scope that requires reasoning over agent pools, resource constraints, and task decompositions simultaneously.
 
-Table 1 summarizes the structural parallel across the three speculation domains.
-
 | | CPU Speculation | LLM Spec. Decoding | Speculative Dispatch (Ours) |
 |---|---|---|---|
 | **Draft** | Branch predictor | Small/fast draft model | Lightweight dispatch predictor |
@@ -137,7 +135,8 @@ Table 1 summarizes the structural parallel across the three speculation domains.
 | **Break-even** | ~70–75% accuracy | ~50–60% acceptance | Derived per mode (§3.4) |
 | **Security risk** | Spectre [kocher2019spectre] | N/A | Context leakage (§7.2) |
 
-The key observation: the draft-target-verify-commit/flush pattern is *domain-independent*.
+Table 1 summarizes the structural parallel across the three speculation domains.
+The key observation is that the draft-target-verify-commit/flush pattern is *domain-independent*.
 It applies wherever (a) an expensive optimization can be approximated cheaply, (b) verification of the approximation is cheaper than computing the exact solution, and (c) prediction accuracy improves with observation.
 Multi-agent dispatch satisfies all three conditions.
 To our knowledge, this is the first work to formalize and evaluate this transfer.

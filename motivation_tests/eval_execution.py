@@ -1786,6 +1786,7 @@ class ClaudeCodeFramework:
         case_name: str,
         working_dir: Path,
         plan_filename: str = "PLAN.md",
+        output_dir: Path | None = None,
         api_base_url: str = "",
     ) -> PlanGenResult:
         """Generate a plan using the Agent SDK in planning mode.
@@ -1895,7 +1896,8 @@ class ClaudeCodeFramework:
 
         # Write plan to disk
         if plan_text:
-            plan_path = working_dir / plan_filename
+            dest_dir = output_dir if output_dir is not None else working_dir
+            plan_path = dest_dir / plan_filename
             plan_path.write_text(plan_text)
             result.plan_path = plan_path
             log.info(
@@ -2545,6 +2547,8 @@ async def test2_parallel(
     # ── Phase 1: Parallel plan generation ──
     log.info("  Phase 1: generating plans concurrently...")
 
+    phase1 = dirs["phase1_planning"]
+
     dispatcher_plan_task = asyncio.create_task(
         fw.generate_plan(
             model_name=config.dispatcher,
@@ -2552,6 +2556,7 @@ async def test2_parallel(
             case_name=case_name,
             working_dir=workdir,
             plan_filename="spec_dsp_PLAN.md",
+            output_dir=phase1,
         )
     )
 
@@ -2562,6 +2567,7 @@ async def test2_parallel(
             case_name=case_name,
             working_dir=workdir,
             plan_filename="solver_PLAN.md",
+            output_dir=phase1,
         )
     )
 
@@ -2588,7 +2594,9 @@ async def test2_parallel(
         solver_plan_result = await solver_plan_task
         _print_plan_gen_summary(dispatcher_plan_result, solver_plan_result,
                                 dirs["root"], dirs["root"],
-                                test_name="Test 2")
+                                test_name="Test 2",
+                                dispatcher_label=config.dispatcher,
+                                solver_label=config.solver)
         return
 
     # ── Phase 2: Dispatcher starts executing while solver still plans ──
@@ -2597,9 +2605,9 @@ async def test2_parallel(
     stop_event = asyncio.Event()
 
     exec_prompt = (
-        f"Read the implementation plan in {workdir}/spec_dsp_PLAN.md "
-        f"and execute it. Implement all files described in the plan in this "
-        f"directory. Use subagents for independent implementation tasks."
+        f"Read the implementation plan in {phase1}/spec_dsp_PLAN.md "
+        f"and execute it. Implement all files described in the plan in "
+        f"{workdir}. Use subagents for independent implementation tasks."
     )
 
     dispatcher_exec_task = asyncio.create_task(
@@ -2632,7 +2640,6 @@ async def test2_parallel(
     )
 
     # ── Phase 4: Save artifacts ──
-    phase1 = dirs["phase1_planning"]
     phase2 = dirs["phase2_execution"]
 
     # Save execution result
@@ -2644,9 +2651,7 @@ async def test2_parallel(
     snap_path = phase2 / "snapshot.json"
     snap_path.write_text(json.dumps(snap.to_dict(), indent=2))
 
-    # Save plan generation metadata to phase1_planning/
-    shutil.copy2(workdir / "spec_dsp_PLAN.md", phase1 / "spec_dsp_PLAN.md")
-    shutil.copy2(workdir / "solver_PLAN.md", phase1 / "solver_PLAN.md")
+    # Plans already written directly to phase1_planning/ by generate_plan()
 
     dsp_plan_json = phase1 / "spec_dsp_plan_gen.json"
     dsp_plan_json.write_text(json.dumps(dispatcher_plan_result.to_dict(), indent=2))
@@ -2661,6 +2666,9 @@ async def test2_parallel(
         dispatcher_plan_result, solver_plan_result,
         dispatcher_exec_result, snap,
         dirs["root"], dirs["root"],
+        dispatcher_label=config.dispatcher,
+        solver_label=config.solver,
+        test_name="Test 2: Speculative Dispatch Results",
     )
 
 
@@ -2709,6 +2717,8 @@ async def test3_merge(
     # ── Phase 1: Parallel plan generation (same as test2) ──
     log.info("  Phase 1: generating plans concurrently...")
 
+    phase1 = dirs["phase1_planning"]
+
     dispatcher_plan_task = asyncio.create_task(
         fw.generate_plan(
             model_name=config.dispatcher,
@@ -2716,6 +2726,7 @@ async def test3_merge(
             case_name=case_name,
             working_dir=workdir,
             plan_filename="spec_dsp_PLAN.md",
+            output_dir=phase1,
         )
     )
 
@@ -2726,6 +2737,7 @@ async def test3_merge(
             case_name=case_name,
             working_dir=workdir,
             plan_filename="solver_PLAN.md",
+            output_dir=phase1,
         )
     )
 
@@ -2750,7 +2762,9 @@ async def test3_merge(
         solver_plan_result = await solver_plan_task
         _print_plan_gen_summary(dispatcher_plan_result, solver_plan_result,
                                 dirs["root"], dirs["root"],
-                                test_name="Test 3")
+                                test_name="Test 3",
+                                dispatcher_label=config.dispatcher,
+                                solver_label=config.solver)
         return
 
     # Warmup executor model before Phase 2 if it differs from dispatcher.
@@ -2767,9 +2781,9 @@ async def test3_merge(
     stop_event = asyncio.Event()
 
     exec_prompt = (
-        f"Read the implementation plan in {workdir}/spec_dsp_PLAN.md "
-        f"and execute it. Implement all files described in the plan in this "
-        f"directory. Use subagents for independent implementation tasks."
+        f"Read the implementation plan in {phase1}/spec_dsp_PLAN.md "
+        f"and execute it. Implement all files described in the plan in "
+        f"{workdir}. Use subagents for independent implementation tasks."
     )
 
     dispatcher_exec_task = asyncio.create_task(
@@ -2804,7 +2818,6 @@ async def test3_merge(
     # ── Phase 4: Save pre-merge artifacts ──
     log.info("  Phase 4: saving pre-merge artifacts...")
 
-    phase1 = dirs["phase1_planning"]
     phase2 = dirs["phase2_execution"]
     phase3 = dirs["phase3_merge"]
 
@@ -2818,11 +2831,7 @@ async def test3_merge(
     # snap_path.write_text(json.dumps(pre_merge_snap.to_dict(), indent=2))
     pre_merge_snap = None
 
-    # Save plans and plan metadata to phase1_planning/
-    for plan_file in ("spec_dsp_PLAN.md", "solver_PLAN.md"):
-        src = workdir / plan_file
-        if src.exists():
-            shutil.copy2(src, phase1 / plan_file)
+    # Plans already written directly to phase1_planning/ by generate_plan()
 
     dsp_plan_json = phase1 / "spec_dsp_plan_gen.json"
     dsp_plan_json.write_text(json.dumps(dispatcher_plan_result.to_dict(), indent=2))
@@ -2834,19 +2843,19 @@ async def test3_merge(
     log.info("  Phase 5: Solver merge phase — evaluating dispatcher work...")
 
     merge_prompt = (
-        f"You are a solver using Claude Opus that generated the {workdir}/solver_PLAN.md "
+        f"You are a solver using Claude Opus that generated the {phase1}/solver_PLAN.md "
         "for a task. Besides that, another agent the gpt-oss "
         "(speculative_dispatcher) has already executed some work "
         "during the period you were planning. You can find its progress "
-        f"and what it accomplished in {workdir}/spec_dsp_context.md.\n\n"
+        f"and what it accomplished in {phase2}/spec_dsp_context.md.\n\n"
         "IMPORTANT — efficiency rules:\n"
-        "- Read solver_PLAN.md and spec_dsp_context.md first.\n"
+        f"- Read {phase1}/solver_PLAN.md and {phase2}/spec_dsp_context.md first.\n"
         "- To inspect gpt-oss source files, use a SINGLE Bash call to cat "
         "all files at once (e.g. `cat file1.py file2.py ...`). Do NOT read "
         "files one at a time with the Read tool.\n"
         "- Do NOT execute, test, or modify any code. Only produce a plan.\n\n"
         "With all of this knowledge:\n"
-        "1. Read solver_PLAN.md and spec_dsp_context.md\n"
+        f"1. Read {phase1}/solver_PLAN.md and {phase2}/spec_dsp_context.md\n"
         "2. Inspect the gpt-oss source files in a single Bash call\n"
         "3. Evaluate the quality and correctness of the work gpt-oss has done\n"
         "4. Decide:\n"
@@ -2899,7 +2908,246 @@ async def test3_merge(
         dispatcher_exec_result, pre_merge_snap,
         merge_result, merge_snap,
         dirs["root"], dirs["root"],
+        dispatcher_label=config.dispatcher,
+        solver_label=config.solver,
     )
+
+
+async def test3_no_merge(
+    case_name: str,
+    config: TestConfig | None = None,
+) -> None:
+    """Test 3 variant: Speculative dispatch WITHOUT merge phase.
+
+    Phases 1–3 only (identical to test3_merge phases 1–3):
+      Phase 1: Both agents generate plans concurrently.
+      Phase 2: Dispatcher finishes first → starts executing its plan.
+      Phase 3: Solver finishes planning → stop dispatcher execution.
+
+    Merge phases (4–6) are skipped.  This isolates the speculative
+    dispatch overhead from the merge cost.
+    """
+    if config is None:
+        config = DEFAULT_CONFIG
+
+    fw = ClaudeCodeFramework()
+    dirs = prepare_test_dirs(
+        case_name, "test3_no_merge", config,
+        ["phase1_planning", "phase2_execution"],
+    )
+    workdir = dirs["workdir"]
+    run_label = f"{case_name}/test3_no_merge/{config.config_id}"
+
+    log.info("=== Test 3 (no merge): Speculative Dispatch ===")
+    log.info(f"  Case: {case_name}")
+    log.info(f"  Config: {config.config_id}")
+    log.info(f"  Solver: {config.solver} ({config.solver_provider})")
+    log.info(f"  Dispatcher: {config.dispatcher} ({config.dispatcher_provider})")
+    log.info(f"  Working dir: {workdir}")
+
+    # ── Warmup: pre-load local models ──
+    await fw.warmup_model(config.dispatcher, config.dispatcher_provider)
+
+    # ── Phase 1: Parallel plan generation ──
+    log.info("  Phase 1: generating plans concurrently...")
+
+    phase1 = dirs["phase1_planning"]
+
+    dispatcher_plan_task = asyncio.create_task(
+        fw.generate_plan(
+            model_name=config.dispatcher,
+            provider=config.dispatcher_provider,
+            case_name=case_name,
+            working_dir=workdir,
+            plan_filename="spec_dsp_PLAN.md",
+            output_dir=phase1,
+        )
+    )
+
+    solver_plan_task = asyncio.create_task(
+        fw.generate_plan(
+            model_name=config.solver,
+            provider=config.solver_provider,
+            case_name=case_name,
+            working_dir=workdir,
+            plan_filename="solver_PLAN.md",
+            output_dir=phase1,
+        )
+    )
+
+    done, pending = await asyncio.wait(
+        [dispatcher_plan_task, solver_plan_task],
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+
+    if dispatcher_plan_task in done:
+        dispatcher_plan_result = dispatcher_plan_task.result()
+        log.info(
+            f"  Dispatcher plan ready "
+            f"({dispatcher_plan_result.duration_wall_s:.1f}s)"
+            f" — solver still planning"
+        )
+    else:
+        log.info("  Solver finished planning first (unexpected) — waiting for dispatcher")
+        dispatcher_plan_result = await dispatcher_plan_task
+
+    if dispatcher_plan_result.error:
+        log.error(f"  Dispatcher plan generation failed: {dispatcher_plan_result.error}")
+        solver_plan_result = await solver_plan_task
+        _print_plan_gen_summary(dispatcher_plan_result, solver_plan_result,
+                                dirs["root"], dirs["root"],
+                                test_name="Test 3 (no merge)",
+                                dispatcher_label=config.dispatcher,
+                                solver_label=config.solver)
+        return
+
+    # Warmup executor model before Phase 2 if it differs from dispatcher.
+    if (config.executor != config.dispatcher
+            or config.executor_provider != config.dispatcher_provider):
+        await fw.warmup_model(config.executor, config.executor_provider)
+
+    # ── Phase 2: Dispatcher starts executing ──
+    log.info("  Phase 2: dispatcher starting speculative execution...")
+
+    stop_event = asyncio.Event()
+
+    exec_prompt = (
+        f"Read the implementation plan in {phase1}/spec_dsp_PLAN.md "
+        f"and execute it. Implement all files described in the plan in "
+        f"{workdir}. Use subagents for independent implementation tasks."
+    )
+
+    dispatcher_exec_task = asyncio.create_task(
+        fw.run_session(
+            model_name=config.executor,
+            provider=config.executor_provider,
+            working_dir=workdir,
+            prompt=exec_prompt,
+            stop_event=stop_event,
+            run_label=run_label,
+            case_name=case_name,
+            role="speculative_dispatcher",
+            artifacts_dir=dirs["phase2_execution"],
+        )
+    )
+
+    # ── Phase 3: Wait for solver plan, then stop dispatcher ──
+    solver_plan_result = await solver_plan_task
+    log.info(
+        f"  Solver plan ready ({solver_plan_result.duration_wall_s:.1f}s)"
+        f" — stopping speculative dispatcher"
+    )
+
+    stop_event.set()
+    dispatcher_exec_result = await dispatcher_exec_task
+
+    log.info(
+        f"  Dispatcher execution stopped after "
+        f"{dispatcher_exec_result.duration_wall_s:.1f}s"
+    )
+
+    # ── Save artifacts ──
+    log.info("  Saving artifacts (merge phase skipped)...")
+
+    phase2 = dirs["phase2_execution"]
+
+    # Save execution result to phase2
+    result_path = phase2 / "result.json"
+    result_path.write_text(json.dumps(dispatcher_exec_result.to_dict(), indent=2))
+
+    # Plans already written directly to phase1_planning/ by generate_plan()
+
+    dsp_plan_json = phase1 / "spec_dsp_plan_gen.json"
+    dsp_plan_json.write_text(json.dumps(dispatcher_plan_result.to_dict(), indent=2))
+
+    solver_plan_json = phase1 / "solver_plan_gen.json"
+    solver_plan_json.write_text(json.dumps(solver_plan_result.to_dict(), indent=2))
+
+    # Print results (reuse speculative results printer)
+    _print_speculative_results(
+        dispatcher_plan_result, solver_plan_result,
+        dispatcher_exec_result, None,
+        dirs["root"], dirs["root"],
+        dispatcher_label=config.dispatcher,
+        solver_label=config.solver,
+        test_name="Test 3 (no merge): Speculative Dispatch Results",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Model sweep definitions for test3-sweep
+# ---------------------------------------------------------------------------
+
+SOLVER_MODELS = [
+    ("claude-opus-4-6", "anthropic"),
+    ("claude-sonnet-4-6", "anthropic"),
+    ("claude-haiku-4-5-20251001", "anthropic"),
+]
+
+DISPATCHER_MODELS = [
+    ("gpt-oss:20b", "ollama"),
+    ("qwen3.5:9b", "ollama"),
+    ("qwen3.5:4b", "ollama"),
+    ("granite4:3b", "ollama"),
+]
+
+
+def _model_short_name(model: str) -> str:
+    """Convert a model name to a short slug for config_id."""
+    return (
+        model
+        .replace("claude-", "")
+        .replace("-20251001", "")
+        .replace(":", "_")
+        .replace(".", "")
+    )
+
+
+def build_sweep_configs() -> list[TestConfig]:
+    """Build all solver × dispatcher TestConfig combinations."""
+    configs: list[TestConfig] = []
+    idx = 1
+    for solver, solver_prov in SOLVER_MODELS:
+        for dispatcher, disp_prov in DISPATCHER_MODELS:
+            config_id = (
+                f"sweep_{idx:02d}_"
+                f"{_model_short_name(solver)}_x_{_model_short_name(dispatcher)}"
+            )
+            configs.append(TestConfig(
+                config_id=config_id,
+                solver=solver,
+                solver_provider=solver_prov,
+                dispatcher=dispatcher,
+                dispatcher_provider=disp_prov,
+                executor=dispatcher,
+                executor_provider=disp_prov,
+            ))
+            idx += 1
+    return configs
+
+
+async def test3_sweep(case_name: str) -> None:
+    """Run test3_no_merge for all solver × dispatcher combinations sequentially."""
+    configs = build_sweep_configs()
+    total = len(configs)
+
+    log.info(f"=== Test 3 Sweep: {total} configurations ===")
+    for i, cfg in enumerate(configs, 1):
+        log.info(
+            f"\n{'#'*60}\n"
+            f"# Sweep [{i}/{total}]: {cfg.config_id}\n"
+            f"#   Solver:     {cfg.solver} ({cfg.solver_provider})\n"
+            f"#   Dispatcher: {cfg.dispatcher} ({cfg.dispatcher_provider})\n"
+            f"{'#'*60}"
+        )
+        try:
+            await test3_no_merge(case_name, config=cfg)
+        except Exception:
+            log.exception(f"  Sweep [{i}/{total}] FAILED: {cfg.config_id}")
+            continue
+        log.info(f"  Sweep [{i}/{total}] complete: {cfg.config_id}")
+
+    log.info(f"\n=== Sweep complete: {total} configurations ===")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -3001,34 +3249,39 @@ def _print_comparison(
 
 
 def _print_plan_gen_summary(
-    gptoss_plan: PlanGenResult,
-    opus_plan: PlanGenResult,
+    dispatcher_plan: PlanGenResult,
+    solver_plan: PlanGenResult,
     spec_dsp_dir: Path,
     solver_dir: Path,
     test_name: str = "Test 2",
+    dispatcher_label: str = "Dispatcher",
+    solver_label: str = "Solver",
 ) -> None:
     """Print summary when a test ends early (plan generation failure)."""
     print(f"\n{'='*60}")
     print(f"{test_name}: Plan Generation Only (execution skipped)")
     print(f"{'='*60}")
-    print(f"  Dispatcher plan:  {'ERROR: ' + (gptoss_plan.error or '?') if gptoss_plan.error else f'{gptoss_plan.duration_wall_s:.1f}s'}")
-    print(f"  Solver plan:      {'ERROR: ' + (opus_plan.error or '?') if opus_plan.error else f'{opus_plan.duration_wall_s:.1f}s'}")
+    print(f"  {dispatcher_label} plan:  {'ERROR: ' + (dispatcher_plan.error or '?') if dispatcher_plan.error else f'{dispatcher_plan.duration_wall_s:.1f}s'}")
+    print(f"  {solver_label} plan:      {'ERROR: ' + (solver_plan.error or '?') if solver_plan.error else f'{solver_plan.duration_wall_s:.1f}s'}")
     print(f"\n  Run dir: {spec_dsp_dir}")
 
 
 def _print_speculative_results(
-    gptoss_plan: PlanGenResult,
-    opus_plan: PlanGenResult,
-    gptoss_exec: ExecutionResult,
-    spec_dsp_snap: Snapshot,
+    dispatcher_plan: PlanGenResult,
+    solver_plan: PlanGenResult,
+    dispatcher_exec: ExecutionResult,
+    spec_dsp_snap: Snapshot | None,
     spec_dsp_dir: Path,
     solver_dir: Path,
+    dispatcher_label: str = "Dispatcher",
+    solver_label: str = "Solver",
+    test_name: str = "Speculative Dispatch Results",
 ) -> None:
     """Print results of the speculative dispatch test."""
-    ts = gptoss_exec.timeline_summary
+    ts = dispatcher_exec.timeline_summary
 
     print(f"\n{'='*60}")
-    print("Test 2: Speculative Dispatch Results")
+    print(test_name)
     print(f"{'='*60}")
 
     # Helper to extract token counts from usage dict
@@ -3037,48 +3290,50 @@ def _print_speculative_results(
             return 0
         return usage.get(key, 0)
 
-    gu = gptoss_plan.usage
-    ou = opus_plan.usage
+    du = dispatcher_plan.usage
+    su = solver_plan.usage
 
     print(f"\n  --- Plan Generation ---")
-    print(f"  {'Metric':<30} {'gpt-oss':>15} {'Opus':>15}")
+    print(f"  {'Metric':<30} {dispatcher_label:>15} {solver_label:>15}")
     print(f"  {'-'*60}")
-    print(f"  {'Planning time (s)':<30} {gptoss_plan.duration_wall_s:>15.1f} {opus_plan.duration_wall_s:>15.1f}")
-    print(f"  {'API time (ms)':<30} {gptoss_plan.duration_ms:>15} {opus_plan.duration_ms:>15}")
-    print(f"  {'Cost ($)':<30} {gptoss_plan.total_cost_usd or 0:>15.4f} {opus_plan.total_cost_usd or 0:>15.4f}")
-    print(f"  {'Turns':<30} {gptoss_plan.num_turns:>15} {opus_plan.num_turns:>15}")
-    print(f"  {'Input tokens':<30} {_tok(gu, 'input_tokens'):>15,} {_tok(ou, 'input_tokens'):>15,}")
-    print(f"  {'Output tokens':<30} {_tok(gu, 'output_tokens'):>15,} {_tok(ou, 'output_tokens'):>15,}")
-    print(f"  {'Cache create tokens':<30} {_tok(gu, 'cache_creation_input_tokens'):>15,} {_tok(ou, 'cache_creation_input_tokens'):>15,}")
-    print(f"  {'Cache read tokens':<30} {_tok(gu, 'cache_read_input_tokens'):>15,} {_tok(ou, 'cache_read_input_tokens'):>15,}")
-    print(f"  {'Plan size (chars)':<30} {len(gptoss_plan.plan_text or ''):>15} {len(opus_plan.plan_text or ''):>15}")
+    print(f"  {'Planning time (s)':<30} {dispatcher_plan.duration_wall_s:>15.1f} {solver_plan.duration_wall_s:>15.1f}")
+    print(f"  {'API time (ms)':<30} {dispatcher_plan.duration_ms:>15} {solver_plan.duration_ms:>15}")
+    print(f"  {'Cost ($)':<30} {dispatcher_plan.total_cost_usd or 0:>15.4f} {solver_plan.total_cost_usd or 0:>15.4f}")
+    print(f"  {'Turns':<30} {dispatcher_plan.num_turns:>15} {solver_plan.num_turns:>15}")
+    print(f"  {'Input tokens':<30} {_tok(du, 'input_tokens'):>15,} {_tok(su, 'input_tokens'):>15,}")
+    print(f"  {'Output tokens':<30} {_tok(du, 'output_tokens'):>15,} {_tok(su, 'output_tokens'):>15,}")
+    print(f"  {'Cache create tokens':<30} {_tok(du, 'cache_creation_input_tokens'):>15,} {_tok(su, 'cache_creation_input_tokens'):>15,}")
+    print(f"  {'Cache read tokens':<30} {_tok(du, 'cache_read_input_tokens'):>15,} {_tok(su, 'cache_read_input_tokens'):>15,}")
+    print(f"  {'Plan size (chars)':<30} {len(dispatcher_plan.plan_text or ''):>15} {len(solver_plan.plan_text or ''):>15}")
 
-    spec_exec_time = gptoss_exec.duration_wall_s
-    opus_plan_time = opus_plan.duration_wall_s
-    gptoss_plan_time = gptoss_plan.duration_wall_s
-    # How much execution time gpt-oss got = Opus plan time - gpt-oss plan time
-    exec_window = max(0, opus_plan_time - gptoss_plan_time)
+    spec_exec_time = dispatcher_exec.duration_wall_s
+    solver_plan_time = solver_plan.duration_wall_s
+    dispatcher_plan_time = dispatcher_plan.duration_wall_s
+    exec_window = max(0, solver_plan_time - dispatcher_plan_time)
 
-    print(f"\n  --- Speculative Execution (gpt-oss) ---")
-    print(f"  Execution window:   {exec_window:.1f}s (Opus plan time - gpt-oss plan time)")
+    print(f"\n  --- Speculative Execution ({dispatcher_label}) ---")
+    print(f"  Execution window:   {exec_window:.1f}s ({solver_label} plan time - {dispatcher_label} plan time)")
     print(f"  Actual exec time:   {spec_exec_time:.1f}s")
-    print(f"  Cost:               ${gptoss_exec.total_cost_usd or 0:.4f}")
-    print(f"  Turns:              {gptoss_exec.num_turns}")
-    print(f"  Total tokens:       {gptoss_exec.total_tokens:,}")
+    print(f"  Cost:               ${dispatcher_exec.total_cost_usd or 0:.4f}")
+    print(f"  Turns:              {dispatcher_exec.num_turns}")
+    print(f"  Total tokens:       {dispatcher_exec.total_tokens:,}")
     print(f"  Tool uses:          {ts.get('total_tool_uses', 0)}")
     print(f"  Subagents:          {ts.get('total_subagents_spawned', 0)}")
-    print(f"  Cancelled:          {gptoss_exec.cancelled}")
+    print(f"  Cancelled:          {dispatcher_exec.cancelled}")
 
     print(f"\n  --- Output (speculative execution) ---")
-    print(f"  Files created:      {spec_dsp_snap.total_files}")
-    print(f"  Lines of code:      {spec_dsp_snap.total_lines}")
-    print(f"  Tests passed:       {spec_dsp_snap.pytest_passed}")
-    print(f"  Tests failed:       {spec_dsp_snap.pytest_failed}")
+    if spec_dsp_snap is not None:
+        print(f"  Files created:      {spec_dsp_snap.total_files}")
+        print(f"  Lines of code:      {spec_dsp_snap.total_lines}")
+        print(f"  Tests passed:       {spec_dsp_snap.pytest_passed}")
+        print(f"  Tests failed:       {spec_dsp_snap.pytest_failed}")
+    else:
+        print(f"  (snapshot skipped)")
 
-    if gptoss_exec.error:
-        print(f"  Exec error:         {gptoss_exec.error}")
-    if opus_plan.error:
-        print(f"  Opus plan error:    {opus_plan.error}")
+    if dispatcher_exec.error:
+        print(f"  Exec error:         {dispatcher_exec.error}")
+    if solver_plan.error:
+        print(f"  {solver_label} plan error: {solver_plan.error}")
 
     print(f"\n  --- Artifacts ---")
     print(f"  Run dir:         {spec_dsp_dir}")
@@ -3088,14 +3343,16 @@ def _print_speculative_results(
 
 
 def _print_merge_results(
-    gptoss_plan: PlanGenResult,
-    opus_plan: PlanGenResult,
-    gptoss_exec: ExecutionResult,
+    dispatcher_plan: PlanGenResult,
+    solver_plan: PlanGenResult,
+    dispatcher_exec: ExecutionResult,
     pre_merge_snap: Snapshot | None,
     merge_exec: ExecutionResult,
     merge_snap: Snapshot | None,
     spec_dsp_dir: Path,
     solver_dir: Path,
+    dispatcher_label: str = "Dispatcher",
+    solver_label: str = "Solver",
 ) -> None:
     """Print results of the speculative dispatch + merge test."""
 
@@ -3104,9 +3361,9 @@ def _print_merge_results(
             return 0
         return usage.get(key, 0)
 
-    gu = gptoss_plan.usage
-    ou = opus_plan.usage
-    gts = gptoss_exec.timeline_summary
+    du = dispatcher_plan.usage
+    su = solver_plan.usage
+    dts = dispatcher_exec.timeline_summary
     mts = merge_exec.timeline_summary
 
     print(f"\n{'='*60}")
@@ -3115,30 +3372,30 @@ def _print_merge_results(
 
     # ── Plan generation ──
     print(f"\n  --- Plan Generation ---")
-    print(f"  {'Metric':<30} {'gpt-oss':>15} {'Opus':>15}")
+    print(f"  {'Metric':<30} {dispatcher_label:>15} {solver_label:>15}")
     print(f"  {'-'*60}")
-    print(f"  {'Planning time (s)':<30} {gptoss_plan.duration_wall_s:>15.1f} {opus_plan.duration_wall_s:>15.1f}")
-    print(f"  {'API time (ms)':<30} {gptoss_plan.duration_ms:>15} {opus_plan.duration_ms:>15}")
-    print(f"  {'Cost ($)':<30} {gptoss_plan.total_cost_usd or 0:>15.4f} {opus_plan.total_cost_usd or 0:>15.4f}")
-    print(f"  {'Turns':<30} {gptoss_plan.num_turns:>15} {opus_plan.num_turns:>15}")
-    print(f"  {'Input tokens':<30} {_tok(gu, 'input_tokens'):>15,} {_tok(ou, 'input_tokens'):>15,}")
-    print(f"  {'Output tokens':<30} {_tok(gu, 'output_tokens'):>15,} {_tok(ou, 'output_tokens'):>15,}")
-    print(f"  {'Plan size (chars)':<30} {len(gptoss_plan.plan_text or ''):>15} {len(opus_plan.plan_text or ''):>15}")
+    print(f"  {'Planning time (s)':<30} {dispatcher_plan.duration_wall_s:>15.1f} {solver_plan.duration_wall_s:>15.1f}")
+    print(f"  {'API time (ms)':<30} {dispatcher_plan.duration_ms:>15} {solver_plan.duration_ms:>15}")
+    print(f"  {'Cost ($)':<30} {dispatcher_plan.total_cost_usd or 0:>15.4f} {solver_plan.total_cost_usd or 0:>15.4f}")
+    print(f"  {'Turns':<30} {dispatcher_plan.num_turns:>15} {solver_plan.num_turns:>15}")
+    print(f"  {'Input tokens':<30} {_tok(du, 'input_tokens'):>15,} {_tok(su, 'input_tokens'):>15,}")
+    print(f"  {'Output tokens':<30} {_tok(du, 'output_tokens'):>15,} {_tok(su, 'output_tokens'):>15,}")
+    print(f"  {'Plan size (chars)':<30} {len(dispatcher_plan.plan_text or ''):>15} {len(solver_plan.plan_text or ''):>15}")
 
     # ── Speculative execution (pre-merge) ──
-    spec_exec_time = gptoss_exec.duration_wall_s
-    opus_plan_time = opus_plan.duration_wall_s
-    gptoss_plan_time = gptoss_plan.duration_wall_s
-    exec_window = max(0, opus_plan_time - gptoss_plan_time)
+    spec_exec_time = dispatcher_exec.duration_wall_s
+    solver_plan_time = solver_plan.duration_wall_s
+    dispatcher_plan_time = dispatcher_plan.duration_wall_s
+    exec_window = max(0, solver_plan_time - dispatcher_plan_time)
 
-    print(f"\n  --- Speculative Execution (gpt-oss, pre-merge) ---")
+    print(f"\n  --- Speculative Execution ({dispatcher_label}, pre-merge) ---")
     print(f"  Execution window:   {exec_window:.1f}s")
     print(f"  Actual exec time:   {spec_exec_time:.1f}s")
-    print(f"  Cost:               ${gptoss_exec.total_cost_usd or 0:.4f}")
-    print(f"  Turns:              {gptoss_exec.num_turns}")
-    print(f"  Total tokens:       {gptoss_exec.total_tokens:,}")
-    print(f"  Tool uses:          {gts.get('total_tool_uses', 0)}")
-    print(f"  Subagents:          {gts.get('total_subagents_spawned', 0)}")
+    print(f"  Cost:               ${dispatcher_exec.total_cost_usd or 0:.4f}")
+    print(f"  Turns:              {dispatcher_exec.num_turns}")
+    print(f"  Total tokens:       {dispatcher_exec.total_tokens:,}")
+    print(f"  Tool uses:          {dts.get('total_tool_uses', 0)}")
+    print(f"  Subagents:          {dts.get('total_subagents_spawned', 0)}")
     if pre_merge_snap is not None:
         print(f"  Files created:      {pre_merge_snap.total_files}")
         print(f"  Lines of code:      {pre_merge_snap.total_lines}")
@@ -3148,7 +3405,7 @@ def _print_merge_results(
 
     # ── Merge phase ──
     merge_time = merge_exec.duration_wall_s
-    print(f"\n  --- Merge Phase (Opus) ---")
+    print(f"\n  --- Merge Phase ({solver_label}) ---")
     print(f"  Merge time (s):     {merge_time:.1f}")
     print(f"  Cost:               ${merge_exec.total_cost_usd or 0:.4f}")
     print(f"  Turns:              {merge_exec.num_turns}")
@@ -3169,19 +3426,19 @@ def _print_merge_results(
         print(f"  (snapshot skipped — no file/test metrics)")
 
     # ── Totals ──
-    total_wall = opus_plan_time + merge_time
+    total_wall = solver_plan_time + merge_time
     total_cost = (
-        (gptoss_plan.total_cost_usd or 0)
-        + (opus_plan.total_cost_usd or 0)
-        + (gptoss_exec.total_cost_usd or 0)
+        (dispatcher_plan.total_cost_usd or 0)
+        + (solver_plan.total_cost_usd or 0)
+        + (dispatcher_exec.total_cost_usd or 0)
         + (merge_exec.total_cost_usd or 0)
     )
     print(f"\n  --- Totals ---")
-    print(f"  Total wall time:    {total_wall:.1f}s (Opus plan + merge)")
+    print(f"  Total wall time:    {total_wall:.1f}s ({solver_label} plan + merge)")
     print(f"  Total cost:         ${total_cost:.4f}")
 
-    if gptoss_exec.error:
-        print(f"  Exec error:         {gptoss_exec.error}")
+    if dispatcher_exec.error:
+        print(f"  Exec error:         {dispatcher_exec.error}")
     if merge_exec.error:
         print(f"  Merge error:        {merge_exec.error}")
 
@@ -3335,6 +3592,21 @@ def main() -> None:
     p3t.add_argument("--case", required=True, help="Case name")
     _add_config_args(p3t)
 
+    # test3-no-merge
+    p3nm = sub.add_parser(
+        "test3-no-merge",
+        help="Speculative dispatch WITHOUT merge (phases 1-3 only)",
+    )
+    p3nm.add_argument("--case", required=True, help="Case name")
+    _add_config_args(p3nm)
+
+    # test3-sweep
+    p3s = sub.add_parser(
+        "test3-sweep",
+        help="Run test3 (no merge) across all solver × dispatcher combos",
+    )
+    p3s.add_argument("--case", required=True, help="Case name")
+
     # snapshot
     p3 = sub.add_parser("snapshot", help="Snapshot a run directory")
     p3.add_argument("--dir", required=True, help="Path to run directory")
@@ -3358,6 +3630,13 @@ def main() -> None:
     elif args.command == "test3":
         config = _build_config(args)
         asyncio.run(test3_merge(args.case, config=config))
+
+    elif args.command == "test3-no-merge":
+        config = _build_config(args)
+        asyncio.run(test3_no_merge(args.case, config=config))
+
+    elif args.command == "test3-sweep":
+        asyncio.run(test3_sweep(args.case))
 
     elif args.command == "snapshot":
         cmd_snapshot(args)

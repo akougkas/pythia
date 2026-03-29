@@ -4,7 +4,9 @@ This section presents the Speculative Dispatch framework: the five-layer archite
 
 ## 3.1 Architecture Overview
 
-The Speculative Dispatch pipeline consists of five components with well-defined data contracts (Figure 1).
+In a multi-agent dispatch pipeline, the orchestrator processes each stage sequentially: task decomposition/planning, agent selection and resource matching, context assembly, and agent initialization (see §2.5). Each stage blocks on the output of its predecessor, forming a serial critical path. However, the first two stages require full planning and must execute sequentially, while the latter two can proceed based on a predicted plan in parallel with planning. This decoupling of dependent and independent stages motivates us to speculate at the dispatch level.
+
+To realize this, the Speculative Dispatch pipeline consists of five components with well-defined data contracts (Figure 1).
 
 **Intent Detector.**
 A lightweight classifier that transforms a natural-language user request into a structured intent representation: task type, estimated complexity, domain tags, decomposability score, and constraint annotations.
@@ -22,6 +24,7 @@ The Solver will select the dispatch plan that minimizes a cost-latency objective
 A lightweight prediction model that runs in parallel with the Solver.
 It produces a draft dispatch plan using pattern matching on intent classifications, a historical dispatch cache, and a learned user-specific fingerprint maintained by the Learner.
 Upon generating its prediction, the Speculative Dispatcher immediately begins pre-execution steps according to the active speculation mode.
+The draft plan is the Dispatcher's prediction of the Solver's optimal plan. The Orchestrator will reconcile any divergence once the Solver finishes.
 
 <!-- Questions to clarify before rewrite: 
 1) What does "pattern matching on intent classifications" actually mean? A reader can't reproduce or evaluate this. Is it a lookup table? A nearest-neighbor search? A decision tree? 
@@ -111,7 +114,7 @@ Notes:
 **Learner.**
 A reinforcement learning component that observes the full dispatch lifecycle of each request — intent, solver plan, speculation result, reconciliation decision, and execution outcome — and continuously updates the Speculative Dispatcher's prediction model. 
 The learner produces two outputs: 1) an updated policy for the Speculative Dispatcher to make prediction; and 2) a per-intent-class confidence scores that used to gate Spective Mode 2/3 activation. 
-The Learner is described in detail in Section 4.
+The Learner is described in detail in Section §4.
 <!-- Question:
 1. what the Learner produces? that is its output?
    The Learner's output is a) an updated policy $\pi_\theta$ that the Speculative Dispatcher uses for prediction; b) confidence scores that gate Mode 2/3 activation, correct?
@@ -139,6 +142,13 @@ Show data contracts at each interface.]
 ![Five-layer architecture of the Speculative Dispatch pipeline.](../paper/imgs/design/Pythia-5-layer-arch.png)
 
 *Figure: Five-layer architecture of the Speculative Dispatch pipeline. A user request flows through the Intent Detector, which feeds classified intents in parallel to the Dispatch Solver (target) and Speculative Dispatcher (draft). The Orchestrator reconciles both plans (COMMIT, PARTIAL COMMIT, or FLUSH) before final execution. The Learner observes the full lifecycle and updates the Speculative Dispatcher's prediction model.*
+
+The Speculative Dispatcher's predicted plan may diverge from the Solver's optimal plan. Since the Speculative Dispatcher acts on the prediction before the Solver finishes, all speculative pre-execution incurs misprediction risk.
+Acting more aggressively on the prediction will save more latency when the prediction is correct, but will waste more resources when the prediction is wrong. 
+To manage this tradeoff, we support three progressive speculation modes, with each committing additional speculative work at increasing potential cost.
+To determine which mode is active, the Speculative Dispatcher compares the per-intent-class confidence score provided by the Learner's feedback (i.e., the rolling reconciliation success rate) against the break-even mode activation thresholds derived from the cost-model. 
+This ensures that aggressive speculation is reserved for intent classes where the Speculative Dispatcher has a strong track record.
+
 
 ## 3.2 Speculation Modes
 
@@ -270,12 +280,25 @@ $W$ is the primary cost metric — it quantifies the price of misprediction and 
 
 ## 3.5 Resource-Aware Dispatch
 
-The Dispatch Solver operates over a heterogeneous resource landscape.
-We model the available infrastructure as a *fleet* $\mathcal{F} = \{f_1, \ldots, f_n\}$ where each fleet member $f_i$ has a capability vector:
+Given agents with requirements produced by the planning stage, the Dispatch Solver assigns agents to execution resources drawn from a heterogeneous resource landscape.
+We model the available infrastructure as a *fleet* $\mathcal{F} = \{f_1, \ldots, f_n\}$ where each fleet member is defined as a model endpoint optionally paired with tool servers. Each fleet member $f_i$ has a capability vector:
 
 $$f_i = (\text{compute}_i, \text{memory}_i, \text{rate\_limit}_i, \text{token\_budget}_i, \text{cost\_rate}_i, \text{latency}_i)$$
 
-The Solver optimizes dispatch subject to:
+During the assignment stage, the Dispatch Solver aims to minimize the expected task completion latency. 
+Let $x_{ij} \in \{0, 1\}$ denote the assignment of an agent $a_i$ to a fleet member $f_j$​, then the optimization problem is:
+
+$$\min_{x} \sum_{i,j} x_{ij} \cdot \text{latency}_j$$
+
+$$\text{s.t.} \quad \sum_{i} x_{ij} \leq \text{compute}_j \quad \forall j \quad \text{(capacity)}$$
+
+$$\sum_{i,j} x_{ij} \cdot \text{cost\_rate}_j \leq B \quad \text{(token\_budget)}$$
+
+$$\sum_{i} x_{ij} \leq \text{rate\_limit}_j \quad \forall j \quad \text{(rate limit)}$$
+
+$$x_{ij} = 0 \quad \text{if } a_i \notin \text{compatible}(f_j) \quad \text{(affinity)}$$
+
+The four constraint classes capture the following requirements:
 
 - **Capacity constraints:** Agent assignments must not exceed any fleet member's compute, memory, or concurrent request limits.
 - **Budget constraints:** Total token consumption and API costs must stay within per-request and per-session budgets.
