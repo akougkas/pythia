@@ -1,0 +1,53 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "data_pipeline:0.4:['data', 'environmental_science']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000
+      },
+      {
+        "agent": "analyst",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:data_pipeline",
+        "domain:data",
+        "domain:environmental_science"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "data_discovery": "Locate the NOAA dataset containing historical fire data from 2000 onwards. Verify that it includes information on total acres burned for each period.",
+      "data_wrangler": "Extract the period with the highest total acres burned from the NOAA dataset. Calculate the total acres burned for that period.",
+      "analyst": "Verify that the extracted period indeed holds the record for highest total acres burned. Provide a summary of the analysis.",
+      "reporter": "Compile the results into a concise report. Include the identified period with the highest total acres burned and the corresponding value."
+    }
+  },
+  "time_ms": 54080.578303997754
+}

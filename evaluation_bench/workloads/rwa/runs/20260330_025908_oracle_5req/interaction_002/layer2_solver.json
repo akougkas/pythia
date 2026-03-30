@@ -1,0 +1,151 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "research_workflow",
+      "complexity": 0.43371376811594203,
+      "domain_tags": [
+        "ml",
+        "research"
+      ],
+      "decomposability": 0.3,
+      "constraints": {}
+    },
+    "request_text_preview": "Replicate the research paper 'All In One': The paper \"All-in-one simulation-based inference\" has been reproduced. This involves 5 major phases and 233 total subtasks. The workflow includes: Variance Exploding SDE (VESDE) is implemented, as described in A2.1; The Simformer model, training process and"
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000,
+        "order": 0
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500,
+        "order": 1
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 2
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3500,
+        "order": 3
+      }
+    ],
+    "execution_order": [
+      [
+        "literature_reviewer"
+      ],
+      [
+        "experiment_designer"
+      ],
+      [
+        "code_gen",
+        "code_generator"
+      ],
+      [
+        "experiment_runner"
+      ],
+      [
+        "result_analyzer"
+      ]
+    ],
+    "total_budget": 10000,
+    "estimated_latency": 3.0
+  },
+  "time_ms": 49144.402969999646,
+  "llm_call_time_ms": 49144.22470600039,
+  "assignment_time_ms": 0.17826399925979786,
+  "llm_reasoning": "This is a research replication workflow for 'All-in-One SBI' with clearly delineated components (VESDE, Simformer, NPE/NRE/NLE baselines) that have already been partially implemented. The decomposability is low (0.30) indicating tight coupling between components, so parallelism is limited \u2014 baseline methods can be implemented in parallel, but result analysis must wait for all experiments to complete. Complexity is moderate (0.43) with 5 phases, so we target a focused 5-6 agent pipeline rather than over-decomposing.",
+  "llm_parsed_agents": [
+    "literature_reviewer",
+    "experiment_designer",
+    "code_generator",
+    "code_gen",
+    "experiment_runner",
+    "result_analyzer"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "literature_reviewer",
+      "prompt": "You are replicating the paper 'All-in-One Simulation-Based Inference'. Your task is to extract precise algorithmic and architectural specifications needed for implementation. Focus on: (1) VESDE formulation from Appendix A2.1 \u2014 the SDE coefficients, diffusion schedule, and score network interface; (2) Simformer architecture \u2014 transformer depth, attention mechanism, conditioning on summary statistics, training objective (score matching loss); (3) Training hyperparameters \u2014 optimizer, learning rate, batch size, number of epochs, any scheduler; (4) Inference procedure \u2014 how posterior samples are drawn via reverse SDE; (5) Baseline methods \u2014 NPE (normalizing flow type, e.g. NSF or MAF), NRE (classifier architecture), NLE (likelihood estimator); (6) Evaluation protocol \u2014 which benchmark tasks (e.g. SLCP, Lotka-Volterra, M/G/1), metrics (C2ST, MMD, SBC), and number of simulations budget. Output a structured specification document with one section per component, including any equations needed for implementation.",
+      "role": "Extract algorithmic specs for VESDE, Simformer architecture, and all three baseline methods from the All-in-One SBI paper",
+      "depends_on": [],
+      "estimated_tokens": 800,
+      "compute_weight": "light"
+    },
+    {
+      "name": "experiment_designer",
+      "prompt": "Using the extracted specifications from the literature reviewer, design a complete replication experiment plan for 'All-in-One SBI'. Your plan must cover: (1) Benchmark tasks to use \u2014 specify exact simulators (SLCP, Lotka-Volterra, M/G/1, or others from the paper), parameter dimensionality, and simulation budgets; (2) Shared data protocol \u2014 how to generate and split training/validation/test simulations so all methods see identical data; (3) Simformer experiment configuration \u2014 VESDE schedule parameters, score network config, training setup; (4) Baseline experiment configurations \u2014 one config block each for NPE, NRE, NLE using sbi library or equivalent; (5) Evaluation metrics \u2014 C2ST accuracy, expected coverage, posterior predictive checks; (6) Dependency graph \u2014 which experiments can run in parallel (baselines are independent of each other and of Simformer once data is generated); (7) Acceptance criteria \u2014 what delta from paper results counts as successful replication. Output a structured experiment plan in markdown with config tables.",
+      "role": "Design the full replication experiment plan covering VESDE+Simformer and NPE/NRE/NLE baselines on shared benchmarks",
+      "depends_on": [
+        "literature_reviewer"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "code_generator",
+      "prompt": "Implement the core 'All-in-One SBI' method in Python. Based on the specifications extracted from the paper, write the following modules: (1) `vesde.py` \u2014 Variance Exploding SDE class with sigma(t) schedule, marginal probability, and forward noising as per Appendix A2.1; implement `sde_coeff(t)` and `marginal_prob(x, t)`; (2) `score_network.py` \u2014 transformer-based score network conditioned on observed data x_o; include multi-head attention, positional encoding for parameter tokens, and cross-attention to summary statistics; (3) `simformer.py` \u2014 top-level model class wrapping VESDE + score network with `train_step(theta, x)` and `sample_posterior(x_o, n_samples)` methods; (4) `train_simformer.py` \u2014 training loop with Adam optimizer, learning rate schedule, loss logging, and checkpoint saving; (5) `inference_simformer.py` \u2014 reverse SDE sampler (Euler-Maruyama or Predictor-Corrector) to draw posterior samples given x_o. Use PyTorch. Include docstrings, shape comments, and a `__main__` block for smoke testing on a 2D Gaussian toy task.",
+      "role": "Implement VESDE and Simformer model, training loop, and reverse-SDE inference pipeline",
+      "depends_on": [
+        "experiment_designer"
+      ],
+      "estimated_tokens": 4000,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "code_gen",
+      "prompt": "Implement the three baseline SBI methods and shared infrastructure in Python, based on the experiment plan. (1) `simulators.py` \u2014 implement or wrap benchmark simulators: SLCP (simple likelihood complex posterior), Lotka-Volterra, and M/G/1 queue; each should expose `simulate(theta) -> x` and `prior` attributes; (2) `baselines/npe.py` \u2014 Neural Posterior Estimation using a Masked Autoregressive Flow (MAF) or Neural Spline Flow conditioned on x; use `sbi` library if available, otherwise implement manually with `nflows`; (3) `baselines/nre.py` \u2014 Neural Ratio Estimation using a binary classifier (MLP or ResNet) trained on joint vs marginal samples; (4) `baselines/nle.py` \u2014 Neural Likelihood Estimation using a conditional flow modeling p(x|theta); (5) `data_gen.py` \u2014 script to pre-generate N simulation pairs (theta, x) and save to disk so all methods use identical data; (6) `run_baseline.py` \u2014 unified CLI to train and evaluate any baseline given a simulator name and method name. Use PyTorch. Each baseline must expose `train(dataset)` and `sample_posterior(x_o, n_samples)` with the same interface as Simformer for fair comparison.",
+      "role": "Implement NPE, NRE, and NLE baseline methods and shared simulator/data generation utilities",
+      "depends_on": [
+        "experiment_designer"
+      ],
+      "estimated_tokens": 4000,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "experiment_runner",
+      "prompt": "Execute the full replication experiment suite for 'All-in-One SBI'. Steps: (1) Run `data_gen.py` for each benchmark task (SLCP, Lotka-Volterra, M/G/1) with the simulation budget specified in the experiment plan \u2014 save all (theta, x) pairs; (2) Train Simformer on each task using `train_simformer.py` \u2014 log training loss curves, save final checkpoints; (3) Train each baseline (NPE, NRE, NLE) on each task using `run_baseline.py` \u2014 all methods use the same pre-generated datasets; (4) Run posterior inference for all methods on a held-out set of 100 observations per task \u2014 save posterior samples as `.npy` files; (5) Compute evaluation metrics: C2ST accuracy (train classifier to distinguish true vs approximate posterior), expected coverage at 90%/95%, and MMD if applicable; (6) Save all results to `results/` with consistent naming: `{method}_{task}_{metric}.json`. Report any training instabilities or OOM errors. Output a results manifest listing all completed runs and their output file paths.",
+      "role": "Execute all experiments \u2014 Simformer and all three baselines \u2014 on benchmark tasks and collect raw results",
+      "depends_on": [
+        "code_generator",
+        "code_gen"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "result_analyzer",
+      "prompt": "Analyze the replication results for 'All-in-One SBI' and score the reproduction fidelity. Tasks: (1) Load all results from `results/` manifest; (2) Extract the paper's reported numbers for each method \u00d7 task \u00d7 metric combination from the literature review \u2014 build a comparison table; (3) Compute relative error: `(replicated - paper) / paper` for each cell; (4) Score each component: VESDE/Simformer implementation fidelity, NPE/NRE/NLE baseline accuracy; flag any cell with >10% relative error as a discrepancy; (5) Diagnose discrepancies \u2014 likely causes: random seed differences, simulation budget mismatch, architecture hyperparameter deviation, or training duration; (6) Check qualitative results: do posterior samples look reasonable? Are coverage plots well-calibrated? (7) Produce a final replication scorecard: overall reproduction score (0-100), per-method scores, and a list of confirmed replicated claims vs unresolved discrepancies. Output as a structured markdown report with tables and a summary paragraph suitable for a research log.",
+      "role": "Compare replication results against paper's reported numbers, score fidelity, and identify any discrepancies",
+      "depends_on": [
+        "experiment_runner"
+      ],
+      "estimated_tokens": 1000,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "literature_reviewer": "You are replicating the paper 'All-in-One Simulation-Based Inference'. Your task is to extract precise algorithmic and architectural specifications needed for implementation. Focus on: (1) VESDE formulation from Appendix A2.1 \u2014 the SDE coefficients, diffusion schedule, and score network interface; (2) Simformer architecture \u2014 transformer depth, attention mechanism, conditioning on summary statistics, training objective (score matching loss); (3) Training hyperparameters \u2014 optimizer, learning rate, batch size, number of epochs, any scheduler; (4) Inference procedure \u2014 how posterior samples are drawn via reverse SDE; (5) Baseline methods \u2014 NPE (normalizing flow type, e.g. NSF or MAF), NRE (classifier architecture), NLE (likelihood estimator); (6) Evaluation protocol \u2014 which benchmark tasks (e.g. SLCP, Lotka-Volterra, M/G/1), metrics (C2ST, MMD, SBC), and number of simulations budget. Output a structured specification document with one section per component, including any equations needed for implementation.",
+    "experiment_designer": "Using the extracted specifications from the literature reviewer, design a complete replication experiment plan for 'All-in-One SBI'. Your plan must cover: (1) Benchmark tasks to use \u2014 specify exact simulators (SLCP, Lotka-Volterra, M/G/1, or others from the paper), parameter dimensionality, and simulation budgets; (2) Shared data protocol \u2014 how to generate and split training/validation/test simulations so all methods see identical data; (3) Simformer experiment configuration \u2014 VESDE schedule parameters, score network config, training setup; (4) Baseline experiment configurations \u2014 one config block each for NPE, NRE, NLE using sbi library or equivalent; (5) Evaluation metrics \u2014 C2ST accuracy, expected coverage, posterior predictive checks; (6) Dependency graph \u2014 which experiments can run in parallel (baselines are independent of each other and of Simformer once data is generated); (7) Acceptance criteria \u2014 what delta from paper results counts as successful replication. Output a structured experiment plan in markdown with config tables.",
+    "code_generator": "Implement the core 'All-in-One SBI' method in Python. Based on the specifications extracted from the paper, write the following modules: (1) `vesde.py` \u2014 Variance Exploding SDE class with sigma(t) schedule, marginal probability, and forward noising as per Appendix A2.1; implement `sde_coeff(t)` and `marginal_prob(x, t)`; (2) `score_network.py` \u2014 transformer-based score network conditioned on observed data x_o; include multi-head attention, positional encoding for parameter tokens, and cross-attention to summary statistics; (3) `simformer.py` \u2014 top-level model class wrapping VESDE + score network with `train_step(theta, x)` and `sample_posterior(x_o, n_samples)` methods; (4) `train_simformer.py` \u2014 training loop with Adam optimizer, learning rate schedule, loss logging, and checkpoint saving; (5) `inference_simformer.py` \u2014 reverse SDE sampler (Euler-Maruyama or Predictor-Corrector) to draw posterior samples given x_o. Use PyTorch. Include docstrings, shape comments, and a `__main__` block for smoke testing on a 2D Gaussian toy task.",
+    "code_gen": "Implement the three baseline SBI methods and shared infrastructure in Python, based on the experiment plan. (1) `simulators.py` \u2014 implement or wrap benchmark simulators: SLCP (simple likelihood complex posterior), Lotka-Volterra, and M/G/1 queue; each should expose `simulate(theta) -> x` and `prior` attributes; (2) `baselines/npe.py` \u2014 Neural Posterior Estimation using a Masked Autoregressive Flow (MAF) or Neural Spline Flow conditioned on x; use `sbi` library if available, otherwise implement manually with `nflows`; (3) `baselines/nre.py` \u2014 Neural Ratio Estimation using a binary classifier (MLP or ResNet) trained on joint vs marginal samples; (4) `baselines/nle.py` \u2014 Neural Likelihood Estimation using a conditional flow modeling p(x|theta); (5) `data_gen.py` \u2014 script to pre-generate N simulation pairs (theta, x) and save to disk so all methods use identical data; (6) `run_baseline.py` \u2014 unified CLI to train and evaluate any baseline given a simulator name and method name. Use PyTorch. Each baseline must expose `train(dataset)` and `sample_posterior(x_o, n_samples)` with the same interface as Simformer for fair comparison.",
+    "experiment_runner": "Execute the full replication experiment suite for 'All-in-One SBI'. Steps: (1) Run `data_gen.py` for each benchmark task (SLCP, Lotka-Volterra, M/G/1) with the simulation budget specified in the experiment plan \u2014 save all (theta, x) pairs; (2) Train Simformer on each task using `train_simformer.py` \u2014 log training loss curves, save final checkpoints; (3) Train each baseline (NPE, NRE, NLE) on each task using `run_baseline.py` \u2014 all methods use the same pre-generated datasets; (4) Run posterior inference for all methods on a held-out set of 100 observations per task \u2014 save posterior samples as `.npy` files; (5) Compute evaluation metrics: C2ST accuracy (train classifier to distinguish true vs approximate posterior), expected coverage at 90%/95%, and MMD if applicable; (6) Save all results to `results/` with consistent naming: `{method}_{task}_{metric}.json`. Report any training instabilities or OOM errors. Output a results manifest listing all completed runs and their output file paths.",
+    "result_analyzer": "Analyze the replication results for 'All-in-One SBI' and score the reproduction fidelity. Tasks: (1) Load all results from `results/` manifest; (2) Extract the paper's reported numbers for each method \u00d7 task \u00d7 metric combination from the literature review \u2014 build a comparison table; (3) Compute relative error: `(replicated - paper) / paper` for each cell; (4) Score each component: VESDE/Simformer implementation fidelity, NPE/NRE/NLE baseline accuracy; flag any cell with >10% relative error as a discrepancy; (5) Diagnose discrepancies \u2014 likely causes: random seed differences, simulation budget mismatch, architecture hyperparameter deviation, or training duration; (6) Check qualitative results: do posterior samples look reasonable? Are coverage plots well-calibrated? (7) Produce a final replication scorecard: overall reproduction score (0-100), per-method scores, and a list of confirmed replicated claims vs unresolved discrepancies. Output as a structured markdown report with tables and a summary paragraph suitable for a research log."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a research replication workflow for 'All-in-One SBI' with clearly delineated components (VESDE, Simformer, NPE/NRE/NLE baselines) that have already been partially implemented. The decomposability is low (0.30) indicating tight coupling between components, so parallelism is limited \u2014 baseline methods can be implemented in parallel, but result analysis must wait for all experiments to complete. Complexity is moderate (0.43) with 5 phases, so we target a focused 5-6 agent pipeline rather than over-decomposing.\",\n\n  \"agents\": [\n    {\n      \"name\": \"literature_reviewer\",\n      \"role\": \"Extract algorithmic specs for VESDE, Simformer architecture, and all three baseline methods from the All-in-One SBI paper\",\n      \"prompt\": \"You are replicating the paper 'All-in-One Simulation-Based Inference'. Your task is to extract precise algorithmic and architectural specifications needed for implementation. Focus on: (1) VESDE formulation from Appendix A2.1 \u2014 the SDE coefficients, diffusion schedule, and score network interface; (2) Simformer architecture \u2014 transformer depth, attention mechanism, conditioning on summary statistics, training objective (score matching loss); (3) Training hyperparameters \u2014 optimizer, learning rate, batch size, number of epochs, any scheduler; (4) Inference procedure \u2014 how posterior samples are drawn via reverse SDE; (5) Baseline methods \u2014 NPE (normalizing flow type, e.g. NSF or MAF), NRE (classifier architecture), NLE (likelihood estimator); (6) Evaluation protocol \u2014 which benchmark tasks (e.g. SLCP, Lotka-Volterra, M/G/1), metrics (C2ST, MMD, SBC), and number of simulations budget. Output a structured specification document with one section per component, including any equations needed for implementation.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 800,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"experiment_designer\",\n      \"role\": \"Design the full replication experiment plan covering VESDE+Simformer and NPE/NRE/NLE baselines on shared benchmarks\",\n      \"prompt\": \"Using the extracted specifications from the literature reviewer, design a complete replication experiment plan for 'All-in-One SBI'. Your plan must cover: (1) Benchmark tasks to use \u2014 specify exact simulators (SLCP, Lotka-Volterra, M/G/1, or others from the paper), parameter dimensionality, and simulation budgets; (2) Shared data protocol \u2014 how to generate and split training/validation/test simulations so all methods see identical data; (3) Simformer experiment configuration \u2014 VESDE schedule parameters, score network config, training setup; (4) Baseline experiment configurations \u2014 one config block each for NPE, NRE, NLE using sbi library or equivalent; (5) Evaluation metrics \u2014 C2ST accuracy, expected coverage, posterior predictive checks; (6) Dependency graph \u2014 which experiments can run in parallel (baselines are independent of each other and of Simformer once data is generated); (7) Acceptance criteria \u2014 what delta from paper results counts as successful replication. Output a structured experiment plan in markdown with config tables.\",\n      \"depends_on\": [\"literature_reviewer\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"code_generator\",\n      \"role\": \"Implement VESDE and Simformer model, training loop, and reverse-SDE inference pipeline\",\n      \"prompt\": \"Implement the core 'All-in-One SBI' method in Python. Based on the specifications extracted from the paper, write the following modules: (1) `vesde.py` \u2014 Variance Exploding SDE class with sigma(t) schedule, marginal probability, and forward noising as per Appendix A2.1; implement `sde_coeff(t)` and `marginal_prob(x, t)`; (2) `score_network.py` \u2014 transformer-based score network conditioned on observed data x_o; include multi-head attention, positional encoding for parameter tokens, and cross-attention to summary statistics; (3) `simformer.py` \u2014 top-level model class wrapping VESDE + score network with `train_step(theta, x)` and `sample_posterior(x_o, n_samples)` methods; (4) `train_simformer.py` \u2014 training loop with Adam optimizer, learning rate schedule, loss logging, and checkpoint saving; (5) `inference_simformer.py` \u2014 reverse SDE sampler (Euler-Maruyama or Predictor-Corrector) to draw posterior samples given x_o. Use PyTorch. Include docstrings, shape comments, and a `__main__` block for smoke testing on a 2D Gaussian toy task.\",\n      \"depends_on\": [\"experiment_designer\"],\n      \"estimated_tokens\": 4000,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"code_gen\",\n      \"role\": \"Implement NPE, NRE, and NLE baseline methods and shared simulator/data generation utilities\",\n      \"prompt\": \"Implement the three baseline SBI methods and shared infrastructure in Python, based on the experiment plan. (1) `simulators.py` \u2014 implement or wrap benchmark simulators: SLCP (simple likelihood complex posterior), Lotka-Volterra, and M/G/1 queue; each should expose `simulate(theta) -> x` and `prior` attributes; (2) `baselines/npe.py` \u2014 Neural Posterior Estimation using a Masked Autoregressive Flow (MAF) or Neural Spline Flow conditioned on x; use `sbi` library if available, otherwise implement manually with `nflows`; (3) `baselines/nre.py` \u2014 Neural Ratio Estimation using a binary classifier (MLP or ResNet) trained on joint vs marginal samples; (4) `baselines/nle.py` \u2014 Neural Likelihood Estimation using a conditional flow modeling p(x|theta); (5) `data_gen.py` \u2014 script to pre-generate N simulation pairs (theta, x) and save to disk so all methods use identical data; (6) `run_baseline.py` \u2014 unified CLI to train and evaluate any baseline given a simulator name and method name. Use PyTorch. Each baseline must expose `train(dataset)` and `sample_posterior(x_o, n_samples)` with the same interface as Simformer for fair comparison.\",\n      \"depends_on\": [\"experiment_designer\"],\n      \"estimated_tokens\": 4000,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"experiment_runner\",\n      \"role\": \"Execute all experiments \u2014 Simformer and all three baselines \u2014 on benchmark tasks and collect raw results\",\n      \"prompt\": \"Execute the full replication experiment suite for 'All-in-One SBI'. Steps: (1) Run `data_gen.py` for each benchmark task (SLCP, Lotka-Volterra, M/G/1) with the simulation budget specified in the experiment plan \u2014 save all (theta, x) pairs; (2) Train Simformer on each task using `train_simformer.py` \u2014 log training loss curves, save final checkpoints; (3) Train each baseline (NPE, NRE, NLE) on each task using `run_baseline.py` \u2014 all methods use the same pre-generated datasets; (4) Run posterior inference for all methods on a held-out set of 100 observations per task \u2014 save posterior samples as `.npy` files; (5) Compute evaluation metrics: C2ST accuracy (train classifier to distinguish true vs approximate posterior), expected coverage at 90%/95%, and MMD if applicable; (6) Save all results to `results/` with consistent naming: `{method}_{task}_{metric}.json`. Report any training instabilities or OOM errors. Output a results manifest listing all completed runs and their output file paths.\",\n      \"depends_on\": [\"code_generator\", \"code_gen\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"result_analyzer\",\n      \"role\": \"Compare replication results against paper's reported numbers, score fidelity, and identify any discrepancies\",\n      \"prompt\": \"Analyze the replication results for 'All-in-One SBI' and score the reproduction fidelity. Tasks: (1) Load all results from `results/` manifest; (2) Extract the paper's reported numbers for each method \u00d7 task \u00d7 metric combination from the literature review \u2014 build a comparison table; (3) Compute relative error: `(replicated - paper) / paper` for each cell; (4) Score each component: VESDE/Simformer implementation fidelity, NPE/NRE/NLE baseline accuracy; flag any cell with >10% relative error as a discrepancy; (5) Diagnose discrepancies \u2014 likely causes: random seed differences, simulation budget mismatch, architecture hyperparameter deviation, or training duration; (6) Check qualitative results: do posterior samples look reasonable? Are coverage plots well-calibrated? (7) Produce a final replication scorecard: overall reproduction score (0-100), per-method scores, and a list of confirmed replicated claims vs unresolved discrepancies. Output as a structured markdown report with tables and a summary paragraph suitable for a research log.\",\n      \"depends_on\": [\"experiment_runner\"],\n      \"estimated_tokens\": 1000,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```"
+}

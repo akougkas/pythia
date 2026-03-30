@@ -1,0 +1,46 @@
+{
+  "Q_run_a": 3.2,
+  "Q_run_b": 2.2,
+  "Q_delta": 1.0,
+  "comparisons": 5,
+  "run_a_wins": 3,
+  "run_b_wins": 0,
+  "ties": 2,
+  "details": [
+    {
+      "request_id": "rwa_adaptive-pruning",
+      "run_a_score": 2,
+      "run_b_score": 1,
+      "delta": 1,
+      "reasoning": "Output A starts but has logical errors and incomplete code; Output B is unrelated to the task description."
+    },
+    {
+      "request_id": "rwa_all-in-one",
+      "run_a_score": 4,
+      "run_b_score": 2,
+      "delta": 2,
+      "reasoning": "OUTPUT A clearly outlines the experimental design and requirements but lacks implementation details. OUTPUT B focuses on MPI/OpenMP code structure for specific phases without clear documentation or explanation of hyperparameters, configurations, metrics, or baselines."
+    },
+    {
+      "request_id": "rwa_bam",
+      "run_a_score": 3,
+      "run_b_score": 3,
+      "delta": 0,
+      "reasoning": "Both outputs are incomplete and lack critical parts of the implementation, such as finishing the loss calculation and training loop."
+    },
+    {
+      "request_id": "rwa_bbox",
+      "run_a_score": 4,
+      "run_b_score": 2,
+      "delta": 2,
+      "reasoning": "OUTPUT A provides a clear and structured overview of the experiment design but lacks code implementation. OUTPUT B includes executable Python code but is incomplete and missing crucial parts like loss calculation, backward pass, and evaluation metrics."
+    },
+    {
+      "request_id": "rwa_bridging-data-gaps",
+      "run_a_score": 3,
+      "run_b_score": 3,
+      "delta": 0,
+      "reasoning": "Both outputs are incomplete and contain logical errors or missing parts."
+    }
+  ]
+}

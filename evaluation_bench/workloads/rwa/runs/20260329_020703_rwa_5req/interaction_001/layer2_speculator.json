@@ -1,0 +1,54 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "research_workflow:0.3:['data', 'ml', 'research']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:research_workflow",
+        "domain:data",
+        "domain:ml",
+        "domain:research"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "Develop a detailed plan to replicate the APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference research paper, including task decomposition and resource allocation.",
+      "experiment_designer": "Create a set of experiments to replicate the Adaptive Pruning method, including experiment design, parameter tuning, and evaluation metrics.",
+      "code_generator": "Write research-grade code to implement the Adaptive Pruning method, including LoRA setup and baseline implementation, using available pre-trained models and datasets.",
+      "tester": "Implement test cases to validate the Adaptive Pruning method's implementation, including evaluation of LoRA setup and baseline models' performance."
+    }
+  },
+  "time_ms": 60493.55860900004
+}

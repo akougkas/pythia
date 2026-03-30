@@ -1,0 +1,181 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "research_workflow",
+      "complexity": 0.43371376811594203,
+      "domain_tags": [
+        "ml",
+        "research"
+      ],
+      "decomposability": 0.3,
+      "constraints": {}
+    },
+    "request_text_preview": "Replicate the research paper 'All In One': The paper \"All-in-one simulation-based inference\" has been reproduced. This involves 5 major phases and 233 total subtasks. The workflow includes: Variance Exploding SDE (VESDE) is implemented, as described in A2.1; The Simformer model, training process and"
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000,
+        "order": 0
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500,
+        "order": 1
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 2
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3500,
+        "order": 3
+      }
+    ],
+    "execution_order": [
+      [
+        "literature_reviewer"
+      ],
+      [
+        "experiment_designer"
+      ],
+      [
+        "code_gen",
+        "code_generator"
+      ],
+      [
+        "tester"
+      ],
+      [
+        "experiment_runner"
+      ],
+      [
+        "result_analyzer"
+      ],
+      [
+        "reporter"
+      ]
+    ],
+    "total_budget": 10000,
+    "estimated_latency": 3.0
+  },
+  "time_ms": 47090.12220099976,
+  "llm_call_time_ms": 47089.92695800043,
+  "assignment_time_ms": 0.19524299932527356,
+  "llm_reasoning": "This is a research replication workflow for 'All-in-One SBI' with clearly defined phases (VESDE, Simformer model/training/inference, and three baseline methods NPE/NRE/NLE). Given the intent classification shows moderate complexity (0.43) but low decomposability (0.30), the phases have tight interdependencies \u2014 baselines and Simformer share the same SBI framework and must be validated against common benchmarks. The workflow is best structured as: literature extraction \u2192 experiment design \u2192 parallel code generation tracks (Simformer vs. baselines) \u2192 integrated testing \u2192 result analysis and reporting.",
+  "llm_parsed_agents": [
+    "literature_reviewer",
+    "experiment_designer",
+    "code_generator",
+    "code_gen",
+    "tester",
+    "experiment_runner",
+    "result_analyzer",
+    "reporter"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "literature_reviewer",
+      "prompt": "Review the paper 'All-in-One Simulation-Based Inference' and extract: (1) Full VESDE formulation from Appendix A2.1 \u2014 SDE coefficients, noise schedules, drift/diffusion terms; (2) Simformer architecture details \u2014 transformer blocks, attention mechanisms, embedding dims, conditioning strategy; (3) Training procedure \u2014 loss functions, optimizer settings, batch sizes, learning rate schedules, number of epochs; (4) Inference procedure \u2014 posterior sampling steps, MCMC or score-based sampling details; (5) Baseline method configurations for NPE, NRE, and NLE \u2014 network architectures, training setups, and any shared components; (6) Benchmark tasks used for evaluation and the metrics reported (e.g., C2ST, log-probability, coverage). Output a structured specification document.",
+      "role": "Extract all mathematical specifications, hyperparameters, and algorithmic details from the All-in-One SBI paper",
+      "depends_on": [],
+      "estimated_tokens": 1500,
+      "compute_weight": "light"
+    },
+    {
+      "name": "experiment_designer",
+      "prompt": "Using the extracted paper specifications, design a complete replication experiment plan for All-in-One SBI. Define: (1) The 5 major experimental phases and their subtask breakdown (targeting ~233 subtasks); (2) The benchmark tasks (e.g., SLCP, Lotka-Volterra, Gaussian mixture) with simulator configs; (3) A shared data/simulator interface so Simformer, NPE, NRE, and NLE all run on identical draws; (4) Evaluation protocol \u2014 number of posterior samples, reference posterior generation, metric computation (C2ST, MMD, or log-prob); (5) Directory and file structure for reproducibility (configs, checkpoints, results); (6) Which phases can run in parallel and which are sequential. Output a phased experiment plan with dependency graph.",
+      "role": "Design the full replication experiment plan covering all 5 phases and integration of Simformer vs. baselines",
+      "depends_on": [
+        "literature_reviewer"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "code_generator",
+      "prompt": "Implement the following components from the All-in-One SBI paper: (1) VESDE (Variance Exploding SDE) as specified in Appendix A2.1 \u2014 implement the forward SDE, reverse SDE, and score network target; (2) Simformer architecture \u2014 transformer-based amortized score network that conditions on observed data x_o, implement multi-head attention, positional encodings, and the joint embedding of (theta, x, t); (3) Training loop \u2014 denoising score matching loss over simulated (theta, x) pairs with time-conditional noise injection following the VESDE schedule; (4) Inference \u2014 implement posterior sampling via reverse SDE or predictor-corrector sampler conditioned on x_o; Use PyTorch. Follow the exact hyperparameters from the experiment design spec. Include docstrings and config-driven hyperparameters.",
+      "role": "Implement VESDE and the full Simformer model, training loop, and score-based inference pipeline",
+      "depends_on": [
+        "experiment_designer"
+      ],
+      "estimated_tokens": 4000,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "code_gen",
+      "prompt": "Implement the three baseline methods for the All-in-One SBI replication: (1) Neural Posterior Estimation (NPE) \u2014 normalizing flow (e.g., MAF or NSF) trained on (theta, x) pairs to directly approximate p(theta | x); (2) Neural Ratio Estimation (NRE) \u2014 binary classifier trained to estimate the likelihood-to-evidence ratio; (3) Neural Likelihood Estimation (NLE) \u2014 normalizing flow trained to approximate p(x | theta), combined with MCMC for posterior; For each: implement training, posterior evaluation, and a common interface `sample_posterior(x_obs, n_samples)`. Use the same benchmark simulators as Simformer. Ensure all three share the same train/test data splits defined in the experiment design. Use PyTorch; sbi library wrappers are acceptable if they match paper configs.",
+      "role": "Implement the three baseline SBI methods: NPE, NRE, and NLE using sbi library or from-scratch as specified",
+      "depends_on": [
+        "experiment_designer"
+      ],
+      "estimated_tokens": 4000,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "tester",
+      "prompt": "Write a comprehensive test suite for the All-in-One SBI replication codebase: (1) Unit tests for VESDE \u2014 verify SDE coefficients, check that forward noising pushes samples toward noise distribution, validate score network output shape; (2) Unit tests for Simformer \u2014 check forward pass shapes, attention mask correctness, conditioning on x_o; (3) Integration test: run a short training loop (10 steps) on a toy Gaussian simulator and verify loss decreases; (4) Baseline sanity tests \u2014 verify NPE/NRE/NLE each produce posterior samples of correct shape and that log-probs are finite; (5) Benchmark smoke test \u2014 run all 4 methods (Simformer + 3 baselines) on a single SLCP observation and confirm posterior samples are returned without error; Use pytest. Flag any numerical instability or shape mismatches.",
+      "role": "Generate integration tests and unit tests for VESDE, Simformer, and all three baselines",
+      "depends_on": [
+        "code_generator",
+        "code_gen"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "experiment_runner",
+      "prompt": "Execute the full replication experiments for All-in-One SBI across all benchmark tasks defined in the experiment plan: (1) Run Simformer training and inference on each benchmark (e.g., SLCP, Lotka-Volterra, Gaussian Mixture, Two Moons); (2) Run NPE, NRE, and NLE on the same benchmarks with identical simulator budgets; (3) For each method \u00d7 task combination, collect: posterior samples (N\u22651000), compute C2ST scores against reference posteriors, log-probability of true parameters, and wall-clock training time; (4) Save all results to structured output files (JSON/CSV per task); (5) Log any failures or numerical issues with traceback. Report a results matrix: rows=tasks, columns=methods, cells=metrics.",
+      "role": "Execute all benchmark experiments for Simformer and baselines, collect posterior samples and metrics",
+      "depends_on": [
+        "tester"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "result_analyzer",
+      "prompt": "Analyze the experimental results from the All-in-One SBI replication run: (1) Compare C2ST scores, log-probabilities, and coverage metrics for Simformer vs. NPE, NRE, NLE across all benchmark tasks \u2014 tabulate against paper-reported values from Table 1/2; (2) Compute relative error between replicated metrics and paper metrics; flag any task where deviation exceeds 5%; (3) Identify which components replicate faithfully vs. show discrepancies (e.g., VESDE sampling, baseline training stability); (4) Check if the 'all-in-one' advantage of Simformer (single model, multiple tasks) is reproduced; (5) Summarize statistical validity \u2014 are differences within expected variance given random seeds? Output a scored replication report with pass/fail per major claim.",
+      "role": "Compare Simformer vs. baseline results against paper-reported numbers and score replication fidelity",
+      "depends_on": [
+        "experiment_runner"
+      ],
+      "estimated_tokens": 500,
+      "compute_weight": "light"
+    },
+    {
+      "name": "reporter",
+      "prompt": "Write a comprehensive replication report for 'All-in-One Simulation-Based Inference': (1) Executive summary \u2014 was the paper successfully replicated? Overall verdict (Full/Partial/Failed); (2) Methods section \u2014 brief description of VESDE, Simformer, and baselines as implemented; (3) Results tables \u2014 replicated metrics vs. paper metrics for all benchmark \u00d7 method combinations; (4) Discrepancy analysis \u2014 explain any gaps, likely causes (missing hyperparams, stochasticity, compute differences); (5) Phase completion summary \u2014 confirm all 5 phases and ~233 subtasks status; (6) Recommendations for future replication or extension. Format as a structured Markdown report suitable for inclusion in a research log.",
+      "role": "Produce the final replication report summarizing methodology, results, discrepancies, and reproducibility verdict",
+      "depends_on": [
+        "result_analyzer"
+      ],
+      "estimated_tokens": 500,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "literature_reviewer": "Review the paper 'All-in-One Simulation-Based Inference' and extract: (1) Full VESDE formulation from Appendix A2.1 \u2014 SDE coefficients, noise schedules, drift/diffusion terms; (2) Simformer architecture details \u2014 transformer blocks, attention mechanisms, embedding dims, conditioning strategy; (3) Training procedure \u2014 loss functions, optimizer settings, batch sizes, learning rate schedules, number of epochs; (4) Inference procedure \u2014 posterior sampling steps, MCMC or score-based sampling details; (5) Baseline method configurations for NPE, NRE, and NLE \u2014 network architectures, training setups, and any shared components; (6) Benchmark tasks used for evaluation and the metrics reported (e.g., C2ST, log-probability, coverage). Output a structured specification document.",
+    "experiment_designer": "Using the extracted paper specifications, design a complete replication experiment plan for All-in-One SBI. Define: (1) The 5 major experimental phases and their subtask breakdown (targeting ~233 subtasks); (2) The benchmark tasks (e.g., SLCP, Lotka-Volterra, Gaussian mixture) with simulator configs; (3) A shared data/simulator interface so Simformer, NPE, NRE, and NLE all run on identical draws; (4) Evaluation protocol \u2014 number of posterior samples, reference posterior generation, metric computation (C2ST, MMD, or log-prob); (5) Directory and file structure for reproducibility (configs, checkpoints, results); (6) Which phases can run in parallel and which are sequential. Output a phased experiment plan with dependency graph.",
+    "code_generator": "Implement the following components from the All-in-One SBI paper: (1) VESDE (Variance Exploding SDE) as specified in Appendix A2.1 \u2014 implement the forward SDE, reverse SDE, and score network target; (2) Simformer architecture \u2014 transformer-based amortized score network that conditions on observed data x_o, implement multi-head attention, positional encodings, and the joint embedding of (theta, x, t); (3) Training loop \u2014 denoising score matching loss over simulated (theta, x) pairs with time-conditional noise injection following the VESDE schedule; (4) Inference \u2014 implement posterior sampling via reverse SDE or predictor-corrector sampler conditioned on x_o; Use PyTorch. Follow the exact hyperparameters from the experiment design spec. Include docstrings and config-driven hyperparameters.",
+    "code_gen": "Implement the three baseline methods for the All-in-One SBI replication: (1) Neural Posterior Estimation (NPE) \u2014 normalizing flow (e.g., MAF or NSF) trained on (theta, x) pairs to directly approximate p(theta | x); (2) Neural Ratio Estimation (NRE) \u2014 binary classifier trained to estimate the likelihood-to-evidence ratio; (3) Neural Likelihood Estimation (NLE) \u2014 normalizing flow trained to approximate p(x | theta), combined with MCMC for posterior; For each: implement training, posterior evaluation, and a common interface `sample_posterior(x_obs, n_samples)`. Use the same benchmark simulators as Simformer. Ensure all three share the same train/test data splits defined in the experiment design. Use PyTorch; sbi library wrappers are acceptable if they match paper configs.",
+    "tester": "Write a comprehensive test suite for the All-in-One SBI replication codebase: (1) Unit tests for VESDE \u2014 verify SDE coefficients, check that forward noising pushes samples toward noise distribution, validate score network output shape; (2) Unit tests for Simformer \u2014 check forward pass shapes, attention mask correctness, conditioning on x_o; (3) Integration test: run a short training loop (10 steps) on a toy Gaussian simulator and verify loss decreases; (4) Baseline sanity tests \u2014 verify NPE/NRE/NLE each produce posterior samples of correct shape and that log-probs are finite; (5) Benchmark smoke test \u2014 run all 4 methods (Simformer + 3 baselines) on a single SLCP observation and confirm posterior samples are returned without error; Use pytest. Flag any numerical instability or shape mismatches.",
+    "experiment_runner": "Execute the full replication experiments for All-in-One SBI across all benchmark tasks defined in the experiment plan: (1) Run Simformer training and inference on each benchmark (e.g., SLCP, Lotka-Volterra, Gaussian Mixture, Two Moons); (2) Run NPE, NRE, and NLE on the same benchmarks with identical simulator budgets; (3) For each method \u00d7 task combination, collect: posterior samples (N\u22651000), compute C2ST scores against reference posteriors, log-probability of true parameters, and wall-clock training time; (4) Save all results to structured output files (JSON/CSV per task); (5) Log any failures or numerical issues with traceback. Report a results matrix: rows=tasks, columns=methods, cells=metrics.",
+    "result_analyzer": "Analyze the experimental results from the All-in-One SBI replication run: (1) Compare C2ST scores, log-probabilities, and coverage metrics for Simformer vs. NPE, NRE, NLE across all benchmark tasks \u2014 tabulate against paper-reported values from Table 1/2; (2) Compute relative error between replicated metrics and paper metrics; flag any task where deviation exceeds 5%; (3) Identify which components replicate faithfully vs. show discrepancies (e.g., VESDE sampling, baseline training stability); (4) Check if the 'all-in-one' advantage of Simformer (single model, multiple tasks) is reproduced; (5) Summarize statistical validity \u2014 are differences within expected variance given random seeds? Output a scored replication report with pass/fail per major claim.",
+    "reporter": "Write a comprehensive replication report for 'All-in-One Simulation-Based Inference': (1) Executive summary \u2014 was the paper successfully replicated? Overall verdict (Full/Partial/Failed); (2) Methods section \u2014 brief description of VESDE, Simformer, and baselines as implemented; (3) Results tables \u2014 replicated metrics vs. paper metrics for all benchmark \u00d7 method combinations; (4) Discrepancy analysis \u2014 explain any gaps, likely causes (missing hyperparams, stochasticity, compute differences); (5) Phase completion summary \u2014 confirm all 5 phases and ~233 subtasks status; (6) Recommendations for future replication or extension. Format as a structured Markdown report suitable for inclusion in a research log."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a research replication workflow for 'All-in-One SBI' with clearly defined phases (VESDE, Simformer model/training/inference, and three baseline methods NPE/NRE/NLE). Given the intent classification shows moderate complexity (0.43) but low decomposability (0.30), the phases have tight interdependencies \u2014 baselines and Simformer share the same SBI framework and must be validated against common benchmarks. The workflow is best structured as: literature extraction \u2192 experiment design \u2192 parallel code generation tracks (Simformer vs. baselines) \u2192 integrated testing \u2192 result analysis and reporting.\",\n  \"agents\": [\n    {\n      \"name\": \"literature_reviewer\",\n      \"role\": \"Extract all mathematical specifications, hyperparameters, and algorithmic details from the All-in-One SBI paper\",\n      \"prompt\": \"Review the paper 'All-in-One Simulation-Based Inference' and extract: (1) Full VESDE formulation from Appendix A2.1 \u2014 SDE coefficients, noise schedules, drift/diffusion terms; (2) Simformer architecture details \u2014 transformer blocks, attention mechanisms, embedding dims, conditioning strategy; (3) Training procedure \u2014 loss functions, optimizer settings, batch sizes, learning rate schedules, number of epochs; (4) Inference procedure \u2014 posterior sampling steps, MCMC or score-based sampling details; (5) Baseline method configurations for NPE, NRE, and NLE \u2014 network architectures, training setups, and any shared components; (6) Benchmark tasks used for evaluation and the metrics reported (e.g., C2ST, log-probability, coverage). Output a structured specification document.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"experiment_designer\",\n      \"role\": \"Design the full replication experiment plan covering all 5 phases and integration of Simformer vs. baselines\",\n      \"prompt\": \"Using the extracted paper specifications, design a complete replication experiment plan for All-in-One SBI. Define: (1) The 5 major experimental phases and their subtask breakdown (targeting ~233 subtasks); (2) The benchmark tasks (e.g., SLCP, Lotka-Volterra, Gaussian mixture) with simulator configs; (3) A shared data/simulator interface so Simformer, NPE, NRE, and NLE all run on identical draws; (4) Evaluation protocol \u2014 number of posterior samples, reference posterior generation, metric computation (C2ST, MMD, or log-prob); (5) Directory and file structure for reproducibility (configs, checkpoints, results); (6) Which phases can run in parallel and which are sequential. Output a phased experiment plan with dependency graph.\",\n      \"depends_on\": [\"literature_reviewer\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"code_generator\",\n      \"role\": \"Implement VESDE and the full Simformer model, training loop, and score-based inference pipeline\",\n      \"prompt\": \"Implement the following components from the All-in-One SBI paper: (1) VESDE (Variance Exploding SDE) as specified in Appendix A2.1 \u2014 implement the forward SDE, reverse SDE, and score network target; (2) Simformer architecture \u2014 transformer-based amortized score network that conditions on observed data x_o, implement multi-head attention, positional encodings, and the joint embedding of (theta, x, t); (3) Training loop \u2014 denoising score matching loss over simulated (theta, x) pairs with time-conditional noise injection following the VESDE schedule; (4) Inference \u2014 implement posterior sampling via reverse SDE or predictor-corrector sampler conditioned on x_o; Use PyTorch. Follow the exact hyperparameters from the experiment design spec. Include docstrings and config-driven hyperparameters.\",\n      \"depends_on\": [\"experiment_designer\"],\n      \"estimated_tokens\": 4000,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"code_gen\",\n      \"role\": \"Implement the three baseline SBI methods: NPE, NRE, and NLE using sbi library or from-scratch as specified\",\n      \"prompt\": \"Implement the three baseline methods for the All-in-One SBI replication: (1) Neural Posterior Estimation (NPE) \u2014 normalizing flow (e.g., MAF or NSF) trained on (theta, x) pairs to directly approximate p(theta | x); (2) Neural Ratio Estimation (NRE) \u2014 binary classifier trained to estimate the likelihood-to-evidence ratio; (3) Neural Likelihood Estimation (NLE) \u2014 normalizing flow trained to approximate p(x | theta), combined with MCMC for posterior; For each: implement training, posterior evaluation, and a common interface `sample_posterior(x_obs, n_samples)`. Use the same benchmark simulators as Simformer. Ensure all three share the same train/test data splits defined in the experiment design. Use PyTorch; sbi library wrappers are acceptable if they match paper configs.\",\n      \"depends_on\": [\"experiment_designer\"],\n      \"estimated_tokens\": 4000,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"tester\",\n      \"role\": \"Generate integration tests and unit tests for VESDE, Simformer, and all three baselines\",\n      \"prompt\": \"Write a comprehensive test suite for the All-in-One SBI replication codebase: (1) Unit tests for VESDE \u2014 verify SDE coefficients, check that forward noising pushes samples toward noise distribution, validate score network output shape; (2) Unit tests for Simformer \u2014 check forward pass shapes, attention mask correctness, conditioning on x_o; (3) Integration test: run a short training loop (10 steps) on a toy Gaussian simulator and verify loss decreases; (4) Baseline sanity tests \u2014 verify NPE/NRE/NLE each produce posterior samples of correct shape and that log-probs are finite; (5) Benchmark smoke test \u2014 run all 4 methods (Simformer + 3 baselines) on a single SLCP observation and confirm posterior samples are returned without error; Use pytest. Flag any numerical instability or shape mismatches.\",\n      \"depends_on\": [\"code_generator\", \"code_gen\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"experiment_runner\",\n      \"role\": \"Execute all benchmark experiments for Simformer and baselines, collect posterior samples and metrics\",\n      \"prompt\": \"Execute the full replication experiments for All-in-One SBI across all benchmark tasks defined in the experiment plan: (1) Run Simformer training and inference on each benchmark (e.g., SLCP, Lotka-Volterra, Gaussian Mixture, Two Moons); (2) Run NPE, NRE, and NLE on the same benchmarks with identical simulator budgets; (3) For each method \u00d7 task combination, collect: posterior samples (N\u22651000), compute C2ST scores against reference posteriors, log-probability of true parameters, and wall-clock training time; (4) Save all results to structured output files (JSON/CSV per task); (5) Log any failures or numerical issues with traceback. Report a results matrix: rows=tasks, columns=methods, cells=metrics.\",\n      \"depends_on\": [\"tester\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"result_analyzer\",\n      \"role\": \"Compare Simformer vs. baseline results against paper-reported numbers and score replication fidelity\",\n      \"prompt\": \"Analyze the experimental results from the All-in-One SBI replication run: (1) Compare C2ST scores, log-probabilities, and coverage metrics for Simformer vs. NPE, NRE, NLE across all benchmark tasks \u2014 tabulate against paper-reported values from Table 1/2; (2) Compute relative error between replicated metrics and paper metrics; flag any task where deviation exceeds 5%; (3) Identify which components replicate faithfully vs. show discrepancies (e.g., VESDE sampling, baseline training stability); (4) Check if the 'all-in-one' advantage of Simformer (single model, multiple tasks) is reproduced; (5) Summarize statistical validity \u2014 are differences within expected variance given random seeds? Output a scored replication report with pass/fail per major claim.\",\n      \"depends_on\": [\"experiment_runner\"],\n      \"estimated_tokens\": 500,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"reporter\",\n      \"role\": \"Produce the final replication report summarizing methodology, results, discrepancies, and reproducibility verdict\",\n      \"prompt\": \"Write a comprehensive replication report for 'All-in-One Simulation-Based Inference': (1) Executive summary \u2014 was the paper successfully replicated? Overall verdict (Full/Partial/Failed); (2) Methods section \u2014 brief description of VESDE, Simformer, and baselines as implemented; (3) Results tables \u2014 replicated metrics vs. paper metrics for all benchmark \u00d7 method combinations; (4) Discrepancy analysis \u2014 explain any gaps, likely causes (missing hyperparams, stochasticity, compute differences); (5) Phase completion summary \u2014 confirm all 5 phases and ~233 subtasks status; (6) Recommendations for future replication or extension. Format as a structured Markdown report suitable for inclusion in a research log.\",\n      \"depends_on\": [\"result_analyzer\"],\n      \"estimated_tokens\": 500,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```"
+}

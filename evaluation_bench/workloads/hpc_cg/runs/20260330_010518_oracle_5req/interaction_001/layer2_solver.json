@@ -1,0 +1,78 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "hpc_code_gen",
+      "complexity": 0.4195833333333333,
+      "domain_tags": [
+        "hpc",
+        "openmp"
+      ],
+      "decomposability": 0.35,
+      "constraints": {}
+    },
+    "request_text_preview": "#include <omp.h>\n\nstruct Point {\n\tdouble x, y;\n};\n\ndouble distance(Point const& p1, Point const& p2) {\n\treturn std::sqrt(std::pow(p2.x-p1.x, 2) + std::pow(p2.y-p1.y, 2));\n}\n\n/* Return the distance between the closest two points in the vector points.\n   Use OpenMP to compute in parallel.\n   Example: "
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 0
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500,
+        "order": 1
+      }
+    ],
+    "execution_order": [
+      [
+        "code_gen"
+      ],
+      [
+        "tester"
+      ]
+    ],
+    "total_budget": 5500,
+    "estimated_latency": 4.0
+  },
+  "time_ms": 22526.159119999647,
+  "llm_call_time_ms": 22526.012723999884,
+  "assignment_time_ms": 0.1463959997636266,
+  "llm_reasoning": "This is a focused HPC code generation task: implement a parallel closest-pair brute-force search using OpenMP. Complexity is moderate (0.42) \u2014 the algorithm is well-defined (brute-force O(n\u00b2) with OpenMP reduction), but requires correct parallel reduction idiom and thread-safety. Two agents suffice: a code_gen to produce the implementation, followed by a tester to validate correctness and parallelism behavior. No planning stage needed as the spec is unambiguous and the signature/example are provided.",
+  "llm_parsed_agents": [
+    "code_gen",
+    "tester"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "code_gen",
+      "prompt": "Implement the `closestPair` function in C++ using OpenMP to parallelize the O(n\u00b2) brute-force search over all point pairs. The function signature and supporting code are:\n\ncpp\n#include <omp.h>\n#include <vector>\n#include <cmath>\n#include <limits>\n\nstruct Point { double x, y; };\n\ndouble distance(Point const& p1, Point const& p2) {\n    return std::sqrt(std::pow(p2.x - p1.x, 2) + std::pow(p2.y - p1.y, 2));\n}\n\ndouble closestPair(std::vector<Point> const& points);\n\n\nRequirements:\n1. Use `#pragma omp parallel for` with a `reduction(min: ...)` clause (or equivalent thread-local minimum pattern) to find the global minimum distance across all pairs.\n2. Iterate over all unique pairs (i < j) to avoid redundant comparisons.\n3. Initialize the minimum distance to `std::numeric_limits<double>::max()`.\n4. Return the minimum distance (e.g., for input `[{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}]` the result should be `1.41421...`).\n5. Handle edge cases: if `points.size() < 2`, return `0.0`.\n6. Prefer `reduction(min:)` if the compiler/OpenMP version supports it; otherwise use a `#pragma omp critical` or per-thread local variable pattern with a final reduction loop.\n7. Output ONLY the complete, compilable function body (no main, no extra scaffolding).",
+      "role": "Implement the parallel closest-pair function body using OpenMP",
+      "depends_on": [],
+      "estimated_tokens": 4000,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "tester",
+      "prompt": "Given the following completed `closestPair` implementation (which will be provided from the prior code_gen step), write a C++ test suite using plain assertions (no external framework required) that validates:\n\n1. **Correctness**: For input `[{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}]`, assert result is within 1e-5 of `1.41421356`.\n2. **Edge cases**:\n   - Two identical points \u2192 distance `0.0`.\n   - Two points with known distance (e.g., `{0,0}` and `{3,4}` \u2192 `5.0`).\n   - Minimum size input (exactly 2 points).\n   - All points collinear.\n3. **Parallel consistency**: Run `closestPair` 10 times on a shuffled 1000-point dataset and assert all runs return the same minimum distance (detects data races or non-determinism).\n4. **Performance smoke test**: For n=10000 randomly generated points, assert the function completes in under 5 seconds (use `omp_get_wtime()`).\n\nOutput a single self-contained `test_closest_pair.cpp` file with a `main()` that prints PASS/FAIL per test and returns 0 only if all pass. Include the `closestPair` implementation inline.",
+      "role": "Generate correctness and parallel-safety tests for closestPair",
+      "depends_on": [
+        "code_gen"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    }
+  ],
+  "llm_agent_prompts": {
+    "code_gen": "Implement the `closestPair` function in C++ using OpenMP to parallelize the O(n\u00b2) brute-force search over all point pairs. The function signature and supporting code are:\n\ncpp\n#include <omp.h>\n#include <vector>\n#include <cmath>\n#include <limits>\n\nstruct Point { double x, y; };\n\ndouble distance(Point const& p1, Point const& p2) {\n    return std::sqrt(std::pow(p2.x - p1.x, 2) + std::pow(p2.y - p1.y, 2));\n}\n\ndouble closestPair(std::vector<Point> const& points);\n\n\nRequirements:\n1. Use `#pragma omp parallel for` with a `reduction(min: ...)` clause (or equivalent thread-local minimum pattern) to find the global minimum distance across all pairs.\n2. Iterate over all unique pairs (i < j) to avoid redundant comparisons.\n3. Initialize the minimum distance to `std::numeric_limits<double>::max()`.\n4. Return the minimum distance (e.g., for input `[{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}]` the result should be `1.41421...`).\n5. Handle edge cases: if `points.size() < 2`, return `0.0`.\n6. Prefer `reduction(min:)` if the compiler/OpenMP version supports it; otherwise use a `#pragma omp critical` or per-thread local variable pattern with a final reduction loop.\n7. Output ONLY the complete, compilable function body (no main, no extra scaffolding).",
+    "tester": "Given the following completed `closestPair` implementation (which will be provided from the prior code_gen step), write a C++ test suite using plain assertions (no external framework required) that validates:\n\n1. **Correctness**: For input `[{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}]`, assert result is within 1e-5 of `1.41421356`.\n2. **Edge cases**:\n   - Two identical points \u2192 distance `0.0`.\n   - Two points with known distance (e.g., `{0,0}` and `{3,4}` \u2192 `5.0`).\n   - Minimum size input (exactly 2 points).\n   - All points collinear.\n3. **Parallel consistency**: Run `closestPair` 10 times on a shuffled 1000-point dataset and assert all runs return the same minimum distance (detects data races or non-determinism).\n4. **Performance smoke test**: For n=10000 randomly generated points, assert the function completes in under 5 seconds (use `omp_get_wtime()`).\n\nOutput a single self-contained `test_closest_pair.cpp` file with a `main()` that prints PASS/FAIL per test and returns 0 only if all pass. Include the `closestPair` implementation inline."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a focused HPC code generation task: implement a parallel closest-pair brute-force search using OpenMP. Complexity is moderate (0.42) \u2014 the algorithm is well-defined (brute-force O(n\u00b2) with OpenMP reduction), but requires correct parallel reduction idiom and thread-safety. Two agents suffice: a code_gen to produce the implementation, followed by a tester to validate correctness and parallelism behavior. No planning stage needed as the spec is unambiguous and the signature/example are provided.\",\n  \"agents\": [\n    {\n      \"name\": \"code_gen\",\n      \"role\": \"Implement the parallel closest-pair function body using OpenMP\",\n      \"prompt\": \"Implement the `closestPair` function in C++ using OpenMP to parallelize the O(n\u00b2) brute-force search over all point pairs. The function signature and supporting code are:\\n\\n```cpp\\n#include <omp.h>\\n#include <vector>\\n#include <cmath>\\n#include <limits>\\n\\nstruct Point { double x, y; };\\n\\ndouble distance(Point const& p1, Point const& p2) {\\n    return std::sqrt(std::pow(p2.x - p1.x, 2) + std::pow(p2.y - p1.y, 2));\\n}\\n\\ndouble closestPair(std::vector<Point> const& points);\\n```\\n\\nRequirements:\\n1. Use `#pragma omp parallel for` with a `reduction(min: ...)` clause (or equivalent thread-local minimum pattern) to find the global minimum distance across all pairs.\\n2. Iterate over all unique pairs (i < j) to avoid redundant comparisons.\\n3. Initialize the minimum distance to `std::numeric_limits<double>::max()`.\\n4. Return the minimum distance (e.g., for input `[{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}]` the result should be `1.41421...`).\\n5. Handle edge cases: if `points.size() < 2`, return `0.0`.\\n6. Prefer `reduction(min:)` if the compiler/OpenMP version supports it; otherwise use a `#pragma omp critical` or per-thread local variable pattern with a final reduction loop.\\n7. Output ONLY the complete, compilable function body (no main, no extra scaffolding).\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 4000,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"tester\",\n      \"role\": \"Generate correctness and parallel-safety tests for closestPair\",\n      \"prompt\": \"Given the following completed `closestPair` implementation (which will be provided from the prior code_gen step), write a C++ test suite using plain assertions (no external framework required) that validates:\\n\\n1. **Correctness**: For input `[{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}]`, assert result is within 1e-5 of `1.41421356`.\\n2. **Edge cases**:\\n   - Two identical points \u2192 distance `0.0`.\\n   - Two points with known distance (e.g., `{0,0}` and `{3,4}` \u2192 `5.0`).\\n   - Minimum size input (exactly 2 points).\\n   - All points collinear.\\n3. **Parallel consistency**: Run `closestPair` 10 times on a shuffled 1000-point dataset and assert all runs return the same minimum distance (detects data races or non-determinism).\\n4. **Performance smoke test**: For n=10000 randomly generated points, assert the function completes in under 5 seconds (use `omp_get_wtime()`).\\n\\nOutput a single self-contained `test_closest_pair.cpp` file with a `main()` that prints PASS/FAIL per test and returns 0 only if all pass. Include the `closestPair` implementation inline.\",\n      \"depends_on\": [\"code_gen\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    }\n  ]\n}\n```"
+}

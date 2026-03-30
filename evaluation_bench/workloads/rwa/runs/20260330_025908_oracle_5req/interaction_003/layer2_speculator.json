@@ -1,0 +1,60 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "research_workflow:0.5:['ml', 'research']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000
+      },
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500
+      },
+      {
+        "agent": "result_analyzer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 2000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:research_workflow",
+        "domain:ml",
+        "domain:research"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "literature_reviewer": "Please review the research paper 'Batch and match: black-box variational inference with a score-based divergence' and identify the key algorithms, results, and methods that need to be replicated. Provide a detailed summary of the core contributions and their implications for our workflow.",
+      "planner": "Develop a detailed plan for replicating the research paper 'Batch and match: black-box variational inference with a score-based divergence'. Identify potential bottlenecks and areas where tasks can be parallelized. Provide a clear outline of the replication strategy, including specific tasks and timelines.",
+      "code_gen": "Write high-quality code to implement the variational inference algorithms discussed in the research paper. Ensure that the implementation is accurate, efficient, and well-documented. Provide a clear explanation of any assumptions or simplifications made during implementation.",
+      "tester": "Develop a comprehensive testing plan to validate the accuracy of the implemented variational inference algorithms. Compare the results with those reported in the research paper, identifying any discrepancies or areas for improvement.",
+      "result_analyzer": "Compare the results obtained from replicating the research paper with those reported in the original paper. Analyze any discrepancies or differences, providing a clear explanation of their implications for our workflow."
+    }
+  },
+  "time_ms": 82512.47730399882
+}

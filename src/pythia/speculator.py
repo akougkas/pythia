@@ -35,11 +35,26 @@ from pythia.fleet import Fleet
 
 
 def _intent_key(intent: Intent) -> str:
-    """Extract cache key from Intent. Coarsest useful fingerprint.
+    """Extract cache key from Intent using a multi-dimensional fingerprint.
 
-    Uses task_type alone; Learner can refine later.
+    Combines task_type, complexity bucket, and primary domain tag to create
+    a finer-grained key. This prevents all requests of the same task_type
+    from colliding in the cache, producing a more realistic learning curve.
+
+    Complexity buckets: low (<0.3), medium (0.3-0.6), high (>0.6)
     """
-    return intent.task_type
+    # Complexity bucketing
+    if intent.complexity < 0.3:
+        complexity_bucket = "low"
+    elif intent.complexity < 0.6:
+        complexity_bucket = "med"
+    else:
+        complexity_bucket = "high"
+
+    # Primary domain tag (first sorted tag, or "general")
+    primary_tag = sorted(intent.domain_tags)[0] if intent.domain_tags else "general"
+
+    return f"{intent.task_type}:{complexity_bucket}:{primary_tag}"
 
 
 # --- Dispatch Cache (Task 1) ---
@@ -201,12 +216,17 @@ def _provision_agents(
 
 
 def _draft_execute(
-    draft_plan: DispatchPlan, intent: Intent
+    draft_plan: DispatchPlan, intent: Intent,
+    draft_executor: object | None = None,
+    request_text: str = "",
 ) -> tuple[str, str]:
     """Mode 3: Produce draft output from first-stage agent (§3.2).
 
-    Selects the first agent in execution order and produces a stub output.
-    The actual execution engine will replace this with real output later.
+    If a draft_executor is provided (an AgentPipelineRunner), runs the first
+    agent with a real LLM call. Otherwise produces a stub output.
+
+    The cached plan contains the Solver's LLM-generated prompt for each agent,
+    so the draft agent gets the same instruction the Solver planned.
 
     Returns:
         (draft_output, draft_agent_type)
@@ -217,6 +237,20 @@ def _draft_execute(
     # Select first agent by execution order
     first_assignment = min(draft_plan.assignments, key=lambda a: a.order)
     draft_agent_type = first_assignment.agent_type
+
+    # Use real LLM if executor provided
+    if draft_executor is not None and hasattr(draft_executor, 'execute_single_agent'):
+        # Use the Solver's cached prompt as context, or fall back to request_text
+        agent_request = first_assignment.prompt
+        if agent_request.startswith("[stub]"):
+            agent_request = request_text
+
+        result = draft_executor.execute_single_agent(
+            draft_agent_type, agent_request
+        )
+        return result.output_text, draft_agent_type
+
+    # Stub fallback
     draft_output = (
         f"[draft] {draft_agent_type} output for "
         f"{intent.task_type} task"
@@ -241,6 +275,12 @@ class SpeculativeDispatcher:
         tau_3: Mode 3 activation threshold (§3.4)
         confidence_fn: Optional override for confidence computation
                        (Learner injects its own function here)
+        draft_executor: Optional agent runner for Mode 3 real LLM execution
+        draft_model_fn: Optional function that generates a draft DispatchPlan
+                        on cache miss. Uses a fast/cheap LLM to predict the plan
+                        instead of returning empty. This is the "Draft Model"
+                        component in the architecture diagram.
+                        Signature: (Intent, str, Fleet) -> DispatchPlan
     """
 
     def __init__(
@@ -250,6 +290,8 @@ class SpeculativeDispatcher:
         tau_2: float = 0.3,
         tau_3: float = 0.7,
         confidence_fn: Callable[[Intent], float] | None = None,
+        draft_executor: object | None = None,
+        draft_model_fn: Callable | None = None,
     ) -> None:
         self._fleet = fleet
         self._cache = cache or DispatchCache()
@@ -257,6 +299,11 @@ class SpeculativeDispatcher:
         self._tau_2 = tau_2
         self._tau_3 = tau_3
         self._confidence_fn = confidence_fn
+        self._draft_executor = draft_executor
+        self._draft_model_fn = draft_model_fn
+        self.last_draft_time_ms: float = 0.0  # observable
+        self.last_draft_model_time_ms: float = 0.0  # time for draft model on cache miss
+        self.last_draft_model_used: bool = False  # whether draft model was invoked
 
     @property
     def cache(self) -> DispatchCache:
@@ -266,7 +313,7 @@ class SpeculativeDispatcher:
     def tracker(self) -> ConfidenceTracker:
         return self._tracker
 
-    def speculate(self, intent: Intent) -> SpeculationResult:
+    def speculate(self, intent: Intent, request_text: str = "") -> SpeculationResult:
         """Produce a speculative dispatch result for the given intent.
 
         1. Look up draft plan from cache
@@ -278,15 +325,30 @@ class SpeculativeDispatcher:
         # Cache lookup
         draft_plan = self._cache.lookup(intent)
         cache_hit = draft_plan is not None
+        self.last_draft_model_used = False
+        self.last_draft_model_time_ms = 0.0
 
         if draft_plan is None:
-            # Cold start: empty plan, Mode 1 only
-            draft_plan = DispatchPlan(
-                assignments=[],
-                execution_order=[],
-                total_budget=0,
-                total_estimated_latency=0.0,
-            )
+            # Cache miss — try Draft Model if available (architecture: "Draft Model" box)
+            if self._draft_model_fn is not None:
+                import time as _time
+                _t0 = _time.perf_counter()
+                try:
+                    draft_plan = self._draft_model_fn(intent, request_text, self._fleet)
+                    self.last_draft_model_used = True
+                    cache_hit = True  # treat draft model output like a cache hit
+                except Exception:
+                    draft_plan = None
+                self.last_draft_model_time_ms = (_time.perf_counter() - _t0) * 1000
+
+            if draft_plan is None:
+                # No cache, no draft model — empty plan, Mode 1 only
+                draft_plan = DispatchPlan(
+                    assignments=[],
+                    execution_order=[],
+                    total_budget=0,
+                    total_estimated_latency=0.0,
+                )
 
         # Confidence
         if self._confidence_fn is not None:
@@ -310,10 +372,16 @@ class SpeculativeDispatcher:
                 draft_plan, self._fleet
             )
 
+        self.last_draft_time_ms = 0.0
         if mode >= 3 and cache_hit:
+            import time as _time
+            _t0 = _time.perf_counter()
             draft_output, draft_agent_type = _draft_execute(
-                draft_plan, intent
+                draft_plan, intent,
+                draft_executor=self._draft_executor,
+                request_text=request_text,
             )
+            self.last_draft_time_ms = (_time.perf_counter() - _t0) * 1000
 
         manifest = PreExecutionManifest(
             mode=mode,
@@ -348,3 +416,81 @@ class SpeculativeDispatcher:
         self._cache.store(intent, solver_plan)
         hit = verdict in ("COMMIT", "PARTIAL")
         self._tracker.record_outcome(intent, hit)
+
+
+# --- Draft Model Factory (§3.2, Architecture: "Draft Model" box) ---
+
+
+def create_llm_draft_model(
+    model: str = "llama3.1:8b",
+    provider: str = "ollama",
+    base_url: str = "http://localhost:11434",
+) -> Callable:
+    """Create a draft model function for the Speculative Dispatcher.
+
+    Uses a fast/cheap LLM to generate a draft dispatch plan on cache miss.
+    Much faster than the Solver (which uses Claude Sonnet), but still
+    reads the request and makes an informed decision.
+
+    This is the "Draft Model" component in the architecture diagram.
+
+    The draft model is analogous to:
+    - The small draft model in speculative decoding (LLM inference)
+    - The branch predictor in CPU speculation
+    - The lightweight predictor in Speculative Actions (ICLR 2026)
+
+    Returns:
+        A callable: (Intent, str, Fleet) -> DispatchPlan
+    """
+    from pythia.solver import LLMAgentSelector
+
+    selector = LLMAgentSelector(model=model, provider=provider, base_url=base_url)
+
+    def draft_model_fn(intent: Intent, request_text: str, fleet: Fleet) -> DispatchPlan:
+        """Generate a draft dispatch plan using a fast LLM."""
+        agents = selector.select_agents(intent, request_text)
+        dag = selector.compute_execution_dag(agents)
+
+        # Greedy assignment to fleet (same logic as Solver but without the
+        # expensive LLM call — the LLM call already happened above)
+        assignments = []
+        for agent in sorted(agents, key=lambda a: a.priority):
+            candidates = fleet.available_members_for(agent)
+            if not candidates:
+                continue
+            # Pick cheapest available member
+            best = min(candidates, key=lambda m: m.cost_rate)
+            prompt = getattr(selector, 'last_agent_prompts', {}).get(
+                agent.agent_type, f"Execute {agent.agent_type} task"
+            )
+            weight = getattr(selector, 'last_agent_weights', {}).get(
+                agent.agent_type, "medium"
+            )
+            deps = tuple(getattr(selector, 'last_agent_depends', {}).get(
+                agent.agent_type, []
+            ))
+            role = getattr(selector, 'last_agent_roles', {}).get(
+                agent.agent_type, ""
+            )
+            assignments.append(AgentAssignment(
+                agent_type=agent.agent_type,
+                fleet_member_id=best.member_id,
+                allocated_tokens=agent.estimated_tokens,
+                prompt=prompt,
+                order=agent.priority,
+                compute_weight=weight,
+                depends_on=deps,
+                role=role,
+            ))
+
+        total_tokens = sum(a.allocated_tokens for a in assignments)
+        return DispatchPlan(
+            assignments=assignments,
+            execution_order=dag,
+            total_budget=total_tokens,
+            total_estimated_latency=sum(
+                fleet.get_member(a.fleet_member_id).latency for a in assignments
+            ),
+        )
+
+    return draft_model_fn

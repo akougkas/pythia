@@ -1,0 +1,29 @@
+{
+  "layer": "4_execution_engine",
+  "agents": {
+    "code_gen": {
+      "fleet_member": "qwen2.5-14b-gpu",
+      "model": "qwen2.5:14b",
+      "output": "```cpp\n#include <omp.h>\n#include <cmath>\n#include <limits>\n\nstruct Point {\n\tdouble x, y;\n};\n\n// Function to calculate the Euclidean distance between two points\ndouble distance(Point const& p1, Point const& p2) {\n\treturn std::sqrt(std::pow(p2.x - p1.x, 2) + std::pow(p2.y - p1.y, 2));\n}\n\ndouble closestPair(std::vector<Point> const& points) {\n\tif (points.size() < 2) return std::numeric_limits<double>::max(); // Edge case: less than two points\n\n\tdouble min_distance = std::numeric_limits<double>::max();\n\tint num_threads = omp_get_max_threads();\n\n\t// Parallel loop to compute distances between all pairs of points\n\t#pragma omp parallel for shared(points, min_distance) schedule(static)\n\tfor (int i = 0; i < points.size(); ++i) {\n\t\tfor (int j = i + 1; j < points.size(); ++j) {\n\t\t\tdouble dist = distance(points[i], points[j]);\n\t\t\tif (dist < min_distance) { // Update minimum distance if a closer pair is found\n\t\t\t\tmin_distance = dist;\n\t\t\t}\n\t\t}\n\t}\n\n\treturn min_distance;\n}\n```",
+      "time_s": 49.214683094000065,
+      "prompt_tokens": 270,
+      "completion_tokens": 263,
+      "success": true,
+      "error": ""
+    },
+    "tester": {
+      "fleet_member": "qwen2.5-14b-gpu",
+      "model": "qwen2.5:14b",
+      "output": "Here are the test cases for the `closestPair` function:\n\n### Basic Correctness Test\n\nThis test checks that the function correctly calculates the closest pair of points from a given set.\n\n```cpp\n#include <iostream>\n#include <vector>\n#include <cmath>\n\nstruct Point {\n\tdouble x, y;\n};\n\ndouble distance(Point const& p1, Point const& p2);\n\ndouble closestPair(std::vector<Point> const& points);\n\nint main() {\n    std::vector<Point> points = {{2.0, 3.0}, {12.0, 30.0}, {40.0, 50.0}, {5.0, 1.0}, {12.0, 10.0}, {3.0, 4.0}};\n    double result = closestPair(points);\n    \n    // Expected output: 1.41421\n    assert(std::abs(result - std::sqrt(2)) < 1e-6); // Allowing for floating-point precision\n    \n    return 0;\n}\n```\n\n### Edge Case Test\n\nThis test checks the function's behavior with edge cases such as an empty vector and a single element vector.\n\n```cpp\n#include <iostream>\n#include <vector>\n\nstruct Point {\n\tdouble x, y;\n};\n\ndouble closestPair(std::vector<Point> const& points);\n\nint main() {\n    // Empty input\n    std::vector<Point> empty_points = {};\n    double result_empty = closestPair(empty_points);\n    \n    assert(result_empty == std::numeric_limits<double>::max());\n\n    // Single element input\n    std::vector<Point> single_point = {{2.0, 3.0}};\n    double result_single = closestPair(single_point);\n\n    assert(result_single == std::numeric_limits<double>::max());\n    \n    return 0;\n}\n```\n\n### Parallel Correctness Check\n\nThis test ensures that the parallel version of `closestPair` produces the same results as a serial implementation.\n\n```cpp\n#include <iostream>\n#include <vector>\n#include <cmath>\n\nstruct Point {\n\tdouble x, y;\n};\n\ndouble distance(Point const& p1, Point const& p2);\n\n// Serial version for comparison\ndouble closestPairSerial(std::vector<Point> const& points) {\n    if (points.size() < 2) return std::numeric_limits<double>::max();\n\n    double min_distance = std::numeric_limits<double>::max();\n    \n    for (size_t i = 0; i < points.size(); ++i) {\n        for (size_t j = i + 1; j < points.size(); ++j) {\n            double dist = distance(points[i], points[j]);\n            if (dist < min_distance) {\n                min_distance = dist;\n            }\n        }\n    }\n\n    return min_distance;\n}\n\ndouble closestPair(std::vector<Point> const& points);\n\nint main() {\n    std::vector<Point> points = {{2.0, 3.0}, {12.0, 30.0}, {40.0, 50.0}, {5.0, 1.0}, {12.0, 10.0}, {3.0, 4.0}};\n    double result_parallel = closestPair(points);\n    double result_serial = closestPairSerial(points);\n\n    assert(std::abs(result_parallel - result_serial) < 1e-6); // Allowing for floating-point precision\n    \n    return 0;\n}\n```\n\nThese tests should cover basic correctness, edge cases, and parallel consistency.",
+      "time_s": 131.10898231900137,
+      "prompt_tokens": 509,
+      "completion_tokens": 736,
+      "success": true,
+      "error": ""
+    }
+  },
+  "pipeline_total_time_s": 180.3244126869995,
+  "pipeline_total_tokens": 1778,
+  "review_score": 0,
+  "final_code_preview": "#include <omp.h>\n#include <cmath>\n#include <limits>\n\nstruct Point {\n\tdouble x, y;\n};\n\n// Function to calculate the Euclidean distance between two points\ndouble distance(Point const& p1, Point const& p2) {\n\treturn std::sqrt(std::pow(p2.x - p1.x, 2) + std::pow(p2.y - p1.y, 2));\n}\n\ndouble closestPair(std::vector<Point> const& points) {\n\tif (points.size() < 2) return std::numeric_limits<double>::max(); // Edge case: less than two points\n\n\tdouble min_distance = std::numeric_limits<double>::max();\n\tin"
+}

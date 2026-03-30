@@ -1,0 +1,47 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "hpc_code_gen:0.5:['hpc', 'mpi', 'openmp']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:hpc_code_gen",
+        "domain:hpc",
+        "domain:mpi",
+        "domain:openmp"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "Given the input vector of points, design a plan for distributing the computation across multiple ranks using MPI, and identify opportunities for parallelization within each rank using OpenMP. Assume that every rank has a complete copy of the points.",
+      "code_gen": "Based on the plan designed by the planner, generate C++ code that implements the parallel computation of the convex hull perimeter. The code should use MPI to distribute the computation across multiple ranks and OpenMP to parallelize within each rank.",
+      "tester": "Take the generated C++ code and test it on a sample input to ensure that it produces the correct output. Additionally, measure the performance of the code using MPI and OpenMP to identify opportunities for optimization."
+    }
+  },
+  "time_ms": 61741.1089670004
+}

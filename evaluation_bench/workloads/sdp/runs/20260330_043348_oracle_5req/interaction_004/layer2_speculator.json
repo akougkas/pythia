@@ -1,0 +1,46 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "data_pipeline:0.4:['data', 'environmental_science']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000
+      },
+      {
+        "agent": "analyst",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:data_pipeline",
+        "domain:data",
+        "domain:environmental_science"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "data_discovery": "Identify two reliable data sources containing information on suppression costs and acres affected by human-caused fires, and evaluate their relevance to the task at hand.",
+      "data_wrangler": "Merge the two datasets, handling any discrepancies or inconsistencies in formatting or units, to create a unified dataset containing suppression costs and acres affected by human-caused fires.",
+      "analyst": "Perform statistical analysis on the unified dataset to identify the year with the highest suppression cost per acre, and compute the corresponding cost per acre rounded to the nearest cent."
+    }
+  },
+  "time_ms": 48308.91965000046
+}

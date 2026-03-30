@@ -1,0 +1,158 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "research_workflow",
+      "complexity": 0.46719155844155846,
+      "domain_tags": [
+        "ml",
+        "research"
+      ],
+      "decomposability": 0.45,
+      "constraints": {}
+    },
+    "request_text_preview": "Replicate the research paper 'Bam': The core contributions of the paper \"Batch and match: black-box variational inference with a score-based divergence\" have been reproduced. This involves 4 major phases and 1020 total subtasks. The workflow includes: The core variational inference algorithms studie"
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000,
+        "order": 0
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500,
+        "order": 1
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 2
+      },
+      {
+        "agent": "experiment_runner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 3000,
+        "order": 3
+      },
+      {
+        "agent": "result_analyzer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500,
+        "order": 4
+      }
+    ],
+    "execution_order": [
+      [
+        "literature_reviewer"
+      ],
+      [
+        "code_generator",
+        "experiment_designer"
+      ],
+      [
+        "experiment_runner"
+      ],
+      [
+        "result_analyzer"
+      ],
+      [
+        "reporter"
+      ]
+    ],
+    "total_budget": 10000,
+    "estimated_latency": 3.5
+  },
+  "time_ms": 37834.377090999624,
+  "llm_call_time_ms": 37834.20047100117,
+  "assignment_time_ms": 0.17661999845586251,
+  "llm_reasoning": "This is a research replication workflow for a variational inference paper ('BAM'), spanning algorithm implementation, experiment execution, and results comparison across multiple figures/sections. The task decomposes into 4 natural phases: literature understanding \u2192 algorithm implementation \u2192 experiment execution \u2192 results analysis/reporting. Phases 1 and 2 have some parallelism (literature review and experiment design can overlap), while phases 3 and 4 are strictly sequential. Complexity is moderate (0.47) with well-scoped targets (Section 5.1, Figure 5.3, Figure E.6), so 6 agents cover all stages without over-engineering.",
+  "llm_parsed_agents": [
+    "literature_reviewer",
+    "experiment_designer",
+    "code_generator",
+    "experiment_runner",
+    "result_analyzer",
+    "reporter"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "literature_reviewer",
+      "prompt": "Read and analyze the paper 'Batch and Match: Black-Box Variational Inference with a Score-Based Divergence' (BAM). Extract: (1) the score-based divergence formulation and how it differs from ELBO-based VI, (2) the BAM algorithm pseudocode and key hyperparameters (batch size, matching schedule, score estimator), (3) the experimental setup for Section 5.1 (models, baselines, metrics), (4) the experimental setup for Figures 5.3 and E.6 from Section 5.2 (what axes are plotted, what conditions vary), (5) any implementation details buried in appendices. Produce a structured summary with direct quotes for all equations and algorithm steps.",
+      "role": "Extract core algorithms, divergence formulations, and experimental protocols from the BAM paper",
+      "depends_on": [],
+      "estimated_tokens": 1200,
+      "compute_weight": "light"
+    },
+    {
+      "name": "experiment_designer",
+      "prompt": "Using the extracted paper details, design a concrete replication plan for: (1) Section 5.1 \u2014 identify the probabilistic models used, define the baseline VI methods to compare against BAM, specify convergence metrics (ELBO, KL divergence, wall-clock time), and set random seeds/run counts for statistical validity. (2) Figure 5.3 \u2014 identify what is being varied (e.g., batch size, number of samples, step schedule) and what is measured on each axis; define the grid of hyperparameter values to sweep. (3) Figure E.6 \u2014 identify the appendix experiment conditions and define the data/model setup. Output a structured experiment manifest (JSON or YAML) listing each experiment ID, model, algorithm config, metric, and expected runtime.",
+      "role": "Design the full replication experiment plan covering Section 5.1, Figure 5.3, and Figure E.6",
+      "depends_on": [
+        "literature_reviewer"
+      ],
+      "estimated_tokens": 1800,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "code_generator",
+      "prompt": "Implement the full BAM (Batch and Match) variational inference algorithm in Python using JAX or PyTorch (prefer JAX for autodiff consistency with the paper). Your implementation must include: (1) The score-based divergence estimator as defined in the paper (Stein discrepancy or score-matching variant \u2014 confirm from literature_reviewer output), (2) The batch-and-match update rule with configurable batch size and matching strategy, (3) Baseline VI methods: standard BBVI with REINFORCE, reparameterized gradient VI, and any other baselines used in Section 5.1, (4) The probabilistic models from Section 5.1 (e.g., Gaussian mixtures, logistic regression posteriors, or as specified), (5) Logging utilities that record per-iteration ELBO, gradient variance, and wall-clock time. Structure code as a reusable library with clear module separation (models/, algorithms/, metrics/). Include inline comments referencing paper equation numbers.",
+      "role": "Implement the BAM algorithm and all VI baselines needed for replication",
+      "depends_on": [
+        "literature_reviewer"
+      ],
+      "estimated_tokens": 4500,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "experiment_runner",
+      "prompt": "Using the implemented BAM code and experiment manifest, run all replication experiments: (1) Section 5.1 \u2014 run BAM and all baselines on each benchmark model for the specified number of iterations/seeds; save per-run metrics to CSV files in results/section_5_1/. (2) Figure 5.3 \u2014 run the hyperparameter sweep (vary batch size, step schedule, or matching frequency as designed); save results to results/figure_5_3/. (3) Figure E.6 \u2014 run the appendix experiment conditions; save to results/figure_E6/. For each experiment: log wall-clock time, final metric value, and convergence curve. If any run diverges or crashes, log the failure and continue. Produce a run_summary.json with pass/fail status per experiment ID.",
+      "role": "Execute all replication experiments for Section 5.1, Figure 5.3, and Figure E.6 and collect raw results",
+      "depends_on": [
+        "code_generator",
+        "experiment_designer"
+      ],
+      "estimated_tokens": 1800,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "result_analyzer",
+      "prompt": "Analyze the collected experimental results and compare them to the paper's reported results: (1) Section 5.1 \u2014 extract the paper's reported numbers (mean \u00b1 std for each method/model) and compare to your replicated values; compute relative error and flag any discrepancies > 5%. (2) Figure 5.3 \u2014 overlay your replicated curve/scatter against the paper figure; assess whether trends (monotonicity, crossover points, saturation) are preserved even if absolute values differ slightly. (3) Figure E.6 \u2014 same overlay analysis for the appendix figure. Produce a fidelity scorecard: per-experiment reproduction status (\u2713 exact / ~ approximate / \u2717 failed), likely causes for any deviations (seed sensitivity, missing implementation detail, hyperparameter ambiguity), and an overall replication confidence score (0\u2013100).",
+      "role": "Compare replicated results against paper figures/tables and score reproduction fidelity",
+      "depends_on": [
+        "experiment_runner"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "light"
+    },
+    {
+      "name": "reporter",
+      "prompt": "Produce a complete replication report in Markdown for the BAM paper replication. Structure it as: (1) Executive Summary \u2014 what was replicated, overall fidelity score, key findings. (2) Algorithm Implementation Notes \u2014 any ambiguities resolved, design choices made, deviations from paper description. (3) Section 5.1 Results \u2014 table comparing paper vs. replicated numbers for all methods and models, with statistical commentary. (4) Figure 5.3 Replication \u2014 side-by-side description of paper figure vs. replicated figure, trend analysis. (5) Figure E.6 Replication \u2014 same structure. (6) Discrepancy Analysis \u2014 root causes for any mismatches (underspecified hyperparameters, compute budget differences, implementation gaps). (7) Conclusion \u2014 confidence in replication, recommendations for future work. Attach all result CSVs and generated plots as appendices.",
+      "role": "Synthesize all phases into a structured replication report with figures and conclusions",
+      "depends_on": [
+        "result_analyzer"
+      ],
+      "estimated_tokens": 1200,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "literature_reviewer": "Read and analyze the paper 'Batch and Match: Black-Box Variational Inference with a Score-Based Divergence' (BAM). Extract: (1) the score-based divergence formulation and how it differs from ELBO-based VI, (2) the BAM algorithm pseudocode and key hyperparameters (batch size, matching schedule, score estimator), (3) the experimental setup for Section 5.1 (models, baselines, metrics), (4) the experimental setup for Figures 5.3 and E.6 from Section 5.2 (what axes are plotted, what conditions vary), (5) any implementation details buried in appendices. Produce a structured summary with direct quotes for all equations and algorithm steps.",
+    "experiment_designer": "Using the extracted paper details, design a concrete replication plan for: (1) Section 5.1 \u2014 identify the probabilistic models used, define the baseline VI methods to compare against BAM, specify convergence metrics (ELBO, KL divergence, wall-clock time), and set random seeds/run counts for statistical validity. (2) Figure 5.3 \u2014 identify what is being varied (e.g., batch size, number of samples, step schedule) and what is measured on each axis; define the grid of hyperparameter values to sweep. (3) Figure E.6 \u2014 identify the appendix experiment conditions and define the data/model setup. Output a structured experiment manifest (JSON or YAML) listing each experiment ID, model, algorithm config, metric, and expected runtime.",
+    "code_generator": "Implement the full BAM (Batch and Match) variational inference algorithm in Python using JAX or PyTorch (prefer JAX for autodiff consistency with the paper). Your implementation must include: (1) The score-based divergence estimator as defined in the paper (Stein discrepancy or score-matching variant \u2014 confirm from literature_reviewer output), (2) The batch-and-match update rule with configurable batch size and matching strategy, (3) Baseline VI methods: standard BBVI with REINFORCE, reparameterized gradient VI, and any other baselines used in Section 5.1, (4) The probabilistic models from Section 5.1 (e.g., Gaussian mixtures, logistic regression posteriors, or as specified), (5) Logging utilities that record per-iteration ELBO, gradient variance, and wall-clock time. Structure code as a reusable library with clear module separation (models/, algorithms/, metrics/). Include inline comments referencing paper equation numbers.",
+    "experiment_runner": "Using the implemented BAM code and experiment manifest, run all replication experiments: (1) Section 5.1 \u2014 run BAM and all baselines on each benchmark model for the specified number of iterations/seeds; save per-run metrics to CSV files in results/section_5_1/. (2) Figure 5.3 \u2014 run the hyperparameter sweep (vary batch size, step schedule, or matching frequency as designed); save results to results/figure_5_3/. (3) Figure E.6 \u2014 run the appendix experiment conditions; save to results/figure_E6/. For each experiment: log wall-clock time, final metric value, and convergence curve. If any run diverges or crashes, log the failure and continue. Produce a run_summary.json with pass/fail status per experiment ID.",
+    "result_analyzer": "Analyze the collected experimental results and compare them to the paper's reported results: (1) Section 5.1 \u2014 extract the paper's reported numbers (mean \u00b1 std for each method/model) and compare to your replicated values; compute relative error and flag any discrepancies > 5%. (2) Figure 5.3 \u2014 overlay your replicated curve/scatter against the paper figure; assess whether trends (monotonicity, crossover points, saturation) are preserved even if absolute values differ slightly. (3) Figure E.6 \u2014 same overlay analysis for the appendix figure. Produce a fidelity scorecard: per-experiment reproduction status (\u2713 exact / ~ approximate / \u2717 failed), likely causes for any deviations (seed sensitivity, missing implementation detail, hyperparameter ambiguity), and an overall replication confidence score (0\u2013100).",
+    "reporter": "Produce a complete replication report in Markdown for the BAM paper replication. Structure it as: (1) Executive Summary \u2014 what was replicated, overall fidelity score, key findings. (2) Algorithm Implementation Notes \u2014 any ambiguities resolved, design choices made, deviations from paper description. (3) Section 5.1 Results \u2014 table comparing paper vs. replicated numbers for all methods and models, with statistical commentary. (4) Figure 5.3 Replication \u2014 side-by-side description of paper figure vs. replicated figure, trend analysis. (5) Figure E.6 Replication \u2014 same structure. (6) Discrepancy Analysis \u2014 root causes for any mismatches (underspecified hyperparameters, compute budget differences, implementation gaps). (7) Conclusion \u2014 confidence in replication, recommendations for future work. Attach all result CSVs and generated plots as appendices."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a research replication workflow for a variational inference paper ('BAM'), spanning algorithm implementation, experiment execution, and results comparison across multiple figures/sections. The task decomposes into 4 natural phases: literature understanding \u2192 algorithm implementation \u2192 experiment execution \u2192 results analysis/reporting. Phases 1 and 2 have some parallelism (literature review and experiment design can overlap), while phases 3 and 4 are strictly sequential. Complexity is moderate (0.47) with well-scoped targets (Section 5.1, Figure 5.3, Figure E.6), so 6 agents cover all stages without over-engineering.\",\n\n  \"agents\": [\n    {\n      \"name\": \"literature_reviewer\",\n      \"role\": \"Extract core algorithms, divergence formulations, and experimental protocols from the BAM paper\",\n      \"prompt\": \"Read and analyze the paper 'Batch and Match: Black-Box Variational Inference with a Score-Based Divergence' (BAM). Extract: (1) the score-based divergence formulation and how it differs from ELBO-based VI, (2) the BAM algorithm pseudocode and key hyperparameters (batch size, matching schedule, score estimator), (3) the experimental setup for Section 5.1 (models, baselines, metrics), (4) the experimental setup for Figures 5.3 and E.6 from Section 5.2 (what axes are plotted, what conditions vary), (5) any implementation details buried in appendices. Produce a structured summary with direct quotes for all equations and algorithm steps.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 1200,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"experiment_designer\",\n      \"role\": \"Design the full replication experiment plan covering Section 5.1, Figure 5.3, and Figure E.6\",\n      \"prompt\": \"Using the extracted paper details, design a concrete replication plan for: (1) Section 5.1 \u2014 identify the probabilistic models used, define the baseline VI methods to compare against BAM, specify convergence metrics (ELBO, KL divergence, wall-clock time), and set random seeds/run counts for statistical validity. (2) Figure 5.3 \u2014 identify what is being varied (e.g., batch size, number of samples, step schedule) and what is measured on each axis; define the grid of hyperparameter values to sweep. (3) Figure E.6 \u2014 identify the appendix experiment conditions and define the data/model setup. Output a structured experiment manifest (JSON or YAML) listing each experiment ID, model, algorithm config, metric, and expected runtime.\",\n      \"depends_on\": [\"literature_reviewer\"],\n      \"estimated_tokens\": 1800,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"code_generator\",\n      \"role\": \"Implement the BAM algorithm and all VI baselines needed for replication\",\n      \"prompt\": \"Implement the full BAM (Batch and Match) variational inference algorithm in Python using JAX or PyTorch (prefer JAX for autodiff consistency with the paper). Your implementation must include: (1) The score-based divergence estimator as defined in the paper (Stein discrepancy or score-matching variant \u2014 confirm from literature_reviewer output), (2) The batch-and-match update rule with configurable batch size and matching strategy, (3) Baseline VI methods: standard BBVI with REINFORCE, reparameterized gradient VI, and any other baselines used in Section 5.1, (4) The probabilistic models from Section 5.1 (e.g., Gaussian mixtures, logistic regression posteriors, or as specified), (5) Logging utilities that record per-iteration ELBO, gradient variance, and wall-clock time. Structure code as a reusable library with clear module separation (models/, algorithms/, metrics/). Include inline comments referencing paper equation numbers.\",\n      \"depends_on\": [\"literature_reviewer\"],\n      \"estimated_tokens\": 4500,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"experiment_runner\",\n      \"role\": \"Execute all replication experiments for Section 5.1, Figure 5.3, and Figure E.6 and collect raw results\",\n      \"prompt\": \"Using the implemented BAM code and experiment manifest, run all replication experiments: (1) Section 5.1 \u2014 run BAM and all baselines on each benchmark model for the specified number of iterations/seeds; save per-run metrics to CSV files in results/section_5_1/. (2) Figure 5.3 \u2014 run the hyperparameter sweep (vary batch size, step schedule, or matching frequency as designed); save results to results/figure_5_3/. (3) Figure E.6 \u2014 run the appendix experiment conditions; save to results/figure_E6/. For each experiment: log wall-clock time, final metric value, and convergence curve. If any run diverges or crashes, log the failure and continue. Produce a run_summary.json with pass/fail status per experiment ID.\",\n      \"depends_on\": [\"code_generator\", \"experiment_designer\"],\n      \"estimated_tokens\": 1800,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"result_analyzer\",\n      \"role\": \"Compare replicated results against paper figures/tables and score reproduction fidelity\",\n      \"prompt\": \"Analyze the collected experimental results and compare them to the paper's reported results: (1) Section 5.1 \u2014 extract the paper's reported numbers (mean \u00b1 std for each method/model) and compare to your replicated values; compute relative error and flag any discrepancies > 5%. (2) Figure 5.3 \u2014 overlay your replicated curve/scatter against the paper figure; assess whether trends (monotonicity, crossover points, saturation) are preserved even if absolute values differ slightly. (3) Figure E.6 \u2014 same overlay analysis for the appendix figure. Produce a fidelity scorecard: per-experiment reproduction status (\u2713 exact / ~ approximate / \u2717 failed), likely causes for any deviations (seed sensitivity, missing implementation detail, hyperparameter ambiguity), and an overall replication confidence score (0\u2013100).\",\n      \"depends_on\": [\"experiment_runner\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"reporter\",\n      \"role\": \"Synthesize all phases into a structured replication report with figures and conclusions\",\n      \"prompt\": \"Produce a complete replication report in Markdown for the BAM paper replication. Structure it as: (1) Executive Summary \u2014 what was replicated, overall fidelity score, key findings. (2) Algorithm Implementation Notes \u2014 any ambiguities resolved, design choices made, deviations from paper description. (3) Section 5.1 Results \u2014 table comparing paper vs. replicated numbers for all methods and models, with statistical commentary. (4) Figure 5.3 Replication \u2014 side-by-side description of paper figure vs. replicated figure, trend analysis. (5) Figure E.6 Replication \u2014 same structure. (6) Discrepancy Analysis \u2014 root causes for any mismatches (underspecified hyperparameters, compute budget differences, implementation gaps). (7) Conclusion \u2014 confidence in replication, recommendations for future work. Attach all result CSVs and generated plots as appendices.\",\n      \"depends_on\": [\"result_analyzer\"],\n      \"estimated_tokens\": 1200,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```"
+}

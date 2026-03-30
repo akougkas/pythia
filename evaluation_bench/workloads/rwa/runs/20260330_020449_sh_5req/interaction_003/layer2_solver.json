@@ -1,0 +1,82 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "research_workflow",
+      "complexity": 0.46719155844155846,
+      "domain_tags": [
+        "ml",
+        "research"
+      ],
+      "decomposability": 0.45,
+      "constraints": {}
+    },
+    "request_text_preview": "Replicate the research paper 'Bam': The core contributions of the paper \"Batch and match: black-box variational inference with a score-based divergence\" have been reproduced. This involves 4 major phases and 1020 total subtasks. The workflow includes: The core variational inference algorithms studie"
+  },
+  "method": "rule-based agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000,
+        "order": 0
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500,
+        "order": 1
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 2
+      },
+      {
+        "agent": "experiment_runner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 3000,
+        "order": 3
+      },
+      {
+        "agent": "result_analyzer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500,
+        "order": 4
+      }
+    ],
+    "execution_order": [
+      [
+        "literature_reviewer"
+      ],
+      [
+        "experiment_designer"
+      ],
+      [
+        "code_generator"
+      ],
+      [
+        "experiment_runner"
+      ],
+      [
+        "result_analyzer"
+      ]
+    ],
+    "total_budget": 10000,
+    "estimated_latency": 4.0
+  },
+  "time_ms": 0.09863299965218175,
+  "llm_call_time_ms": 0.0,
+  "assignment_time_ms": 0.09863299965218175,
+  "llm_reasoning": "",
+  "llm_parsed_agents": [],
+  "llm_agent_details": [],
+  "llm_agent_prompts": {}
+}

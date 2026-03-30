@@ -1,0 +1,122 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "data_pipeline",
+      "complexity": 0.3875,
+      "domain_tags": [
+        "data",
+        "environmental_science"
+      ],
+      "decomposability": 0.3,
+      "constraints": {}
+    },
+    "request_text_preview": "Analyze the following scientific data pipeline task: Find the 3-month period with the highest total acres burned since Jan 2000, according to NOAA. What was the total acres burned in that period? This requires working with 1 data source(s) and involves approximately 5 processing steps. Domain: envir"
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500,
+        "order": 0
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000,
+        "order": 1
+      },
+      {
+        "agent": "analyst",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000,
+        "order": 2
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500,
+        "order": 3
+      }
+    ],
+    "execution_order": [
+      [
+        "data_discovery"
+      ],
+      [
+        "data_wrangler"
+      ],
+      [
+        "analyst"
+      ],
+      [
+        "reporter"
+      ]
+    ],
+    "total_budget": 7000,
+    "estimated_latency": 5.0
+  },
+  "time_ms": 23283.619359001023,
+  "llm_call_time_ms": 23283.43740499986,
+  "assignment_time_ms": 0.18195400116383098,
+  "llm_reasoning": "This is a moderately simple data pipeline task with a single data source (NOAA) and ~5 processing steps. The workflow is mostly sequential: discover the data, wrangle/process it, then analyze and report. There is limited parallelism given the linear dependency chain, but data discovery and literature/context review can run in parallel at the start.",
+  "llm_parsed_agents": [
+    "data_discovery",
+    "data_wrangler",
+    "analyst",
+    "reporter"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "data_discovery",
+      "prompt": "Search for NOAA datasets that track wildfire acres burned in the United States from January 2000 to present. Identify the specific dataset name, URL, file format (CSV, NetCDF, API, etc.), temporal resolution (monthly, annual, etc.), and any access requirements. Confirm the dataset covers the full period since Jan 2000 and contains acres burned as a variable. Return dataset metadata including source URL, column names, and any caveats about data completeness or methodology.",
+      "role": "Locate and assess NOAA wildfire/acres burned datasets available since January 2000",
+      "depends_on": [],
+      "estimated_tokens": 500,
+      "compute_weight": "light"
+    },
+    {
+      "name": "data_wrangler",
+      "prompt": "Using the NOAA dataset identified in the previous step, download and ingest the acres burned data. Perform the following processing steps: (1) Filter records to dates >= January 2000; (2) Aggregate to monthly total acres burned if data is at finer granularity; (3) Handle missing values \u2014 document any gaps and apply forward-fill or interpolation if appropriate; (4) Produce a clean time series DataFrame with columns [year, month, date, acres_burned]; (5) Validate that all months from Jan 2000 to the latest available date are represented. Output the cleaned dataset and a brief data quality summary.",
+      "role": "Download, clean, and reshape NOAA acres burned data into a monthly time series from Jan 2000 onward",
+      "depends_on": [
+        "data_discovery"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "analyst",
+      "prompt": "Using the cleaned monthly acres burned time series from the data wrangler, perform the following analysis: (1) Compute a rolling 3-month sum of acres burned across the entire time series (Jan 2000 to latest available month); (2) Identify the 3-month window (start month, end month) with the highest total acres burned; (3) Report the exact months in that window and the total acres burned; (4) Provide the top 5 worst 3-month periods for context; (5) Check whether the peak window aligns with known wildfire seasons or anomalous events (e.g., 2020 California fires). Return results as a structured summary with the winning window clearly labeled.",
+      "role": "Compute all 3-month rolling windows and identify the window with the maximum total acres burned",
+      "depends_on": [
+        "data_wrangler"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "reporter",
+      "prompt": "Based on the analyst's results, produce a clear and concise answer to the question: 'What is the 3-month period with the highest total acres burned since January 2000 according to NOAA, and what was the total acres burned?' Structure your response as: (1) Direct answer \u2014 the 3-month period and total acreage; (2) Data source citation \u2014 NOAA dataset name, URL, and date accessed; (3) Brief context \u2014 why this period was anomalous (e.g., drought, wind events, geography); (4) Runner-up periods table (top 5); (5) Any caveats about data completeness or methodology that affect confidence in the result.",
+      "role": "Summarize the findings and produce a concise, cited answer to the original question",
+      "depends_on": [
+        "analyst"
+      ],
+      "estimated_tokens": 500,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "data_discovery": "Search for NOAA datasets that track wildfire acres burned in the United States from January 2000 to present. Identify the specific dataset name, URL, file format (CSV, NetCDF, API, etc.), temporal resolution (monthly, annual, etc.), and any access requirements. Confirm the dataset covers the full period since Jan 2000 and contains acres burned as a variable. Return dataset metadata including source URL, column names, and any caveats about data completeness or methodology.",
+    "data_wrangler": "Using the NOAA dataset identified in the previous step, download and ingest the acres burned data. Perform the following processing steps: (1) Filter records to dates >= January 2000; (2) Aggregate to monthly total acres burned if data is at finer granularity; (3) Handle missing values \u2014 document any gaps and apply forward-fill or interpolation if appropriate; (4) Produce a clean time series DataFrame with columns [year, month, date, acres_burned]; (5) Validate that all months from Jan 2000 to the latest available date are represented. Output the cleaned dataset and a brief data quality summary.",
+    "analyst": "Using the cleaned monthly acres burned time series from the data wrangler, perform the following analysis: (1) Compute a rolling 3-month sum of acres burned across the entire time series (Jan 2000 to latest available month); (2) Identify the 3-month window (start month, end month) with the highest total acres burned; (3) Report the exact months in that window and the total acres burned; (4) Provide the top 5 worst 3-month periods for context; (5) Check whether the peak window aligns with known wildfire seasons or anomalous events (e.g., 2020 California fires). Return results as a structured summary with the winning window clearly labeled.",
+    "reporter": "Based on the analyst's results, produce a clear and concise answer to the question: 'What is the 3-month period with the highest total acres burned since January 2000 according to NOAA, and what was the total acres burned?' Structure your response as: (1) Direct answer \u2014 the 3-month period and total acreage; (2) Data source citation \u2014 NOAA dataset name, URL, and date accessed; (3) Brief context \u2014 why this period was anomalous (e.g., drought, wind events, geography); (4) Runner-up periods table (top 5); (5) Any caveats about data completeness or methodology that affect confidence in the result."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a moderately simple data pipeline task with a single data source (NOAA) and ~5 processing steps. The workflow is mostly sequential: discover the data, wrangle/process it, then analyze and report. There is limited parallelism given the linear dependency chain, but data discovery and literature/context review can run in parallel at the start.\",\n  \"agents\": [\n    {\n      \"name\": \"data_discovery\",\n      \"role\": \"Locate and assess NOAA wildfire/acres burned datasets available since January 2000\",\n      \"prompt\": \"Search for NOAA datasets that track wildfire acres burned in the United States from January 2000 to present. Identify the specific dataset name, URL, file format (CSV, NetCDF, API, etc.), temporal resolution (monthly, annual, etc.), and any access requirements. Confirm the dataset covers the full period since Jan 2000 and contains acres burned as a variable. Return dataset metadata including source URL, column names, and any caveats about data completeness or methodology.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 500,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"data_wrangler\",\n      \"role\": \"Download, clean, and reshape NOAA acres burned data into a monthly time series from Jan 2000 onward\",\n      \"prompt\": \"Using the NOAA dataset identified in the previous step, download and ingest the acres burned data. Perform the following processing steps: (1) Filter records to dates >= January 2000; (2) Aggregate to monthly total acres burned if data is at finer granularity; (3) Handle missing values \u2014 document any gaps and apply forward-fill or interpolation if appropriate; (4) Produce a clean time series DataFrame with columns [year, month, date, acres_burned]; (5) Validate that all months from Jan 2000 to the latest available date are represented. Output the cleaned dataset and a brief data quality summary.\",\n      \"depends_on\": [\"data_discovery\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"analyst\",\n      \"role\": \"Compute all 3-month rolling windows and identify the window with the maximum total acres burned\",\n      \"prompt\": \"Using the cleaned monthly acres burned time series from the data wrangler, perform the following analysis: (1) Compute a rolling 3-month sum of acres burned across the entire time series (Jan 2000 to latest available month); (2) Identify the 3-month window (start month, end month) with the highest total acres burned; (3) Report the exact months in that window and the total acres burned; (4) Provide the top 5 worst 3-month periods for context; (5) Check whether the peak window aligns with known wildfire seasons or anomalous events (e.g., 2020 California fires). Return results as a structured summary with the winning window clearly labeled.\",\n      \"depends_on\": [\"data_wrangler\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"reporter\",\n      \"role\": \"Summarize the findings and produce a concise, cited answer to the original question\",\n      \"prompt\": \"Based on the analyst's results, produce a clear and concise answer to the question: 'What is the 3-month period with the highest total acres burned since January 2000 according to NOAA, and what was the total acres burned?' Structure your response as: (1) Direct answer \u2014 the 3-month period and total acreage; (2) Data source citation \u2014 NOAA dataset name, URL, and date accessed; (3) Brief context \u2014 why this period was anomalous (e.g., drought, wind events, geography); (4) Runner-up periods table (top 5); (5) Any caveats about data completeness or methodology that affect confidence in the result.\",\n      \"depends_on\": [\"analyst\"],\n      \"estimated_tokens\": 500,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```"
+}

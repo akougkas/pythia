@@ -1,0 +1,54 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "hpc_code_gen:0.5:['hpc', 'mpi', 'openmp']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.5,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500
+      },
+      {
+        "agent": "review",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 2000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:hpc_code_gen",
+        "domain:hpc",
+        "domain:mpi",
+        "domain:openmp"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "Design the parallel algorithm for `closestPair` using OpenMP. The function receives a `std::vector<Point>` and must return the minimum Euclidean distance between any two distinct points. Outline: (1) why a brute-force O(n\u00b2) double loop is appropriate here, (2) how to use `#pragma omp parallel for` with a `reduction(min:...)` clause or a thread-local minimum pattern to avoid race conditions, (3) any edge cases (n<2, identical points). Produce a concise algorithm sketch with pseudocode \u2014 no full C++ yet.",
+      "code_gen": "Implement `double closestPair(std::vector<Point> const& points)` in C++ using OpenMP, following the strategy from the planner. Requirements: (1) use `#pragma omp parallel for` over the outer loop (i from 0 to n-1, j from i+1 to n-1) with a thread-local `double localMin = DBL_MAX` pattern and a final `#pragma omp critical` or `reduction` to merge \u2014 choose whichever avoids false sharing better, (2) call the provided `distance()` helper, (3) handle edge case n < 2 by returning 0.0, (4) include necessary headers (`<vector>`, `<cfloat>`, `<cmath>`). The example: input [{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}] must produce \u22481.41421 (points {2,3} and {3,4}). Return only the completed function body plus any needed includes.",
+      "tester": "Write C++ test cases for `closestPair` (compatible with a simple main-based harness or Google Test). Cover: (1) the provided example [{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}] \u2192 \u22481.41421, (2) two-point input \u2192 exact distance, (3) collinear points, (4) duplicate points (distance=0), (5) large n (e.g. 10,000 random points) to stress the OpenMP path and verify result is deterministic across runs, (6) n=1 edge case (expect 0.0 or graceful return). For each test state the expected output and tolerance (use epsilon=1e-5 for floating-point comparisons). Also note any OpenMP-specific pitfalls to check (e.g. setting OMP_NUM_THREADS=1 vs 4 should give identical results).",
+      "review": "Review the `closestPair` OpenMP implementation produced by code_gen. Check: (1) absence of data races \u2014 verify the reduction/critical pattern is correct, (2) loop bounds correctness (i < n, j starts at i+1 to avoid double-counting and self-comparison), (3) use of `distance()` helper vs inlining \u2014 flag if pow/sqrt can be avoided for the comparison step (compare squared distances for speed, converting only the final result), (4) thread safety of `DBL_MAX` initialization per thread, (5) whether `collapse(2)` could improve load balancing for small n, (6) compliance with the given struct/function signatures. Provide a scored assessment (1\u201310) and a short list of actionable improvements."
+    }
+  },
+  "time_ms": 0.019266999515821226
+}

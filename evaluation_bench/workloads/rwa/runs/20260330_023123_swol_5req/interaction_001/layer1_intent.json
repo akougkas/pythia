@@ -1,0 +1,18 @@
+{
+  "layer": "1_intent_detector",
+  "input": {
+    "request_text": "Replicate the research paper 'Adaptive Pruning': The paper \"APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference\" has been reproduced This involves 5 major phases and 171 total subtasks. The workflow includes: The required pre-trained models, datasets, and metrics are available; LoRA has correctly been setup; The baselines have been implemented."
+  },
+  "output": {
+    "task_type": "research_workflow",
+    "complexity": 0.3369642857142857,
+    "domain_tags": [
+      "data",
+      "ml",
+      "research"
+    ],
+    "decomposability": 0.3,
+    "constraints": {}
+  },
+  "time_ms": 0.8472159988741623
+}

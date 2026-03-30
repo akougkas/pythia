@@ -1,0 +1,17 @@
+{
+  "layer": "1_intent_detector",
+  "input": {
+    "request_text": "Analyze the following scientific data pipeline task: On average, how many more annual fires are reported by NOAA compared to NIFC since 2000? Round to the nearest whole number. This requires working with 2 data source(s) and involves approximately 7 processing steps. Domain: environmental science."
+  },
+  "output": {
+    "task_type": "data_pipeline",
+    "complexity": 0.38684782608695656,
+    "domain_tags": [
+      "data",
+      "environmental_science"
+    ],
+    "decomposability": 0.3,
+    "constraints": {}
+  },
+  "time_ms": 1.029658000334166
+}

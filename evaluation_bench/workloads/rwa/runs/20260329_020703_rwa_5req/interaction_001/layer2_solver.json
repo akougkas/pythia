@@ -1,0 +1,164 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "research_workflow",
+      "complexity": 0.3369642857142857,
+      "domain_tags": [
+        "data",
+        "ml",
+        "research"
+      ],
+      "decomposability": 0.3,
+      "constraints": {}
+    },
+    "request_text_preview": "Replicate the research paper 'Adaptive Pruning': The paper \"APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference\" has been reproduced This involves 5 major phases and 171 total subtasks. The workflow includes: The required pre-trained models, datasets, and"
+  },
+  "method": "LLM agent selection (llama3.1:8b) + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000,
+        "order": 0
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500,
+        "order": 1
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 2
+      },
+      {
+        "agent": "experiment_runner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 3000,
+        "order": 3
+      },
+      {
+        "agent": "result_analyzer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 2000,
+        "order": 4
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": 1500,
+        "order": 5
+      }
+    ],
+    "execution_order": [
+      [
+        "experiment_designer",
+        "literature_reviewer"
+      ],
+      [
+        "code_generator"
+      ],
+      [
+        "experiment_runner"
+      ],
+      [
+        "result_analyzer"
+      ],
+      [
+        "reporter"
+      ]
+    ],
+    "total_budget": 13000,
+    "estimated_latency": 6.5
+  },
+  "time_ms": 41828.4677810002,
+  "llm_call_time_ms": 41827.57591800009,
+  "assignment_time_ms": 0.891863000113517,
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a research replication workflow for APT (Adaptive Pruning and Tuning) with infrastructure already in place (models, datasets, LoRA, baselines). Given the low decomposability score (0.30) and moderate complexity (0.34), the remaining work centers on understanding the paper's methods, implementing APT-specific logic, running experiments, and comparing against baselines. Phases 1-2 (literature review + experiment design) can run in parallel since neither depends on the other's output at this stage, while implementation, execution, and analysis must be sequential.\",\n  \"agents\": [\n    {\n      \"name\": \"literature_reviewer\",\n      \"role\": \"Extract APT's core algorithmic contributions \u2014 pruning schedule, tuning strategy, and evaluation protocol\",\n      \"prompt\": \"You are replicating 'APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference'. Extract and document: (1) The exact adaptive pruning criterion (how sparsity masks are computed and updated dynamically), (2) The joint pruning+LoRA tuning objective and loss formulation, (3) The pruning schedule (warmup steps, target sparsity ramp, final sparsity levels used in experiments), (4) All evaluation benchmarks and metrics reported (GLUE tasks, perplexity, speedup ratios, model sizes), (5) Hyperparameters: learning rate, pruning frequency, LoRA rank, batch size, number of training steps. Cross-reference any ablation studies that isolate pruning vs tuning contributions. Output a structured reference document to guide implementation.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 800,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"experiment_designer\",\n      \"role\": \"Design the full replication experiment matrix covering all APT configurations and baseline comparisons\",\n      \"prompt\": \"Design a complete experiment plan to replicate APT results. Given that pre-trained models (e.g., BERT, RoBERTa), datasets (GLUE benchmark), and baselines are already set up: (1) Define the experiment matrix \u2014 which model \u00d7 dataset \u00d7 sparsity level combinations to run (match the paper's Table 1/2 configurations), (2) Specify the comparison grid: APT vs magnitude pruning, movement pruning, and LoRA-only baselines, (3) Define success criteria \u2014 acceptable deviation from paper's reported scores (e.g., \u00b10.5% on GLUE metrics), (4) Identify which experiments can run in parallel (different tasks/seeds), (5) Estimate compute requirements per run. Output a structured experiment manifest with run configurations in a format ready for the experiment runner.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 1200,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"code_generator\",\n      \"role\": \"Implement the APT adaptive pruning and joint tuning mechanism on top of the existing LoRA setup\",\n      \"prompt\": \"Implement the APT method as described in the literature review output. Building on the existing LoRA setup: (1) Implement the adaptive pruning mask module \u2014 compute importance scores per weight (use the paper's criterion, likely first-order or second-order sensitivity), (2) Implement the dynamic sparsity scheduler that ramps sparsity from 0 to target over training, (3) Integrate pruning masks with the LoRA adapter forward pass so both operate jointly during fine-tuning, (4) Implement the joint training loop: forward pass with masked weights + LoRA, loss backward, mask update step at pruning frequency, (5) Add inference-time weight consolidation (apply final mask and merge LoRA for speedup measurement), (6) Expose config parameters: target_sparsity, pruning_warmup_steps, pruning_frequency, lora_rank. Ensure the implementation is modular and matches the baseline interface for fair comparison. Include inline comments referencing paper sections.\",\n      \"depends_on\": [\"literature_reviewer\"],\n      \"estimated_tokens\": 4000,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"experiment_runner\",\n      \"role\": \"Execute all APT replication runs per the experiment manifest and collect raw results\",\n      \"prompt\": \"Execute the full APT replication experiment suite using the implemented APT code and the experiment manifest. For each configuration in the manifest: (1) Load the specified pre-trained model and tokenizer, (2) Apply the APT training loop with the configured sparsity and LoRA settings, (3) Evaluate on the designated GLUE task(s) after training \u2014 record accuracy/F1/Matthews correlation as appropriate, (4) Measure and record: final model sparsity, inference latency (or FLOPs reduction), peak GPU memory, training time, (5) Run each configuration with at least 1 seed (3 if compute allows) and record all results, (6) Save all results to a structured CSV/JSON results file keyed by: model, task, method, sparsity, seed. Also run baseline comparisons (magnitude pruning, LoRA-only) using the same evaluation protocol for apples-to-apples comparison.\",\n      \"depends_on\": [\"code_generator\", \"experiment_designer\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"result_analyzer\",\n      \"role\": \"Compare replication results against paper's reported numbers and score reproduction fidelity\",\n      \"prompt\": \"Analyze the replication results against the APT paper's reported numbers. (1) Load the results CSV/JSON from the experiment runner and the paper's target numbers from the literature review, (2) For each model \u00d7 task \u00d7 sparsity configuration, compute: absolute deviation from paper's score, relative deviation (%), and whether it falls within acceptable tolerance (\u00b10.5% GLUE, \u00b11 perplexity point), (3) Compute an overall reproduction fidelity score (% of configurations within tolerance), (4) Identify any systematic deviations \u2014 do specific tasks, sparsity levels, or model sizes replicate poorly?, (5) Compare APT vs baselines in your runs and check if the relative ordering matches the paper (APT should outperform baselines), (6) Flag any results that deviate >2% as requiring investigation. Output a structured analysis report with a per-configuration table, summary statistics, and a final replication verdict (Successful / Partial / Failed) with justification.\",\n      \"depends_on\": [\"experiment_runner\"],\n      \"estimated_tokens\": 1000,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"reporter\",\n      \"role\": \"Produce the final replication report summarizing methodology, results, deviations, and conclusions\",\n      \"prompt\": \"Produce a comprehensive replication report for APT. Structure it as: (1) **Executive Summary** \u2014 replication verdict, overall fidelity score, key finding in 3 sentences, (2) **Method Recap** \u2014 brief description of APT's adaptive pruning + LoRA tuning approach as implemented, (3) **Results Table** \u2014 side-by-side comparison of paper's reported vs replicated scores for all configurations, color-coded by deviation severity, (4) **Deviation Analysis** \u2014 for any result outside tolerance, explain likely causes (e.g., hardware differences, missing implementation details, hyperparameter sensitivity), (5) **Baseline Comparison** \u2014 confirm or deny that APT outperforms baselines as claimed, (6) **Reproducibility Notes** \u2014 document any ambiguities encountered in the paper and how they were resolved, (7) **Conclusion** \u2014 overall assessment of paper's reproducibility and confidence in the replication. Format as a clean Markdown document suitable for inclusion in a research reproducibility study.\",\n      \"depends_on\": [\"result_analyzer\"],\n      \"estimated_tokens\": 800,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```",
+  "llm_reasoning": "This is a research replication workflow for APT (Adaptive Pruning and Tuning) with infrastructure already in place (models, datasets, LoRA, baselines). Given the low decomposability score (0.30) and moderate complexity (0.34), the remaining work centers on understanding the paper's methods, implementing APT-specific logic, running experiments, and comparing against baselines. Phases 1-2 (literature review + experiment design) can run in parallel since neither depends on the other's output at this stage, while implementation, execution, and analysis must be sequential.",
+  "llm_parsed_agents": [
+    "literature_reviewer",
+    "experiment_designer",
+    "code_generator",
+    "experiment_runner",
+    "result_analyzer",
+    "reporter"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "literature_reviewer",
+      "prompt": "You are replicating 'APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference'. Extract and document: (1) The exact adaptive pruning criterion (how sparsity masks are computed and updated dynamically), (2) The joint pruning+LoRA tuning objective and loss formulation, (3) The pruning schedule (warmup steps, target sparsity ramp, final sparsity levels used in experiments), (4) All evaluation benchmarks and metrics reported (GLUE tasks, perplexity, speedup ratios, model sizes), (5) Hyperparameters: learning rate, pruning frequency, LoRA rank, batch size, number of training steps. Cross-reference any ablation studies that isolate pruning vs tuning contributions. Output a structured reference document to guide implementation.",
+      "role": "Extract APT's core algorithmic contributions \u2014 pruning schedule, tuning strategy, and evaluation protocol",
+      "depends_on": [],
+      "estimated_tokens": 800,
+      "compute_weight": "light"
+    },
+    {
+      "name": "experiment_designer",
+      "prompt": "Design a complete experiment plan to replicate APT results. Given that pre-trained models (e.g., BERT, RoBERTa), datasets (GLUE benchmark), and baselines are already set up: (1) Define the experiment matrix \u2014 which model \u00d7 dataset \u00d7 sparsity level combinations to run (match the paper's Table 1/2 configurations), (2) Specify the comparison grid: APT vs magnitude pruning, movement pruning, and LoRA-only baselines, (3) Define success criteria \u2014 acceptable deviation from paper's reported scores (e.g., \u00b10.5% on GLUE metrics), (4) Identify which experiments can run in parallel (different tasks/seeds), (5) Estimate compute requirements per run. Output a structured experiment manifest with run configurations in a format ready for the experiment runner.",
+      "role": "Design the full replication experiment matrix covering all APT configurations and baseline comparisons",
+      "depends_on": [],
+      "estimated_tokens": 1200,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "code_generator",
+      "prompt": "Implement the APT method as described in the literature review output. Building on the existing LoRA setup: (1) Implement the adaptive pruning mask module \u2014 compute importance scores per weight (use the paper's criterion, likely first-order or second-order sensitivity), (2) Implement the dynamic sparsity scheduler that ramps sparsity from 0 to target over training, (3) Integrate pruning masks with the LoRA adapter forward pass so both operate jointly during fine-tuning, (4) Implement the joint training loop: forward pass with masked weights + LoRA, loss backward, mask update step at pruning frequency, (5) Add inference-time weight consolidation (apply final mask and merge LoRA for speedup measurement), (6) Expose config parameters: target_sparsity, pruning_warmup_steps, pruning_frequency, lora_rank. Ensure the implementation is modular and matches the baseline interface for fair comparison. Include inline comments referencing paper sections.",
+      "role": "Implement the APT adaptive pruning and joint tuning mechanism on top of the existing LoRA setup",
+      "depends_on": [
+        "literature_reviewer"
+      ],
+      "estimated_tokens": 4000,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "experiment_runner",
+      "prompt": "Execute the full APT replication experiment suite using the implemented APT code and the experiment manifest. For each configuration in the manifest: (1) Load the specified pre-trained model and tokenizer, (2) Apply the APT training loop with the configured sparsity and LoRA settings, (3) Evaluate on the designated GLUE task(s) after training \u2014 record accuracy/F1/Matthews correlation as appropriate, (4) Measure and record: final model sparsity, inference latency (or FLOPs reduction), peak GPU memory, training time, (5) Run each configuration with at least 1 seed (3 if compute allows) and record all results, (6) Save all results to a structured CSV/JSON results file keyed by: model, task, method, sparsity, seed. Also run baseline comparisons (magnitude pruning, LoRA-only) using the same evaluation protocol for apples-to-apples comparison.",
+      "role": "Execute all APT replication runs per the experiment manifest and collect raw results",
+      "depends_on": [
+        "code_generator",
+        "experiment_designer"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "result_analyzer",
+      "prompt": "Analyze the replication results against the APT paper's reported numbers. (1) Load the results CSV/JSON from the experiment runner and the paper's target numbers from the literature review, (2) For each model \u00d7 task \u00d7 sparsity configuration, compute: absolute deviation from paper's score, relative deviation (%), and whether it falls within acceptable tolerance (\u00b10.5% GLUE, \u00b11 perplexity point), (3) Compute an overall reproduction fidelity score (% of configurations within tolerance), (4) Identify any systematic deviations \u2014 do specific tasks, sparsity levels, or model sizes replicate poorly?, (5) Compare APT vs baselines in your runs and check if the relative ordering matches the paper (APT should outperform baselines), (6) Flag any results that deviate >2% as requiring investigation. Output a structured analysis report with a per-configuration table, summary statistics, and a final replication verdict (Successful / Partial / Failed) with justification.",
+      "role": "Compare replication results against paper's reported numbers and score reproduction fidelity",
+      "depends_on": [
+        "experiment_runner"
+      ],
+      "estimated_tokens": 1000,
+      "compute_weight": "light"
+    },
+    {
+      "name": "reporter",
+      "prompt": "Produce a comprehensive replication report for APT. Structure it as: (1) **Executive Summary** \u2014 replication verdict, overall fidelity score, key finding in 3 sentences, (2) **Method Recap** \u2014 brief description of APT's adaptive pruning + LoRA tuning approach as implemented, (3) **Results Table** \u2014 side-by-side comparison of paper's reported vs replicated scores for all configurations, color-coded by deviation severity, (4) **Deviation Analysis** \u2014 for any result outside tolerance, explain likely causes (e.g., hardware differences, missing implementation details, hyperparameter sensitivity), (5) **Baseline Comparison** \u2014 confirm or deny that APT outperforms baselines as claimed, (6) **Reproducibility Notes** \u2014 document any ambiguities encountered in the paper and how they were resolved, (7) **Conclusion** \u2014 overall assessment of paper's reproducibility and confidence in the replication. Format as a clean Markdown document suitable for inclusion in a research reproducibility study.",
+      "role": "Produce the final replication report summarizing methodology, results, deviations, and conclusions",
+      "depends_on": [
+        "result_analyzer"
+      ],
+      "estimated_tokens": 800,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "literature_reviewer": "You are replicating 'APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference'. Extract and document: (1) The exact adaptive pruning criterion (how sparsity masks are computed and updated dynamically), (2) The joint pruning+LoRA tuning objective and loss formulation, (3) The pruning schedule (warmup steps, target sparsity ramp, final sparsity levels used in experiments), (4) All evaluation benchmarks and metrics reported (GLUE tasks, perplexity, speedup ratios, model sizes), (5) Hyperparameters: learning rate, pruning frequency, LoRA rank, batch size, number of training steps. Cross-reference any ablation studies that isolate pruning vs tuning contributions. Output a structured reference document to guide implementation.",
+    "experiment_designer": "Design a complete experiment plan to replicate APT results. Given that pre-trained models (e.g., BERT, RoBERTa), datasets (GLUE benchmark), and baselines are already set up: (1) Define the experiment matrix \u2014 which model \u00d7 dataset \u00d7 sparsity level combinations to run (match the paper's Table 1/2 configurations), (2) Specify the comparison grid: APT vs magnitude pruning, movement pruning, and LoRA-only baselines, (3) Define success criteria \u2014 acceptable deviation from paper's reported scores (e.g., \u00b10.5% on GLUE metrics), (4) Identify which experiments can run in parallel (different tasks/seeds), (5) Estimate compute requirements per run. Output a structured experiment manifest with run configurations in a format ready for the experiment runner.",
+    "code_generator": "Implement the APT method as described in the literature review output. Building on the existing LoRA setup: (1) Implement the adaptive pruning mask module \u2014 compute importance scores per weight (use the paper's criterion, likely first-order or second-order sensitivity), (2) Implement the dynamic sparsity scheduler that ramps sparsity from 0 to target over training, (3) Integrate pruning masks with the LoRA adapter forward pass so both operate jointly during fine-tuning, (4) Implement the joint training loop: forward pass with masked weights + LoRA, loss backward, mask update step at pruning frequency, (5) Add inference-time weight consolidation (apply final mask and merge LoRA for speedup measurement), (6) Expose config parameters: target_sparsity, pruning_warmup_steps, pruning_frequency, lora_rank. Ensure the implementation is modular and matches the baseline interface for fair comparison. Include inline comments referencing paper sections.",
+    "experiment_runner": "Execute the full APT replication experiment suite using the implemented APT code and the experiment manifest. For each configuration in the manifest: (1) Load the specified pre-trained model and tokenizer, (2) Apply the APT training loop with the configured sparsity and LoRA settings, (3) Evaluate on the designated GLUE task(s) after training \u2014 record accuracy/F1/Matthews correlation as appropriate, (4) Measure and record: final model sparsity, inference latency (or FLOPs reduction), peak GPU memory, training time, (5) Run each configuration with at least 1 seed (3 if compute allows) and record all results, (6) Save all results to a structured CSV/JSON results file keyed by: model, task, method, sparsity, seed. Also run baseline comparisons (magnitude pruning, LoRA-only) using the same evaluation protocol for apples-to-apples comparison.",
+    "result_analyzer": "Analyze the replication results against the APT paper's reported numbers. (1) Load the results CSV/JSON from the experiment runner and the paper's target numbers from the literature review, (2) For each model \u00d7 task \u00d7 sparsity configuration, compute: absolute deviation from paper's score, relative deviation (%), and whether it falls within acceptable tolerance (\u00b10.5% GLUE, \u00b11 perplexity point), (3) Compute an overall reproduction fidelity score (% of configurations within tolerance), (4) Identify any systematic deviations \u2014 do specific tasks, sparsity levels, or model sizes replicate poorly?, (5) Compare APT vs baselines in your runs and check if the relative ordering matches the paper (APT should outperform baselines), (6) Flag any results that deviate >2% as requiring investigation. Output a structured analysis report with a per-configuration table, summary statistics, and a final replication verdict (Successful / Partial / Failed) with justification.",
+    "reporter": "Produce a comprehensive replication report for APT. Structure it as: (1) **Executive Summary** \u2014 replication verdict, overall fidelity score, key finding in 3 sentences, (2) **Method Recap** \u2014 brief description of APT's adaptive pruning + LoRA tuning approach as implemented, (3) **Results Table** \u2014 side-by-side comparison of paper's reported vs replicated scores for all configurations, color-coded by deviation severity, (4) **Deviation Analysis** \u2014 for any result outside tolerance, explain likely causes (e.g., hardware differences, missing implementation details, hyperparameter sensitivity), (5) **Baseline Comparison** \u2014 confirm or deny that APT outperforms baselines as claimed, (6) **Reproducibility Notes** \u2014 document any ambiguities encountered in the paper and how they were resolved, (7) **Conclusion** \u2014 overall assessment of paper's reproducibility and confidence in the replication. Format as a clean Markdown document suitable for inclusion in a research reproducibility study."
+  }
+}

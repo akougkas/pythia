@@ -1,0 +1,17 @@
+{
+  "layer": "1_intent_detector",
+  "input": {
+    "request_text": "Analyze the following scientific data pipeline task: Find the 3-month period with the highest total acres burned since Jan 2000, according to NOAA. What was the total acres burned in that period? This requires working with 1 data source(s) and involves approximately 5 processing steps. Domain: environmental science."
+  },
+  "output": {
+    "task_type": "data_pipeline",
+    "complexity": 0.3875,
+    "domain_tags": [
+      "data",
+      "environmental_science"
+    ],
+    "decomposability": 0.3,
+    "constraints": {}
+  },
+  "time_ms": 0.8557670007576235
+}

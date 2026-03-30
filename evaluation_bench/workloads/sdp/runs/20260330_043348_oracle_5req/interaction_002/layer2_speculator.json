@@ -1,0 +1,46 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "data_pipeline:0.3:['data', 'environmental_science']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000
+      },
+      {
+        "agent": "analyst",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:data_pipeline",
+        "domain:data",
+        "domain:environmental_science"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "data_discovery": "Identify two reliable data sources containing NIFC geographic areas and US state boundaries. Assess their quality, format, and relevance to the task.",
+      "data_wrangler": "Merge the NIFC geographic area and US state boundary datasets into a single table. Perform necessary cleaning, transformation, and joining operations to ensure accurate intersection analysis.",
+      "analyst": "Using the unified dataset, perform a spatial intersection analysis to identify the NIFC geographic area that overlaps with the maximum number of US states. Provide the abbreviation of this area as part of your output."
+    }
+  },
+  "time_ms": 49400.03289699962
+}

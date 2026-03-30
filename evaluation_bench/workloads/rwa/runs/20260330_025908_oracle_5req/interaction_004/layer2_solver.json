@@ -1,0 +1,182 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "research_workflow",
+      "complexity": 0.3317424242424243,
+      "domain_tags": [
+        "data",
+        "ml",
+        "research"
+      ],
+      "decomposability": 0.3,
+      "constraints": {}
+    },
+    "request_text_preview": "Replicate the research paper 'Bbox': The BBOX-ADAPTER approach for adapting black-box LLMs has been reproduced completely. This involves 9 major phases and 421 total subtasks. The workflow includes: Algorithm 1 (Online Adaptation) has been implemented correctly.; The evaluation environments and data"
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000,
+        "order": 0
+      },
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500,
+        "order": 1
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500,
+        "order": 2
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 3
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000,
+        "order": 4
+      }
+    ],
+    "execution_order": [
+      [
+        "data_discovery",
+        "literature_reviewer"
+      ],
+      [
+        "code_generator",
+        "experiment_designer"
+      ],
+      [
+        "experiment_runner"
+      ],
+      [
+        "result_analyzer"
+      ],
+      [
+        "reporter"
+      ]
+    ],
+    "total_budget": 10000,
+    "estimated_latency": 2.5
+  },
+  "time_ms": 35456.22757199999,
+  "llm_call_time_ms": 35455.99680900159,
+  "assignment_time_ms": 0.23076299839885905,
+  "llm_reasoning": "This is a research replication workflow for the BBOX-ADAPTER paper. Given the moderate complexity score (0.33) and decomposability (0.30), the core stages \u2014 literature understanding, experiment design, code implementation, execution, and result analysis \u2014 form a natural sequential pipeline with limited parallelism. However, literature review and data/environment discovery can run in parallel upfront, and code generation for Algorithm 1 can overlap with baseline configuration since they are independent implementation tracks.",
+  "llm_parsed_agents": [
+    "literature_reviewer",
+    "data_discovery",
+    "experiment_designer",
+    "code_generator",
+    "code_generator",
+    "experiment_runner",
+    "result_analyzer",
+    "reporter"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "literature_reviewer",
+      "prompt": "Review the BBOX-ADAPTER paper. Extract: (1) the exact formulation of Algorithm 1 (Online Adaptation) \u2014 inputs, outputs, update rules, and hyperparameters; (2) the evaluation datasets and metrics used for GPT-3.5 Turbo and Mixtral-8x7B; (3) the baseline models compared against; (4) any implementation details about the adapter architecture and black-box interaction protocol. Produce a structured summary with section headers for each of these four areas.",
+      "role": "Extract BBOX-ADAPTER methodology, Algorithm 1 details, and evaluation protocol from the paper",
+      "depends_on": [],
+      "estimated_tokens": 600,
+      "compute_weight": "light"
+    },
+    {
+      "name": "data_discovery",
+      "prompt": "Identify all datasets referenced in the BBOX-ADAPTER replication setup for evaluating GPT-3.5 Turbo and Mixtral-8x7B. For each dataset: (1) confirm public availability and access method (HuggingFace, direct download, API, etc.); (2) note required preprocessing or formatting for LLM prompt inputs; (3) flag any licensing or access constraints. Also assess what API credentials or local inference infrastructure are needed for each model.",
+      "role": "Identify and assess all datasets and evaluation environments required for GPT-3.5 Turbo and Mixtral-8x7B evaluations",
+      "depends_on": [],
+      "estimated_tokens": 500,
+      "compute_weight": "light"
+    },
+    {
+      "name": "experiment_designer",
+      "prompt": "Using the BBOX-ADAPTER paper methodology summary and dataset inventory, design a complete experiment plan for replication. Structure it across the 9 major phases. For each phase specify: (1) what is being implemented or evaluated; (2) which models (GPT-3.5 Turbo, Mixtral-8x7B) are involved; (3) which baselines must be configured or run; (4) expected outputs and success criteria. Ensure Algorithm 1 (Online Adaptation) is correctly positioned within the phase sequence and its dependencies on model API calls are explicit.",
+      "role": "Design the full replication experiment plan covering all 9 phases and baseline configurations",
+      "depends_on": [
+        "literature_reviewer",
+        "data_discovery"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "code_generator",
+      "prompt": "Implement Algorithm 1 (Online Adaptation) from the BBOX-ADAPTER paper as a clean Python module. The implementation must: (1) accept a black-box LLM as a callable (supporting both OpenAI GPT-3.5 Turbo API and Mixtral-8x7B via local or API inference); (2) implement the online adaptation loop with correct update rules as specified in the paper; (3) expose clean interfaces for feeding evaluation datasets; (4) log per-step metrics for later analysis. Include inline comments referencing the algorithm steps by number. Do not hardcode model-specific logic \u2014 use dependency injection for the LLM backend.",
+      "role": "Implement Algorithm 1 (Online Adaptation) and the BBOX-ADAPTER core pipeline",
+      "depends_on": [
+        "literature_reviewer"
+      ],
+      "estimated_tokens": 4000,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "code_generator",
+      "prompt": "Implement the baseline models required for BBOX-ADAPTER evaluation comparison. For each baseline: (1) implement or wrap the baseline method as a callable with the same interface as the BBOX-ADAPTER pipeline; (2) configure it for both GPT-3.5 Turbo and Mixtral-8x7B backends; (3) ensure it consumes the same dataset format as the main adapter. Baselines should include at minimum: zero-shot prompting, few-shot prompting, and any other baselines cited in the paper. Structure code so baselines and the adapter can be evaluated in the same evaluation harness.",
+      "role": "Implement and configure all baseline models for comparative evaluation",
+      "depends_on": [
+        "literature_reviewer"
+      ],
+      "estimated_tokens": 3500,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "experiment_runner",
+      "prompt": "Execute the BBOX-ADAPTER replication experiment according to the experiment design plan. Run the full evaluation pipeline for: (1) BBOX-ADAPTER with Algorithm 1 on GPT-3.5 Turbo across all evaluation datasets; (2) BBOX-ADAPTER with Algorithm 1 on Mixtral-8x7B across all evaluation datasets; (3) all configured baselines on both models. Collect and persist per-run outputs including predictions, per-sample metrics, and aggregate scores. Flag any runs that fail or produce unexpected outputs for review. Store results in a structured format (e.g., JSON or CSV) keyed by model, method, and dataset.",
+      "role": "Execute the full replication across all 9 phases, collecting results for both models and all baselines",
+      "depends_on": [
+        "experiment_designer",
+        "code_generator"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "result_analyzer",
+      "prompt": "Analyze the collected experiment results from the BBOX-ADAPTER replication. For each model (GPT-3.5 Turbo, Mixtral-8x7B) and each dataset: (1) compare reproduced metrics against paper-reported numbers \u2014 compute absolute and relative deviation; (2) assess whether differences fall within acceptable replication tolerance (typically \u00b12% for LLM benchmarks); (3) identify any baselines where discrepancies are large and hypothesize causes; (4) produce a replication fidelity score (0\u2013100) per experimental condition. Summarize findings in a structured table.",
+      "role": "Compare replication results against paper-reported numbers and score reproduction fidelity",
+      "depends_on": [
+        "experiment_runner"
+      ],
+      "estimated_tokens": 1200,
+      "compute_weight": "light"
+    },
+    {
+      "name": "reporter",
+      "prompt": "Write a concise replication report for the BBOX-ADAPTER paper reproduction. Structure it as: (1) Executive Summary \u2014 was the replication successful overall?; (2) Methodology \u2014 brief description of what was implemented across the 9 phases; (3) Results Table \u2014 reproduced vs. reported metrics for all conditions; (4) Fidelity Assessment \u2014 per-condition scores and overall verdict; (5) Deviations & Notes \u2014 any implementation choices that differed from the paper and their likely impact. Output should be in Markdown format suitable for inclusion in a research lab notebook.",
+      "role": "Produce a final replication report summarizing methodology, results, fidelity, and any deviations",
+      "depends_on": [
+        "result_analyzer"
+      ],
+      "estimated_tokens": 800,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "literature_reviewer": "Review the BBOX-ADAPTER paper. Extract: (1) the exact formulation of Algorithm 1 (Online Adaptation) \u2014 inputs, outputs, update rules, and hyperparameters; (2) the evaluation datasets and metrics used for GPT-3.5 Turbo and Mixtral-8x7B; (3) the baseline models compared against; (4) any implementation details about the adapter architecture and black-box interaction protocol. Produce a structured summary with section headers for each of these four areas.",
+    "data_discovery": "Identify all datasets referenced in the BBOX-ADAPTER replication setup for evaluating GPT-3.5 Turbo and Mixtral-8x7B. For each dataset: (1) confirm public availability and access method (HuggingFace, direct download, API, etc.); (2) note required preprocessing or formatting for LLM prompt inputs; (3) flag any licensing or access constraints. Also assess what API credentials or local inference infrastructure are needed for each model.",
+    "experiment_designer": "Using the BBOX-ADAPTER paper methodology summary and dataset inventory, design a complete experiment plan for replication. Structure it across the 9 major phases. For each phase specify: (1) what is being implemented or evaluated; (2) which models (GPT-3.5 Turbo, Mixtral-8x7B) are involved; (3) which baselines must be configured or run; (4) expected outputs and success criteria. Ensure Algorithm 1 (Online Adaptation) is correctly positioned within the phase sequence and its dependencies on model API calls are explicit.",
+    "code_generator": "Implement the baseline models required for BBOX-ADAPTER evaluation comparison. For each baseline: (1) implement or wrap the baseline method as a callable with the same interface as the BBOX-ADAPTER pipeline; (2) configure it for both GPT-3.5 Turbo and Mixtral-8x7B backends; (3) ensure it consumes the same dataset format as the main adapter. Baselines should include at minimum: zero-shot prompting, few-shot prompting, and any other baselines cited in the paper. Structure code so baselines and the adapter can be evaluated in the same evaluation harness.",
+    "experiment_runner": "Execute the BBOX-ADAPTER replication experiment according to the experiment design plan. Run the full evaluation pipeline for: (1) BBOX-ADAPTER with Algorithm 1 on GPT-3.5 Turbo across all evaluation datasets; (2) BBOX-ADAPTER with Algorithm 1 on Mixtral-8x7B across all evaluation datasets; (3) all configured baselines on both models. Collect and persist per-run outputs including predictions, per-sample metrics, and aggregate scores. Flag any runs that fail or produce unexpected outputs for review. Store results in a structured format (e.g., JSON or CSV) keyed by model, method, and dataset.",
+    "result_analyzer": "Analyze the collected experiment results from the BBOX-ADAPTER replication. For each model (GPT-3.5 Turbo, Mixtral-8x7B) and each dataset: (1) compare reproduced metrics against paper-reported numbers \u2014 compute absolute and relative deviation; (2) assess whether differences fall within acceptable replication tolerance (typically \u00b12% for LLM benchmarks); (3) identify any baselines where discrepancies are large and hypothesize causes; (4) produce a replication fidelity score (0\u2013100) per experimental condition. Summarize findings in a structured table.",
+    "reporter": "Write a concise replication report for the BBOX-ADAPTER paper reproduction. Structure it as: (1) Executive Summary \u2014 was the replication successful overall?; (2) Methodology \u2014 brief description of what was implemented across the 9 phases; (3) Results Table \u2014 reproduced vs. reported metrics for all conditions; (4) Fidelity Assessment \u2014 per-condition scores and overall verdict; (5) Deviations & Notes \u2014 any implementation choices that differed from the paper and their likely impact. Output should be in Markdown format suitable for inclusion in a research lab notebook."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a research replication workflow for the BBOX-ADAPTER paper. Given the moderate complexity score (0.33) and decomposability (0.30), the core stages \u2014 literature understanding, experiment design, code implementation, execution, and result analysis \u2014 form a natural sequential pipeline with limited parallelism. However, literature review and data/environment discovery can run in parallel upfront, and code generation for Algorithm 1 can overlap with baseline configuration since they are independent implementation tracks.\",\n  \"agents\": [\n    {\n      \"name\": \"literature_reviewer\",\n      \"role\": \"Extract BBOX-ADAPTER methodology, Algorithm 1 details, and evaluation protocol from the paper\",\n      \"prompt\": \"Review the BBOX-ADAPTER paper. Extract: (1) the exact formulation of Algorithm 1 (Online Adaptation) \u2014 inputs, outputs, update rules, and hyperparameters; (2) the evaluation datasets and metrics used for GPT-3.5 Turbo and Mixtral-8x7B; (3) the baseline models compared against; (4) any implementation details about the adapter architecture and black-box interaction protocol. Produce a structured summary with section headers for each of these four areas.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 600,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"data_discovery\",\n      \"role\": \"Identify and assess all datasets and evaluation environments required for GPT-3.5 Turbo and Mixtral-8x7B evaluations\",\n      \"prompt\": \"Identify all datasets referenced in the BBOX-ADAPTER replication setup for evaluating GPT-3.5 Turbo and Mixtral-8x7B. For each dataset: (1) confirm public availability and access method (HuggingFace, direct download, API, etc.); (2) note required preprocessing or formatting for LLM prompt inputs; (3) flag any licensing or access constraints. Also assess what API credentials or local inference infrastructure are needed for each model.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 500,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"experiment_designer\",\n      \"role\": \"Design the full replication experiment plan covering all 9 phases and baseline configurations\",\n      \"prompt\": \"Using the BBOX-ADAPTER paper methodology summary and dataset inventory, design a complete experiment plan for replication. Structure it across the 9 major phases. For each phase specify: (1) what is being implemented or evaluated; (2) which models (GPT-3.5 Turbo, Mixtral-8x7B) are involved; (3) which baselines must be configured or run; (4) expected outputs and success criteria. Ensure Algorithm 1 (Online Adaptation) is correctly positioned within the phase sequence and its dependencies on model API calls are explicit.\",\n      \"depends_on\": [\"literature_reviewer\", \"data_discovery\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"code_generator\",\n      \"role\": \"Implement Algorithm 1 (Online Adaptation) and the BBOX-ADAPTER core pipeline\",\n      \"prompt\": \"Implement Algorithm 1 (Online Adaptation) from the BBOX-ADAPTER paper as a clean Python module. The implementation must: (1) accept a black-box LLM as a callable (supporting both OpenAI GPT-3.5 Turbo API and Mixtral-8x7B via local or API inference); (2) implement the online adaptation loop with correct update rules as specified in the paper; (3) expose clean interfaces for feeding evaluation datasets; (4) log per-step metrics for later analysis. Include inline comments referencing the algorithm steps by number. Do not hardcode model-specific logic \u2014 use dependency injection for the LLM backend.\",\n      \"depends_on\": [\"literature_reviewer\"],\n      \"estimated_tokens\": 4000,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"code_generator\",\n      \"role\": \"Implement and configure all baseline models for comparative evaluation\",\n      \"prompt\": \"Implement the baseline models required for BBOX-ADAPTER evaluation comparison. For each baseline: (1) implement or wrap the baseline method as a callable with the same interface as the BBOX-ADAPTER pipeline; (2) configure it for both GPT-3.5 Turbo and Mixtral-8x7B backends; (3) ensure it consumes the same dataset format as the main adapter. Baselines should include at minimum: zero-shot prompting, few-shot prompting, and any other baselines cited in the paper. Structure code so baselines and the adapter can be evaluated in the same evaluation harness.\",\n      \"depends_on\": [\"literature_reviewer\"],\n      \"estimated_tokens\": 3500,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"experiment_runner\",\n      \"role\": \"Execute the full replication across all 9 phases, collecting results for both models and all baselines\",\n      \"prompt\": \"Execute the BBOX-ADAPTER replication experiment according to the experiment design plan. Run the full evaluation pipeline for: (1) BBOX-ADAPTER with Algorithm 1 on GPT-3.5 Turbo across all evaluation datasets; (2) BBOX-ADAPTER with Algorithm 1 on Mixtral-8x7B across all evaluation datasets; (3) all configured baselines on both models. Collect and persist per-run outputs including predictions, per-sample metrics, and aggregate scores. Flag any runs that fail or produce unexpected outputs for review. Store results in a structured format (e.g., JSON or CSV) keyed by model, method, and dataset.\",\n      \"depends_on\": [\"experiment_designer\", \"code_generator\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"result_analyzer\",\n      \"role\": \"Compare replication results against paper-reported numbers and score reproduction fidelity\",\n      \"prompt\": \"Analyze the collected experiment results from the BBOX-ADAPTER replication. For each model (GPT-3.5 Turbo, Mixtral-8x7B) and each dataset: (1) compare reproduced metrics against paper-reported numbers \u2014 compute absolute and relative deviation; (2) assess whether differences fall within acceptable replication tolerance (typically \u00b12% for LLM benchmarks); (3) identify any baselines where discrepancies are large and hypothesize causes; (4) produce a replication fidelity score (0\u2013100) per experimental condition. Summarize findings in a structured table.\",\n      \"depends_on\": [\"experiment_runner\"],\n      \"estimated_tokens\": 1200,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"reporter\",\n      \"role\": \"Produce a final replication report summarizing methodology, results, fidelity, and any deviations\",\n      \"prompt\": \"Write a concise replication report for the BBOX-ADAPTER paper reproduction. Structure it as: (1) Executive Summary \u2014 was the replication successful overall?; (2) Methodology \u2014 brief description of what was implemented across the 9 phases; (3) Results Table \u2014 reproduced vs. reported metrics for all conditions; (4) Fidelity Assessment \u2014 per-condition scores and overall verdict; (5) Deviations & Notes \u2014 any implementation choices that differed from the paper and their likely impact. Output should be in Markdown format suitable for inclusion in a research lab notebook.\",\n      \"depends_on\": [\"result_analyzer\"],\n      \"estimated_tokens\": 800,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```"
+}

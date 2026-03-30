@@ -1,0 +1,17 @@
+{
+  "layer": "1_intent_detector",
+  "input": {
+    "request_text": "Analyze the following scientific data pipeline task: Find the year with the highest suppression cost per acre of human-caused fire. What was the cost per acre, rounded to the nearest cent? This requires working with 2 data source(s) and involves approximately 6 processing steps. Domain: environmental science."
+  },
+  "output": {
+    "task_type": "data_pipeline",
+    "complexity": 0.3821683673469388,
+    "domain_tags": [
+      "data",
+      "environmental_science"
+    ],
+    "decomposability": 0.3,
+    "constraints": {}
+  },
+  "time_ms": 1.3439699996524723
+}

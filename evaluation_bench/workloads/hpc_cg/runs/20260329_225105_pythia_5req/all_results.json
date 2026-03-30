@@ -1,0 +1,306 @@
+{
+  "summary": {
+    "run_dir": "/home/shazzadul/Illinois_Tech/Spring26/RA/Pythia/pythia/evaluation_bench/workloads/hpc_cg/runs/20260329_225105_pythia_5req",
+    "baseline": "pythia",
+    "config": {
+      "timestamp": "20260329_225105",
+      "baseline": "pythia",
+      "prompt_mode": "original",
+      "n_requests": 5,
+      "fleet": [
+        {
+          "id": "qwen2.5-14b-gpu",
+          "model": "qwen2.5:14b",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator"
+          ],
+          "cost_rate": 0.01,
+          "latency": 2.0
+        },
+        {
+          "id": "llama3.1-8b-gpu",
+          "model": "llama3.1:8b",
+          "capabilities": [
+            "planner",
+            "review",
+            "data_discovery",
+            "reporter",
+            "literature_reviewer",
+            "experiment_designer",
+            "experiment_runner",
+            "result_analyzer"
+          ],
+          "cost_rate": 0.005,
+          "latency": 0.5
+        },
+        {
+          "id": "claude-haiku-cloud",
+          "model": "claude-haiku-4-5-20251001",
+          "capabilities": [
+            "planner",
+            "review",
+            "tester",
+            "reporter",
+            "data_discovery",
+            "result_analyzer",
+            "experiment_runner",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.02,
+          "latency": 3.0
+        },
+        {
+          "id": "claude-sonnet-cloud",
+          "model": "claude-sonnet-4-6",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator",
+            "planner",
+            "review",
+            "literature_reviewer",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.08,
+          "latency": 4.0
+        },
+        {
+          "id": "claude-opus-cloud",
+          "model": "claude-opus-4-6",
+          "capabilities": [
+            "code_gen",
+            "analyst",
+            "code_generator",
+            "literature_reviewer"
+          ],
+          "cost_rate": 0.15,
+          "latency": 5.0
+        }
+      ],
+      "solver": {
+        "type": "LLMAgentSelector",
+        "model": "claude-sonnet-4-6",
+        "provider": "claude"
+      },
+      "speculator": {
+        "type": "DispatchCache + BayesianConfidence"
+      },
+      "learner": {
+        "type": "Bayesian Contextual Bandit",
+        "window_size": 50,
+        "n1": 2,
+        "n2": 6
+      },
+      "thresholds": {
+        "tau_2": 0.5,
+        "tau_3": 0.8
+      },
+      "reconciliation": {
+        "L_saved": 1.0,
+        "C_redirect": 0.3,
+        "C_flush": 0.5,
+        "C_spec": 0.1
+      }
+    },
+    "total_interactions": 5,
+    "mean_dispatch_latency_ms": 26715.709052599956,
+    "mean_solver_ms": 26715.709052599956,
+    "mean_speculator_ms": 7233.80838840002,
+    "mean_speedup": 784439.9755494873,
+    "mean_pipeline_s": 285.5690637706,
+    "verdicts": {
+      "PARTIAL": 5
+    },
+    "hit_rate": 1.0,
+    "mode_distribution": {
+      "1": 3,
+      "2": 2
+    },
+    "N_conv": 3,
+    "total_tokens": 15601,
+    "total_cost": 290.0,
+    "net_benefit": 3.9166666666666665,
+    "wasted_compute_ratio_W": 0.20000000000000004,
+    "mean_salvage_ratio": 0.8333333333333334,
+    "phase_at_end": "early_learning",
+    "confidence_at_end": 0.8571428571428571
+  },
+  "events": [
+    {
+      "interaction": 1,
+      "request_id": "omp_13_geometry_closest_pair_2d",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4195833333333333,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 36168.921867,
+      "solver_agents": [
+        "code_gen",
+        "tester"
+      ],
+      "solver_time_ms": 19580.443504999977,
+      "verdict": "PARTIAL",
+      "reward": 0.5666666666666667,
+      "salvage_ratio": 0.6666666666666666,
+      "wasted_compute": 0.1,
+      "redirect_cost": 0.3,
+      "pipeline_time_s": 147.64140573100002,
+      "pipeline_tokens": 1728,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.6666666666666666,
+      "speedup": 0.5413609943088984,
+      "agent_costs": {
+        "code_gen": 40.0,
+        "tester": 15.0
+      }
+    },
+    {
+      "interaction": 2,
+      "request_id": "mpi+omp_13_geometry_closest_pair_2d",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4745098039215686,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.027170999999270862,
+      "solver_agents": [
+        "planner",
+        "code_gen",
+        "tester"
+      ],
+      "solver_time_ms": 30437.41126399999,
+      "verdict": "PARTIAL",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 284.27765874899995,
+      "pipeline_tokens": 3170,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.75,
+      "speedup": 1120216.8217885534,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0,
+        "tester": 15.0
+      }
+    },
+    {
+      "interaction": 3,
+      "request_id": "mpi_13_geometry_closest_pair_2d",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4706185567010309,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.026730000058705627,
+      "solver_agents": [
+        "planner",
+        "code_gen",
+        "tester",
+        "review"
+      ],
+      "solver_time_ms": 34130.04056099999,
+      "verdict": "PARTIAL",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 367.89016746999994,
+      "pipeline_tokens": 4094,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.8,
+      "speedup": 1276844.0136940537,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0,
+        "tester": 15.0,
+        "review": 10.0
+      }
+    },
+    {
+      "interaction": 4,
+      "request_id": "omp_11_geometry_convex_hull_perimeter",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.42440476190476184,
+      "speculator_mode": 2,
+      "speculator_confidence": 0.75,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.03597700015234295,
+      "solver_agents": [
+        "planner",
+        "code_gen"
+      ],
+      "solver_time_ms": 21013.821195999983,
+      "verdict": "PARTIAL",
+      "reward": 0.35,
+      "salvage_ratio": 0.5,
+      "wasted_compute": 0.2,
+      "redirect_cost": 0.6,
+      "pipeline_time_s": 141.64477388700016,
+      "pipeline_tokens": 1585,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.8333333333333334,
+      "speedup": 584090.4218533486,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 5,
+      "request_id": "mpi+omp_11_geometry_convex_hull_perimeter",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4725225225225226,
+      "speculator_mode": 2,
+      "speculator_confidence": 0.75,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.03019699988726643,
+      "solver_agents": [
+        "planner",
+        "code_gen",
+        "tester",
+        "review"
+      ],
+      "solver_time_ms": 28416.828736999832,
+      "verdict": "PARTIAL",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 486.3913130159999,
+      "pipeline_tokens": 5024,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.8571428571428571,
+      "speedup": 941048.0790504866,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0,
+        "tester": 15.0,
+        "review": 10.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,323 @@
+{
+  "summary": {
+    "run_dir": "/home/shazzadul/Illinois_Tech/Spring26/RA/Pythia/pythia/evaluation_bench/workloads/rwa/runs/20260330_013459_ns_5req",
+    "baseline": "ns",
+    "config": {
+      "timestamp": "20260330_013459",
+      "baseline": "ns",
+      "prompt_mode": "original",
+      "n_requests": 5,
+      "fleet": [
+        {
+          "id": "qwen2.5-14b-gpu",
+          "model": "qwen2.5:14b",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator"
+          ],
+          "cost_rate": 0.01,
+          "latency": 2.0
+        },
+        {
+          "id": "llama3.1-8b-gpu",
+          "model": "llama3.1:8b",
+          "capabilities": [
+            "planner",
+            "review",
+            "data_discovery",
+            "reporter",
+            "literature_reviewer",
+            "experiment_designer",
+            "experiment_runner",
+            "result_analyzer"
+          ],
+          "cost_rate": 0.005,
+          "latency": 0.5
+        },
+        {
+          "id": "claude-haiku-cloud",
+          "model": "claude-haiku-4-5-20251001",
+          "capabilities": [
+            "planner",
+            "review",
+            "tester",
+            "reporter",
+            "data_discovery",
+            "result_analyzer",
+            "experiment_runner",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.02,
+          "latency": 3.0
+        },
+        {
+          "id": "claude-sonnet-cloud",
+          "model": "claude-sonnet-4-6",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator",
+            "planner",
+            "review",
+            "literature_reviewer",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.08,
+          "latency": 4.0
+        },
+        {
+          "id": "claude-opus-cloud",
+          "model": "claude-opus-4-6",
+          "capabilities": [
+            "code_gen",
+            "analyst",
+            "code_generator",
+            "literature_reviewer"
+          ],
+          "cost_rate": 0.15,
+          "latency": 5.0
+        }
+      ],
+      "solver": {
+        "type": "LLMAgentSelector",
+        "model": "claude-sonnet-4-6",
+        "provider": "claude"
+      },
+      "speculator": {
+        "type": "disabled"
+      },
+      "learner": {
+        "type": "disabled",
+        "window_size": 50,
+        "n1": 2,
+        "n2": 6
+      },
+      "thresholds": {
+        "tau_2": 0.5,
+        "tau_3": 0.8
+      },
+      "reconciliation": {
+        "L_saved": 1.0,
+        "C_redirect": 0.3,
+        "C_flush": 0.5,
+        "C_spec": 0.1
+      }
+    },
+    "total_interactions": 5,
+    "mean_dispatch_latency_ms": 41717.20415460004,
+    "mean_solver_ms": 41717.20415460004,
+    "mean_speculator_ms": 0.0,
+    "mean_speedup": 0.0,
+    "mean_pipeline_s": 316.52190041680007,
+    "verdicts": {
+      "NONE": 5
+    },
+    "hit_rate": 0.0,
+    "mode_distribution": {
+      "0": 5
+    },
+    "N_conv": 5,
+    "total_tokens": 20404,
+    "total_cost": 375.0,
+    "net_benefit": 0.0,
+    "wasted_compute_ratio_W": 0.0,
+    "mean_salvage_ratio": 0.0,
+    "phase_at_end": "cold_start",
+    "confidence_at_end": 0.0
+  },
+  "events": [
+    {
+      "interaction": 1,
+      "request_id": "rwa_adaptive-pruning",
+      "baseline": "ns",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.3369642857142857,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ],
+      "solver_time_ms": 33590.7569459996,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 310.16058457599866,
+      "pipeline_tokens": 4510,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "literature_reviewer": 5.0,
+        "experiment_designer": 7.5,
+        "code_generator": 40.0,
+        "experiment_runner": 15.0,
+        "result_analyzer": 2.5
+      }
+    },
+    {
+      "interaction": 2,
+      "request_id": "rwa_all-in-one",
+      "baseline": "ns",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.43371376811594203,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "code_gen"
+      ],
+      "solver_time_ms": 56092.04614100054,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 327.7501712230005,
+      "pipeline_tokens": 3467,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "literature_reviewer": 5.0,
+        "experiment_designer": 7.5,
+        "code_generator": 40.0,
+        "code_gen": 35.0
+      }
+    },
+    {
+      "interaction": 3,
+      "request_id": "rwa_bam",
+      "baseline": "ns",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.46719155844155846,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "tester",
+        "experiment_runner"
+      ],
+      "solver_time_ms": 50520.785765000255,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 395.7894010270011,
+      "pipeline_tokens": 4364,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "literature_reviewer": 5.0,
+        "experiment_designer": 7.5,
+        "code_generator": 40.0,
+        "tester": 15.0,
+        "experiment_runner": 10.0
+      }
+    },
+    {
+      "interaction": 4,
+      "request_id": "rwa_bbox",
+      "baseline": "ns",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.3317424242424243,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ],
+      "solver_time_ms": 32466.38015499957,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 259.5357102350008,
+      "pipeline_tokens": 3840,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "literature_reviewer": 5.0,
+        "experiment_designer": 7.5,
+        "code_generator": 40.0,
+        "experiment_runner": 15.0,
+        "result_analyzer": 2.5
+      }
+    },
+    {
+      "interaction": 5,
+      "request_id": "rwa_bridging-data-gaps",
+      "baseline": "ns",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.38798076923076924,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "literature_reviewer",
+        "code_generator",
+        "experiment_designer",
+        "experiment_runner",
+        "result_analyzer"
+      ],
+      "solver_time_ms": 35916.05176600024,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 289.3736350229992,
+      "pipeline_tokens": 4223,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "literature_reviewer": 5.0,
+        "code_generator": 40.0,
+        "experiment_designer": 7.5,
+        "experiment_runner": 15.0,
+        "result_analyzer": 2.5
+      }
+    }
+  ]
+}

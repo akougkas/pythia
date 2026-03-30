@@ -1,0 +1,47 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "research_workflow:0.3:['data', 'ml', 'research']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.5,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:research_workflow",
+        "domain:data",
+        "domain:ml",
+        "domain:research"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "experiment_designer": "Design experiments to replicate the 5 major phases of the paper 'APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference', considering the available pre-trained models, datasets, and metrics.",
+      "code_generator": "Generate implementation code for the baselines and any additional components required for the experiment, considering the setup of LoRA.",
+      "tester": "Generate test cases to validate the implementation of the baselines and any additional components, ensuring that they meet the required metrics."
+    }
+  },
+  "time_ms": 49458.40397599932
+}

@@ -1,0 +1,61 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "research_workflow:0.3:['data', 'ml', 'research']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.5,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "experiment_runner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 3000
+      },
+      {
+        "agent": "result_analyzer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:research_workflow",
+        "domain:data",
+        "domain:ml",
+        "domain:research"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "literature_reviewer": "Carefully read and extract the key technical details from 'APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference'. Focus on: (1) the adaptive pruning criterion \u2014 how importance scores are computed for attention heads and FFN neurons, (2) the joint pruning-and-tuning schedule (e.g., warmup, sparsity ramp-up), (3) the LoRA integration strategy used during pruning, (4) evaluation benchmarks (GLUE, SQuAD, or similar) and reported efficiency metrics (FLOPs, latency, parameter count), and (5) any ablation configurations described. Output a structured summary with one section per contribution, noting any implementation ambiguities or hyperparameter ranges that must be resolved before coding.",
+      "experiment_designer": "Design a full replication experiment plan for APT given that the following are already in place: pre-trained models (e.g., BERT/RoBERTa), datasets, evaluation metrics, LoRA configuration, and baseline implementations. Your plan must specify: (1) which model\u2013dataset\u2013sparsity-level combinations to replicate (prioritize the main results table), (2) the exact hyperparameter grid to sweep (pruning rate schedule, LoRA rank, learning rate, warmup steps), (3) which baseline comparisons to run in parallel with APT, (4) hardware/compute assumptions and estimated wall-clock time per run, and (5) a phased execution order (e.g., small-scale sanity checks before full runs). Output a structured experiment manifest with named experiment IDs, configurations, and success criteria (target metric ranges from the paper).",
+      "code_generator": "Implement the APT (Adaptive Pruning and Tuning) method as described in the literature review summary and experiment design manifest. Build on the existing LoRA setup and baseline code already in place. Required components: (1) Importance score computation module \u2014 implement the paper's criterion for scoring attention heads and FFN neurons (e.g., gradient-based or magnitude-based with moving average), (2) Adaptive pruning scheduler \u2014 a training callback that ramps sparsity according to the paper's schedule and prunes at specified steps, (3) Joint pruning + LoRA tuning training loop \u2014 integrate the pruning scheduler with the LoRA fine-tuning loop so both run simultaneously, (4) Structured sparsity masks \u2014 ensure pruned units are properly zeroed/removed for inference speedup measurement, (5) Evaluation harness \u2014 hooks to measure FLOPs, parameter count, and task metrics at each checkpoint. Write modular, well-commented code. Include configuration via a YAML/argparse interface matching the experiment manifest's hyperparameter fields.",
+      "experiment_runner": "Run all experiments defined in the experiment design manifest using the implemented APT code. Execution protocol: (1) First run a fast sanity-check experiment (1\u20132 epochs, small sparsity) to verify the training loop, pruning scheduler, and metric logging work correctly \u2014 fix any runtime errors before full runs, (2) Execute all experiment IDs from the manifest in the specified phased order, logging training loss, sparsity achieved, and validation metrics at each checkpoint, (3) Run baseline comparisons (already implemented) on the same configurations for fair comparison, (4) Save all checkpoints, logs, and metric curves to structured output directories keyed by experiment ID, (5) Flag any runs that fail to converge or produce anomalous metrics. Output a results ledger mapping each experiment ID to its final metrics (accuracy/F1, FLOPs reduction, parameter count, wall-clock time).",
+      "result_analyzer": "Analyze the results ledger from the experiment runner and score the quality of the APT replication. Tasks: (1) Build a comparison table: for each experiment, show the paper's reported metric vs. the replicated metric, compute absolute and relative deviation, and flag results outside a \u00b12% tolerance as 'divergent', (2) Diagnose divergent results \u2014 check if deviations correlate with specific hyperparameter choices, sparsity levels, or dataset splits, and hypothesize causes (e.g., missing warmup, different random seed protocol, dataset preprocessing difference), (3) Assess efficiency claims \u2014 verify that the FLOPs and parameter reduction numbers match the paper's reported speedup/compression ratios, (4) Summarize which of the paper's main claims are: fully replicated, partially replicated, or not replicated, with evidence, (5) Recommend any corrective parameter adjustments for a second-pass re-run if needed. Output a structured fidelity report with a top-line replication score (0\u2013100)."
+    }
+  },
+  "time_ms": 0.01765100023476407
+}

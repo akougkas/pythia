@@ -1,0 +1,314 @@
+{
+  "summary": {
+    "run_dir": "/home/shazzadul/Illinois_Tech/Spring26/RA/Pythia/pythia/evaluation_bench/workloads/sdp/runs/20260330_043348_oracle_5req",
+    "baseline": "oracle",
+    "config": {
+      "timestamp": "20260330_043348",
+      "baseline": "oracle",
+      "prompt_mode": "original",
+      "n_requests": 5,
+      "fleet": [
+        {
+          "id": "qwen2.5-14b-gpu",
+          "model": "qwen2.5:14b",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator"
+          ],
+          "cost_rate": 0.01,
+          "latency": 2.0
+        },
+        {
+          "id": "llama3.1-8b-gpu",
+          "model": "llama3.1:8b",
+          "capabilities": [
+            "planner",
+            "review",
+            "data_discovery",
+            "reporter",
+            "literature_reviewer",
+            "experiment_designer",
+            "experiment_runner",
+            "result_analyzer"
+          ],
+          "cost_rate": 0.005,
+          "latency": 0.5
+        },
+        {
+          "id": "claude-haiku-cloud",
+          "model": "claude-haiku-4-5-20251001",
+          "capabilities": [
+            "planner",
+            "review",
+            "tester",
+            "reporter",
+            "data_discovery",
+            "result_analyzer",
+            "experiment_runner",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.02,
+          "latency": 3.0
+        },
+        {
+          "id": "claude-sonnet-cloud",
+          "model": "claude-sonnet-4-6",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator",
+            "planner",
+            "review",
+            "literature_reviewer",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.08,
+          "latency": 4.0
+        },
+        {
+          "id": "claude-opus-cloud",
+          "model": "claude-opus-4-6",
+          "capabilities": [
+            "code_gen",
+            "analyst",
+            "code_generator",
+            "literature_reviewer"
+          ],
+          "cost_rate": 0.15,
+          "latency": 5.0
+        }
+      ],
+      "solver": {
+        "type": "LLMAgentSelector",
+        "model": "claude-sonnet-4-6",
+        "provider": "claude"
+      },
+      "speculator": {
+        "type": "oracle"
+      },
+      "learner": {
+        "type": "Bayesian Contextual Bandit",
+        "window_size": 50,
+        "n1": 2,
+        "n2": 6
+      },
+      "thresholds": {
+        "tau_2": 0.5,
+        "tau_3": 0.8
+      },
+      "reconciliation": {
+        "L_saved": 1.0,
+        "C_redirect": 0.3,
+        "C_flush": 0.5,
+        "C_spec": 0.1
+      }
+    },
+    "total_interactions": 5,
+    "mean_dispatch_latency_ms": 23625.725273800344,
+    "mean_solver_ms": 23625.725273800344,
+    "mean_speculator_ms": 53783.689395400135,
+    "mean_speedup": 0.441526869723574,
+    "mean_pipeline_s": 212.63224095479964,
+    "verdicts": {
+      "COMMIT": 5
+    },
+    "hit_rate": 1.0,
+    "mode_distribution": {
+      "3": 5
+    },
+    "N_conv": 3,
+    "total_tokens": 14084,
+    "total_cost": 292.5,
+    "net_benefit": 5.0,
+    "wasted_compute_ratio_W": 0.0,
+    "mean_salvage_ratio": 1.0,
+    "phase_at_end": "cold_start",
+    "confidence_at_end": 0.0
+  },
+  "events": [
+    {
+      "interaction": 1,
+      "request_id": "wildfire-easy-1",
+      "baseline": "oracle",
+      "intent_task_type": "data_pipeline",
+      "intent_complexity": 0.3875,
+      "speculator_mode": 3,
+      "speculator_confidence": 1.0,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 54080.578303997754,
+      "solver_agents": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ],
+      "solver_time_ms": 23283.619359001023,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 262.1222008529985,
+      "pipeline_tokens": 3373,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0.430535694868482,
+      "agent_costs": {
+        "data_discovery": 2.5,
+        "data_wrangler": 20.0,
+        "analyst": 30.0,
+        "reporter": 7.5
+      }
+    },
+    {
+      "interaction": 2,
+      "request_id": "wildfire-easy-2",
+      "baseline": "oracle",
+      "intent_task_type": "data_pipeline",
+      "intent_complexity": 0.33112804878048785,
+      "speculator_mode": 3,
+      "speculator_confidence": 1.0,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 49400.03289699962,
+      "solver_agents": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst"
+      ],
+      "solver_time_ms": 21981.732382999326,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 152.73270227399917,
+      "pipeline_tokens": 1982,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0.4449740434147447,
+      "agent_costs": {
+        "data_discovery": 2.5,
+        "data_wrangler": 20.0,
+        "analyst": 30.0
+      }
+    },
+    {
+      "interaction": 3,
+      "request_id": "wildfire-easy-3",
+      "baseline": "oracle",
+      "intent_task_type": "data_pipeline",
+      "intent_complexity": 0.3314423076923077,
+      "speculator_mode": 3,
+      "speculator_confidence": 1.0,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 60183.403479000845,
+      "solver_agents": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ],
+      "solver_time_ms": 26398.476960999687,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 198.88278211500074,
+      "pipeline_tokens": 2735,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0.4386338331664913,
+      "agent_costs": {
+        "data_discovery": 2.5,
+        "data_wrangler": 20.0,
+        "analyst": 30.0,
+        "reporter": 7.5
+      }
+    },
+    {
+      "interaction": 4,
+      "request_id": "wildfire-hard-4",
+      "baseline": "oracle",
+      "intent_task_type": "data_pipeline",
+      "intent_complexity": 0.3821683673469388,
+      "speculator_mode": 3,
+      "speculator_confidence": 1.0,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 48308.91965000046,
+      "solver_agents": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ],
+      "solver_time_ms": 24698.12823400207,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 215.9321930949991,
+      "pipeline_tokens": 2922,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0.511253996424278,
+      "agent_costs": {
+        "data_discovery": 2.5,
+        "data_wrangler": 20.0,
+        "analyst": 30.0,
+        "reporter": 7.5
+      }
+    },
+    {
+      "interaction": 5,
+      "request_id": "wildfire-hard-5",
+      "baseline": "oracle",
+      "intent_task_type": "data_pipeline",
+      "intent_complexity": 0.38684782608695656,
+      "speculator_mode": 3,
+      "speculator_confidence": 1.0,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 56945.51264700203,
+      "solver_agents": [
+        "data_discovery",
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ],
+      "solver_time_ms": 21766.669431999617,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 233.49132643700068,
+      "pipeline_tokens": 3072,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0.38223678074387396,
+      "agent_costs": {
+        "data_discovery": 2.5,
+        "data_wrangler": 20.0,
+        "analyst": 30.0,
+        "reporter": 7.5
+      }
+    }
+  ]
+}

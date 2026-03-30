@@ -1,0 +1,52 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "hpc_code_gen:0.5:['hpc', 'mpi', 'openmp']"
+  },
+  "output": {
+    "mode": 2,
+    "confidence": 0.75,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:hpc_code_gen",
+        "domain:hpc",
+        "domain:mpi",
+        "domain:openmp"
+      ],
+      "agents_provisioned": [
+        "planner",
+        "code_gen"
+      ],
+      "fleet_reservations": [
+        [
+          "planner",
+          "llama3.1-8b-gpu"
+        ],
+        [
+          "code_gen",
+          "qwen2.5-14b-gpu"
+        ]
+      ]
+    },
+    "draft_prompts": {
+      "planner": "You are planning the implementation of `convexHullPerimeter` in C++ with OpenMP. The function takes a `std::vector<Point>` and returns the perimeter of the convex hull as a `double`. Analyze the following and produce a concise algorithm plan:\n1. Choose an appropriate convex hull algorithm (e.g. Graham scan, Andrew's monotone chain, Jarvis march) \u2014 justify which is most amenable to OpenMP parallelism.\n2. Identify which steps can be parallelized with OpenMP (e.g. finding min/max points via `#pragma omp parallel for reduction`, distance accumulation) vs. which must remain sequential (hull construction ordering).\n3. Note any race conditions or shared-state issues to avoid.\n4. Specify how the final perimeter summation over hull edges should be done (sequential loop or parallel reduction).\nOutput a bullet-point plan (no code), referencing specific OpenMP directives to use at each step.",
+      "code_gen": "Implement the C++ function `convexHullPerimeter` using the algorithm plan provided by the planner. Requirements:\n- Signature: `double convexHullPerimeter(std::vector<Point> const& points)`\n- Use `#include <omp.h>`, `#include <cmath>`, `#include <vector>`, `#include <algorithm>` as needed\n- The `Point` struct and `distance()` function are already defined as:\n  cpp\n  struct Point { double x, y; };\n  double distance(Point const& p1, Point const& p2) { return std::sqrt(std::pow(p2.x-p1.x,2)+std::pow(p2.y-p1.y,2)); }\n  \n- Use Andrew's Monotone Chain algorithm (O(n log n)) as the hull construction method \u2014 it is cache-friendly and its pre-sort + linear scan structure isolates the parallelizable portions cleanly\n- Parallelize ONLY safe stages with OpenMP: use `#pragma omp parallel for reduction(min:...) reduction(max:...)` for finding bounding extremes if used, and consider a parallel sort hint; keep the hull-building linear scan sequential to preserve ordering correctness\n- After hull construction, compute the perimeter by summing `distance(hull[i], hull[(i+1)%hull.size()])` \u2014 this summation loop may use `#pragma omp parallel for reduction(+:perimeter)`\n- Handle edge cases: fewer than 3 points (return 0.0 or segment length), collinear points\n- Verify mentally against the provided example: input `[{0,3},{1,1},{2,2},{4,4},{0,0},{1,2},{3,1},{3,3}]` \u2192 expected output `13.4477`\n- Return only the completed function body (and any necessary helper lambdas inline), no main(), no test harness"
+    }
+  },
+  "time_ms": 0.03019699988726643
+}

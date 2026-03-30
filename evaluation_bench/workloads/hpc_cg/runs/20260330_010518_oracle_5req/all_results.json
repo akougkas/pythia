@@ -1,0 +1,305 @@
+{
+  "summary": {
+    "run_dir": "/home/shazzadul/Illinois_Tech/Spring26/RA/Pythia/pythia/evaluation_bench/workloads/hpc_cg/runs/20260330_010518_oracle_5req",
+    "baseline": "oracle",
+    "config": {
+      "timestamp": "20260330_010518",
+      "baseline": "oracle",
+      "prompt_mode": "original",
+      "n_requests": 5,
+      "fleet": [
+        {
+          "id": "qwen2.5-14b-gpu",
+          "model": "qwen2.5:14b",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator"
+          ],
+          "cost_rate": 0.01,
+          "latency": 2.0
+        },
+        {
+          "id": "llama3.1-8b-gpu",
+          "model": "llama3.1:8b",
+          "capabilities": [
+            "planner",
+            "review",
+            "data_discovery",
+            "reporter",
+            "literature_reviewer",
+            "experiment_designer",
+            "experiment_runner",
+            "result_analyzer"
+          ],
+          "cost_rate": 0.005,
+          "latency": 0.5
+        },
+        {
+          "id": "claude-haiku-cloud",
+          "model": "claude-haiku-4-5-20251001",
+          "capabilities": [
+            "planner",
+            "review",
+            "tester",
+            "reporter",
+            "data_discovery",
+            "result_analyzer",
+            "experiment_runner",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.02,
+          "latency": 3.0
+        },
+        {
+          "id": "claude-sonnet-cloud",
+          "model": "claude-sonnet-4-6",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator",
+            "planner",
+            "review",
+            "literature_reviewer",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.08,
+          "latency": 4.0
+        },
+        {
+          "id": "claude-opus-cloud",
+          "model": "claude-opus-4-6",
+          "capabilities": [
+            "code_gen",
+            "analyst",
+            "code_generator",
+            "literature_reviewer"
+          ],
+          "cost_rate": 0.15,
+          "latency": 5.0
+        }
+      ],
+      "solver": {
+        "type": "LLMAgentSelector",
+        "model": "claude-sonnet-4-6",
+        "provider": "claude"
+      },
+      "speculator": {
+        "type": "oracle"
+      },
+      "learner": {
+        "type": "Bayesian Contextual Bandit",
+        "window_size": 50,
+        "n1": 2,
+        "n2": 6
+      },
+      "thresholds": {
+        "tau_2": 0.5,
+        "tau_3": 0.8
+      },
+      "reconciliation": {
+        "L_saved": 1.0,
+        "C_redirect": 0.3,
+        "C_flush": 0.5,
+        "C_spec": 0.1
+      }
+    },
+    "total_interactions": 5,
+    "mean_dispatch_latency_ms": 60387.59728260047,
+    "mean_solver_ms": 60387.59728260047,
+    "mean_speculator_ms": 47674.044768200474,
+    "mean_speedup": 1.331956719074055,
+    "mean_pipeline_s": 248.11747267840002,
+    "verdicts": {
+      "COMMIT": 5
+    },
+    "hit_rate": 1.0,
+    "mode_distribution": {
+      "3": 5
+    },
+    "N_conv": 3,
+    "total_tokens": 14150,
+    "total_cost": 285.0,
+    "net_benefit": 5.0,
+    "wasted_compute_ratio_W": 0.0,
+    "mean_salvage_ratio": 1.0,
+    "phase_at_end": "cold_start",
+    "confidence_at_end": 0.0
+  },
+  "events": [
+    {
+      "interaction": 1,
+      "request_id": "omp_13_geometry_closest_pair_2d",
+      "baseline": "oracle",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4195833333333333,
+      "speculator_mode": 3,
+      "speculator_confidence": 1.0,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 19388.206376001108,
+      "solver_agents": [
+        "code_gen",
+        "tester"
+      ],
+      "solver_time_ms": 22526.159119999647,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 180.3244126869995,
+      "pipeline_tokens": 1778,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 1.1618485322026861,
+      "agent_costs": {
+        "code_gen": 40.0,
+        "tester": 15.0
+      }
+    },
+    {
+      "interaction": 2,
+      "request_id": "mpi+omp_13_geometry_closest_pair_2d",
+      "baseline": "oracle",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4745098039215686,
+      "speculator_mode": 3,
+      "speculator_confidence": 1.0,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 49636.51250900148,
+      "solver_agents": [
+        "planner",
+        "code_gen",
+        "review"
+      ],
+      "solver_time_ms": 22771.34890799971,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 211.37181491299998,
+      "pipeline_tokens": 2657,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0.4587620635891809,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0,
+        "review": 10.0
+      }
+    },
+    {
+      "interaction": 3,
+      "request_id": "mpi_13_geometry_closest_pair_2d",
+      "baseline": "oracle",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4706185567010309,
+      "speculator_mode": 3,
+      "speculator_confidence": 1.0,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 48014.98381999954,
+      "solver_agents": [
+        "planner",
+        "code_gen",
+        "review"
+      ],
+      "solver_time_ms": 185594.04895400075,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 175.34984826599975,
+      "pipeline_tokens": 2444,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 3.8653360719595993,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0,
+        "review": 10.0
+      }
+    },
+    {
+      "interaction": 4,
+      "request_id": "omp_11_geometry_convex_hull_perimeter",
+      "baseline": "oracle",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.42440476190476184,
+      "speculator_mode": 3,
+      "speculator_confidence": 1.0,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 59589.41216899984,
+      "solver_agents": [
+        "planner",
+        "code_gen",
+        "tester",
+        "review"
+      ],
+      "solver_time_ms": 39535.17669200119,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 377.45112211800006,
+      "pipeline_tokens": 4189,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0.6634597532171754,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0,
+        "tester": 15.0,
+        "review": 10.0
+      }
+    },
+    {
+      "interaction": 5,
+      "request_id": "mpi+omp_11_geometry_convex_hull_perimeter",
+      "baseline": "oracle",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4725225225225226,
+      "speculator_mode": 3,
+      "speculator_confidence": 1.0,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 61741.1089670004,
+      "solver_agents": [
+        "planner",
+        "code_gen",
+        "tester"
+      ],
+      "solver_time_ms": 31511.252739001065,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 296.09016540800076,
+      "pipeline_tokens": 3082,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0.5103771744016342,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0,
+        "tester": 15.0
+      }
+    }
+  ]
+}

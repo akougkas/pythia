@@ -1,0 +1,57 @@
+{
+  "layer": "5_learner",
+  "input": {
+    "verdict": "PARTIAL",
+    "reward": 0.48,
+    "salvage_ratio": 0.6
+  },
+  "state_update": {
+    "phase": "early_learning",
+    "total_interactions": 5,
+    "unique_intent_keys": 2,
+    "mean_confidence": 0.65,
+    "mode_regressions": 1,
+    "active_drift_keys": [
+      "research_workflow:med:ml"
+    ]
+  },
+  "convergence": {
+    "total_interactions": 5,
+    "phase": "early_learning",
+    "n_unique_keys": 2,
+    "per_key": {
+      "research_workflow:med:data": {
+        "observations": 3,
+        "confidence": 0.8,
+        "ci_90": [
+          0.5313726248747781,
+          1.0
+        ],
+        "ema_accuracy": 1.0,
+        "drifting": false,
+        "regret": 0.5999999999999999
+      },
+      "research_workflow:med:ml": {
+        "observations": 2,
+        "confidence": 0.5,
+        "ci_90": [
+          0.13216681770128458,
+          0.8678331822987154
+        ],
+        "ema_accuracy": 0.1,
+        "drifting": true,
+        "regret": 1.0
+      }
+    },
+    "total_regret": 1.5999999999999999,
+    "mean_regret_per_interaction": 0.31999999999999995
+  },
+  "fingerprint_summary": {
+    "fill_ratio": 0.1,
+    "overall_hit_rate": 0.8,
+    "mean_reward": 0.336,
+    "mean_confidence": 0.3,
+    "unique_intents": 0.4,
+    "mode3_fraction": 0.0
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "hpc_code_gen",
+      "complexity": 0.42440476190476184,
+      "domain_tags": [
+        "hpc",
+        "openmp"
+      ],
+      "decomposability": 0.35,
+      "constraints": {}
+    },
+    "request_text_preview": "#include <omp.h>\n\nstruct Point {\n\tdouble x, y;\n};\n\ndouble distance(Point const& p1, Point const& p2) {\n\treturn std::sqrt(std::pow(p2.x-p1.x, 2) + std::pow(p2.y-p1.y, 2));\n}\n\n/* Return the perimeter of the smallest convex polygon that contains all the points in the vector points.\n   Use OpenMP to com"
+  },
+  "method": "rule-based agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500,
+        "order": 0
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 1
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500,
+        "order": 2
+      },
+      {
+        "agent": "review",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 2000,
+        "order": 3
+      }
+    ],
+    "execution_order": [
+      [
+        "planner"
+      ],
+      [
+        "code_gen"
+      ],
+      [
+        "tester"
+      ],
+      [
+        "review"
+      ]
+    ],
+    "total_budget": 8000,
+    "estimated_latency": 5.0
+  },
+  "time_ms": 0.1318280001214589,
+  "llm_call_time_ms": 0.0,
+  "assignment_time_ms": 0.1318280001214589,
+  "llm_reasoning": "",
+  "llm_parsed_agents": [],
+  "llm_agent_details": [],
+  "llm_agent_prompts": {}
+}

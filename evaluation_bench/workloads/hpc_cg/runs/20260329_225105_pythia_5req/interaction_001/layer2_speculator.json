@@ -1,0 +1,46 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "hpc_code_gen:0.4:['hpc', 'openmp']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:hpc_code_gen",
+        "domain:hpc",
+        "domain:openmp"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "Write a detailed plan to parallelize the closestPair function using OpenMP. Identify potential bottlenecks and suggest optimizations.",
+      "code_gen": "Implement the parallelized closestPair function using OpenMP. Ensure that the code is efficient, readable, and follows best practices.",
+      "tester": "Write test cases to verify the correctness of the parallelized closestPair function. Use the provided example input and ensure that the output matches the expected result."
+    }
+  },
+  "time_ms": 36168.921867
+}

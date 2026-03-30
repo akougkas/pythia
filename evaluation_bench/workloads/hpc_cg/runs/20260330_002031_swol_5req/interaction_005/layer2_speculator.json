@@ -1,0 +1,47 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "hpc_code_gen:0.5:['hpc', 'mpi', 'openmp']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.5,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:hpc_code_gen",
+        "domain:hpc",
+        "domain:mpi",
+        "domain:openmp"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "You are designing the implementation strategy for a C++ function `double convexHullPerimeter(std::vector<Point> const& points)` that uses OpenMP. The function must return the perimeter of the convex hull of the input points.\n\n1. Choose the best convex hull algorithm for parallel execution (consider Andrew's Monotone Chain, Graham Scan, Jarvis March). Justify your choice based on parallelizability and correctness guarantees.\n2. Identify which phases of the algorithm can be parallelized with OpenMP (e.g., sorting, distance computation, partial hull construction).\n3. Note any race conditions or critical sections to avoid.\n4. Specify the perimeter computation step (sum of Euclidean distances between consecutive hull vertices, wrapping around).\n5. Confirm expected output for the example: points = [{0,3},{1,1},{2,2},{4,4},{0,0},{1,2},{3,1},{3,3}] \u2192 13.4477.\n\nOutput a concise algorithm plan with pseudocode and annotated parallelism opportunities.",
+      "code_gen": "Implement the following C++ function using the algorithm plan provided by the planner:\n\ncpp\n#include <omp.h>\n#include <vector>\n#include <cmath>\n\nstruct Point { double x, y; };\n\ndouble distance(Point const& p1, Point const& p2) {\n    return std::sqrt(std::pow(p2.x - p1.x, 2) + std::pow(p2.y - p1.y, 2));\n}\n\ndouble convexHullPerimeter(std::vector<Point> const& points);\n\n\nRequirements:\n- Use Andrew's Monotone Chain (or the algorithm selected by the planner) for correctness.\n- Use `#pragma omp parallel for` where appropriate (e.g., parallel sort via `std::sort` with OpenMP-assisted merge, or parallel perimeter summation using `reduction`).\n- The perimeter computation MUST use `omp parallel for reduction(+:perimeter)` over hull edges.\n- Handle edge cases: fewer than 3 points (return 0.0 or the degenerate distance).\n- Do NOT use `std::pow` for squaring in performance-critical loops \u2014 use `dx*dx + dy*dy` instead.\n- The function must be self-contained (no global state).\n- Validate against: input [{0,3},{1,1},{2,2},{4,4},{0,0},{1,2},{3,1},{3,3}] \u2192 output \u2248 13.4477.\n\nProvide the complete function body only (no main), with inline comments explaining each OpenMP directive.",
+      "tester": "Given the implemented `convexHullPerimeter` function, write a C++ test suite (using assertions or a simple main()) that validates:\n\n1. **Canonical example**: points = [{0,3},{1,1},{2,2},{4,4},{0,0},{1,2},{3,1},{3,3}] \u2192 expected \u2248 13.4477 (tolerance 1e-3).\n2. **Degenerate cases**:\n   - Empty vector \u2192 0.0\n   - Single point \u2192 0.0\n   - Two points \u2192 0.0 (or 2*distance, depending on spec \u2014 test both behaviors)\n   - All collinear points (e.g., [{0,0},{1,0},{2,0},{3,0}]) \u2192 6.0 (back and forth)\n3. **Simple polygon**: Square [{0,0},{1,0},{1,1},{0,1}] \u2192 perimeter = 4.0\n4. **Thread safety**: Run `convexHullPerimeter` 100 times in parallel using `#pragma omp parallel for` and verify all results match the serial result (no data races).\n5. **Performance note**: Assert that with OMP_NUM_THREADS=4, a 10,000-point input completes without deadlock or incorrect result.\n\nFor each test, print PASS/FAIL with the computed vs. expected value."
+    }
+  },
+  "time_ms": 0.015459000678674784
+}

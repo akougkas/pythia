@@ -1,0 +1,101 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "hpc_code_gen",
+      "complexity": 0.4745098039215686,
+      "domain_tags": [
+        "hpc",
+        "mpi",
+        "openmp"
+      ],
+      "decomposability": 0.4,
+      "constraints": {}
+    },
+    "request_text_preview": "#include <mpi.h>\n#include <omp.h>\n\nstruct Point {\n\tdouble x, y;\n};\n\ndouble distance(Point const& p1, Point const& p2) {\n\treturn std::sqrt(std::pow(p2.x-p1.x, 2) + std::pow(p2.y-p1.y, 2));\n}\n\n/* Return the distance between the closest two points in the vector points.\n   Use MPI and OpenMP to compute "
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500,
+        "order": 0
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 1
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500,
+        "order": 2
+      }
+    ],
+    "execution_order": [
+      [
+        "planner"
+      ],
+      [
+        "code_gen"
+      ],
+      [
+        "tester"
+      ]
+    ],
+    "total_budget": 6000,
+    "estimated_latency": 4.5
+  },
+  "time_ms": 30437.41126399999,
+  "llm_call_time_ms": 30437.218119999954,
+  "assignment_time_ms": 0.19314400003713672,
+  "llm_reasoning": "This is a focused HPC code generation task: implement a parallel closest-pair algorithm in C++ using MPI + OpenMP. The complexity is medium \u2014 the algorithm itself (divide-and-conquer or brute-force with parallel reduction) requires careful thought before coding, and the result needs validation against the provided example. A planner should first decide the parallelization strategy (e.g., partition point pairs across MPI ranks, use OpenMP within each rank, then MPI_Reduce for global minimum), then code_gen implements it, and tester validates correctness and the example output. These three stages are strictly sequential.",
+  "llm_parsed_agents": [
+    "planner",
+    "code_gen",
+    "tester"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "planner",
+      "prompt": "Design a parallel closest-pair algorithm for the following C++ function signature:\n\n  double closestPair(std::vector<Point> const& points)\n\nConstraints:\n- MPI is already initialized; every rank has a full copy of `points`\n- Must use both MPI (inter-rank) and OpenMP (intra-rank) parallelism\n- Final minimum distance returned only on rank 0\n\nDecide on:\n1. How to partition work across MPI ranks (e.g., divide the O(n\u00b2) pair index space \u2014 rank r handles pairs where i % num_ranks == r, or a 2D block partition)\n2. How OpenMP threads reduce within each rank (parallel for with reduction on local min)\n3. How MPI_Reduce combines per-rank minima to rank 0\n4. Edge cases: n < 2, single rank, single thread\n\nOutput a concise algorithmic plan (pseudocode level) that the code_gen agent will implement exactly.",
+      "role": "Design the MPI+OpenMP parallel strategy for closest-pair computation",
+      "depends_on": [],
+      "estimated_tokens": 500,
+      "compute_weight": "light"
+    },
+    {
+      "name": "code_gen",
+      "prompt": "Implement the body of the following C++ function using MPI + OpenMP as specified by the planner's strategy:\n\ncpp\n#include <mpi.h>\n#include <omp.h>\n#include <vector>\n#include <cmath>\n#include <limits>\n\nstruct Point { double x, y; };\n\ndouble distance(Point const& p1, Point const& p2) {\n    return std::sqrt(std::pow(p2.x-p1.x,2) + std::pow(p2.y-p1.y,2));\n}\n\ndouble closestPair(std::vector<Point> const& points) {\n    // YOUR IMPLEMENTATION HERE\n}\n\n\nRequirements:\n- Follow the planner's partitioning and reduction strategy exactly\n- Use `#pragma omp parallel for reduction(min:local_min)` for intra-rank parallelism\n- Use `MPI_Reduce` with `MPI_DOUBLE` and `MPI_MIN` to find global minimum on rank 0\n- Initialize minimum to `std::numeric_limits<double>::max()`\n- Return the global minimum only from rank 0; other ranks may return their local minimum or 0.0\n- Handle edge case: if points.size() < 2, return 0.0\n- Do NOT call MPI_Init/MPI_Finalize\n- Expected output for [{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}] is 1.41421 (distance between {2,3} and {3,4})\n\nOutput ONLY the complete, compilable function body (no main, no extra scaffolding).",
+      "role": "Implement the closestPair function body using the planner's MPI+OpenMP strategy",
+      "depends_on": [
+        "planner"
+      ],
+      "estimated_tokens": 4000,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "tester",
+      "prompt": "Given the MPI+OpenMP closestPair implementation produced by code_gen, write a test harness and verify correctness.\n\nTest cases to cover:\n1. Provided example: [{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}] \u2192 expected 1.41421356... (\u221a2)\n2. Two points only: [{0,0},{3,4}] \u2192 expected 5.0\n3. Duplicate points: [{1,1},{1,1},{5,5}] \u2192 expected 0.0\n4. Large n stress test (n=1000 random points): result should match a serial brute-force reference\n\nFor each test:\n- Show the serial brute-force reference answer\n- Show how the parallel result should match (within 1e-9 tolerance)\n- Flag any race conditions, incorrect MPI reduction, or off-by-one errors in the pair iteration scheme\n- Confirm the implementation does NOT call MPI_Init/MPI_Finalize\n\nOutput: test harness code + pass/fail assessment for each case + any bugs found with suggested fixes.",
+      "role": "Validate the implementation against the provided example and edge cases",
+      "depends_on": [
+        "code_gen"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    }
+  ],
+  "llm_agent_prompts": {
+    "planner": "Design a parallel closest-pair algorithm for the following C++ function signature:\n\n  double closestPair(std::vector<Point> const& points)\n\nConstraints:\n- MPI is already initialized; every rank has a full copy of `points`\n- Must use both MPI (inter-rank) and OpenMP (intra-rank) parallelism\n- Final minimum distance returned only on rank 0\n\nDecide on:\n1. How to partition work across MPI ranks (e.g., divide the O(n\u00b2) pair index space \u2014 rank r handles pairs where i % num_ranks == r, or a 2D block partition)\n2. How OpenMP threads reduce within each rank (parallel for with reduction on local min)\n3. How MPI_Reduce combines per-rank minima to rank 0\n4. Edge cases: n < 2, single rank, single thread\n\nOutput a concise algorithmic plan (pseudocode level) that the code_gen agent will implement exactly.",
+    "code_gen": "Implement the body of the following C++ function using MPI + OpenMP as specified by the planner's strategy:\n\ncpp\n#include <mpi.h>\n#include <omp.h>\n#include <vector>\n#include <cmath>\n#include <limits>\n\nstruct Point { double x, y; };\n\ndouble distance(Point const& p1, Point const& p2) {\n    return std::sqrt(std::pow(p2.x-p1.x,2) + std::pow(p2.y-p1.y,2));\n}\n\ndouble closestPair(std::vector<Point> const& points) {\n    // YOUR IMPLEMENTATION HERE\n}\n\n\nRequirements:\n- Follow the planner's partitioning and reduction strategy exactly\n- Use `#pragma omp parallel for reduction(min:local_min)` for intra-rank parallelism\n- Use `MPI_Reduce` with `MPI_DOUBLE` and `MPI_MIN` to find global minimum on rank 0\n- Initialize minimum to `std::numeric_limits<double>::max()`\n- Return the global minimum only from rank 0; other ranks may return their local minimum or 0.0\n- Handle edge case: if points.size() < 2, return 0.0\n- Do NOT call MPI_Init/MPI_Finalize\n- Expected output for [{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}] is 1.41421 (distance between {2,3} and {3,4})\n\nOutput ONLY the complete, compilable function body (no main, no extra scaffolding).",
+    "tester": "Given the MPI+OpenMP closestPair implementation produced by code_gen, write a test harness and verify correctness.\n\nTest cases to cover:\n1. Provided example: [{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}] \u2192 expected 1.41421356... (\u221a2)\n2. Two points only: [{0,0},{3,4}] \u2192 expected 5.0\n3. Duplicate points: [{1,1},{1,1},{5,5}] \u2192 expected 0.0\n4. Large n stress test (n=1000 random points): result should match a serial brute-force reference\n\nFor each test:\n- Show the serial brute-force reference answer\n- Show how the parallel result should match (within 1e-9 tolerance)\n- Flag any race conditions, incorrect MPI reduction, or off-by-one errors in the pair iteration scheme\n- Confirm the implementation does NOT call MPI_Init/MPI_Finalize\n\nOutput: test harness code + pass/fail assessment for each case + any bugs found with suggested fixes."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a focused HPC code generation task: implement a parallel closest-pair algorithm in C++ using MPI + OpenMP. The complexity is medium \u2014 the algorithm itself (divide-and-conquer or brute-force with parallel reduction) requires careful thought before coding, and the result needs validation against the provided example. A planner should first decide the parallelization strategy (e.g., partition point pairs across MPI ranks, use OpenMP within each rank, then MPI_Reduce for global minimum), then code_gen implements it, and tester validates correctness and the example output. These three stages are strictly sequential.\",\n  \"agents\": [\n    {\n      \"name\": \"planner\",\n      \"role\": \"Design the MPI+OpenMP parallel strategy for closest-pair computation\",\n      \"prompt\": \"Design a parallel closest-pair algorithm for the following C++ function signature:\\n\\n  double closestPair(std::vector<Point> const& points)\\n\\nConstraints:\\n- MPI is already initialized; every rank has a full copy of `points`\\n- Must use both MPI (inter-rank) and OpenMP (intra-rank) parallelism\\n- Final minimum distance returned only on rank 0\\n\\nDecide on:\\n1. How to partition work across MPI ranks (e.g., divide the O(n\u00b2) pair index space \u2014 rank r handles pairs where i % num_ranks == r, or a 2D block partition)\\n2. How OpenMP threads reduce within each rank (parallel for with reduction on local min)\\n3. How MPI_Reduce combines per-rank minima to rank 0\\n4. Edge cases: n < 2, single rank, single thread\\n\\nOutput a concise algorithmic plan (pseudocode level) that the code_gen agent will implement exactly.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 500,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"code_gen\",\n      \"role\": \"Implement the closestPair function body using the planner's MPI+OpenMP strategy\",\n      \"prompt\": \"Implement the body of the following C++ function using MPI + OpenMP as specified by the planner's strategy:\\n\\n```cpp\\n#include <mpi.h>\\n#include <omp.h>\\n#include <vector>\\n#include <cmath>\\n#include <limits>\\n\\nstruct Point { double x, y; };\\n\\ndouble distance(Point const& p1, Point const& p2) {\\n    return std::sqrt(std::pow(p2.x-p1.x,2) + std::pow(p2.y-p1.y,2));\\n}\\n\\ndouble closestPair(std::vector<Point> const& points) {\\n    // YOUR IMPLEMENTATION HERE\\n}\\n```\\n\\nRequirements:\\n- Follow the planner's partitioning and reduction strategy exactly\\n- Use `#pragma omp parallel for reduction(min:local_min)` for intra-rank parallelism\\n- Use `MPI_Reduce` with `MPI_DOUBLE` and `MPI_MIN` to find global minimum on rank 0\\n- Initialize minimum to `std::numeric_limits<double>::max()`\\n- Return the global minimum only from rank 0; other ranks may return their local minimum or 0.0\\n- Handle edge case: if points.size() < 2, return 0.0\\n- Do NOT call MPI_Init/MPI_Finalize\\n- Expected output for [{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}] is 1.41421 (distance between {2,3} and {3,4})\\n\\nOutput ONLY the complete, compilable function body (no main, no extra scaffolding).\",\n      \"depends_on\": [\"planner\"],\n      \"estimated_tokens\": 4000,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"tester\",\n      \"role\": \"Validate the implementation against the provided example and edge cases\",\n      \"prompt\": \"Given the MPI+OpenMP closestPair implementation produced by code_gen, write a test harness and verify correctness.\\n\\nTest cases to cover:\\n1. Provided example: [{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}] \u2192 expected 1.41421356... (\u221a2)\\n2. Two points only: [{0,0},{3,4}] \u2192 expected 5.0\\n3. Duplicate points: [{1,1},{1,1},{5,5}] \u2192 expected 0.0\\n4. Large n stress test (n=1000 random points): result should match a serial brute-force reference\\n\\nFor each test:\\n- Show the serial brute-force reference answer\\n- Show how the parallel result should match (within 1e-9 tolerance)\\n- Flag any race conditions, incorrect MPI reduction, or off-by-one errors in the pair iteration scheme\\n- Confirm the implementation does NOT call MPI_Init/MPI_Finalize\\n\\nOutput: test harness code + pass/fail assessment for each case + any bugs found with suggested fixes.\",\n      \"depends_on\": [\"code_gen\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    }\n  ]\n}\n```"
+}

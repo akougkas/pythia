@@ -1,0 +1,168 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "research_workflow",
+      "complexity": 0.38798076923076924,
+      "domain_tags": [
+        "data",
+        "ml",
+        "research"
+      ],
+      "decomposability": 0.35,
+      "constraints": {}
+    },
+    "request_text_preview": "Replicate the research paper 'Bridging Data Gaps': The paper \"Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning\" has been reproduced. This involves 8 major phases and 206 total subtasks. The workflow includes: Algorithm 1 for training DPMs with Adversarial Noise-b"
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000,
+        "order": 0
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500,
+        "order": 1
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 2
+      },
+      {
+        "agent": "experiment_runner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 3000,
+        "order": 3
+      },
+      {
+        "agent": "experiment_runner",
+        "fleet_member": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": 500,
+        "order": 4
+      }
+    ],
+    "execution_order": [
+      [
+        "literature_reviewer"
+      ],
+      [
+        "experiment_designer",
+        "experiment_runner"
+      ],
+      [
+        "code_generator",
+        "result_analyzer"
+      ],
+      [
+        "reporter"
+      ]
+    ],
+    "total_budget": 10000,
+    "estimated_latency": 5.5
+  },
+  "time_ms": 31731.77385800045,
+  "llm_call_time_ms": 31731.519199000104,
+  "assignment_time_ms": 0.25465900034760125,
+  "llm_reasoning": "This is a research replication workflow for a diffusion model paper with adversarial noise-based transfer learning. The complexity is moderate (0.39) with low decomposability (0.35), suggesting the core components (algorithm, experimental setup, figure replication) are tightly coupled. The three deliverables \u2014 Algorithm 1 implementation, Section 5 experimental setup, and Figure 2 replication \u2014 can largely be parallelized after an initial literature review stage, with a final analysis and reporting stage to synthesize results.",
+  "llm_parsed_agents": [
+    "literature_reviewer",
+    "experiment_designer",
+    "code_generator",
+    "experiment_runner",
+    "experiment_runner",
+    "result_analyzer",
+    "reporter"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "literature_reviewer",
+      "prompt": "Read and extract the following from 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning': (1) Full specification of Algorithm 1 \u2014 training DPMs with Adversarial Noise-based Transfer, including all hyperparameters, loss functions, and training loop logic. (2) Section 5 experimental setup \u2014 datasets used, model architectures, baselines, evaluation metrics (FID, IS, etc.), and hardware/software environment. (3) Figure 2 \u2014 identify what is plotted, what data it derives from, and the visual encoding used. Output a structured JSON with keys: algorithm1, experimental_setup, figure2_spec.",
+      "role": "Extract Algorithm 1, Section 5 setup, and Figure 2 details from the paper",
+      "depends_on": [],
+      "estimated_tokens": 600,
+      "compute_weight": "light"
+    },
+    {
+      "name": "experiment_designer",
+      "prompt": "Using the extracted paper details from literature_reviewer, design a replication experiment plan for 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning'. Map out all 8 major phases of the replication (data prep, pretraining, adversarial noise injection, transfer, fine-tuning, evaluation, figure generation, result comparison). For each phase specify: inputs, outputs, dependencies, and success criteria. Flag any ambiguities in the paper that require assumptions. Output as a structured phase-by-phase plan.",
+      "role": "Design the end-to-end replication experiment plan covering all 8 phases",
+      "depends_on": [
+        "literature_reviewer"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "code_generator",
+      "prompt": "Implement Algorithm 1 from 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning' as clean, reproducible PyTorch code. Use the algorithm specification from literature_reviewer. Include: (1) The adversarial noise generation step (PGD or FGSM variant as specified), (2) The transfer learning objective integrating adversarial perturbations into the DPM training loop, (3) The full training loop with proper loss computation, optimizer steps, and EMA if specified. Follow the Section 5 experimental setup for default hyperparameters. Output: a self-contained Python module `algorithm1_train.py` with inline comments referencing paper equations.",
+      "role": "Implement Algorithm 1 \u2014 DPM training with Adversarial Noise-based Transfer",
+      "depends_on": [
+        "literature_reviewer",
+        "experiment_designer"
+      ],
+      "estimated_tokens": 4000,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "experiment_runner",
+      "prompt": "Run the replication experiments as specified in Section 5 of 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning', using the implemented Algorithm 1 code from code_generator. Execute on the datasets and baselines defined in the experimental setup. Collect: FID scores, IS scores, and any other metrics reported in the paper. Log all runs with config, seed, and output paths. Compare against paper-reported numbers. Output a results table: metric \u00d7 method \u00d7 dataset, with delta from paper values highlighted.",
+      "role": "Execute the Section 5 experimental setup and collect evaluation metrics",
+      "depends_on": [
+        "code_generator"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "experiment_runner",
+      "prompt": "Using the figure specification extracted by literature_reviewer and the results collected during experiment execution, reproduce Figure 2 from 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning'. Write a Python plotting script (matplotlib/seaborn) that: (1) loads the correct data outputs, (2) replicates the axes, labels, color scheme, and layout of the original figure, (3) overlays paper-reported values for visual comparison. Save output as `figure2_replicated.pdf` and `figure2_replicated.png`. Note any visual discrepancies.",
+      "role": "Regenerate Figure 2 from experimental outputs",
+      "depends_on": [
+        "literature_reviewer"
+      ],
+      "estimated_tokens": 1200,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "result_analyzer",
+      "prompt": "Analyze the replication quality of 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning' across all three deliverables: (1) Algorithm 1 \u2014 does the implementation match the paper pseudocode and produce stable training? (2) Section 5 \u2014 compute relative error (%) between replicated and paper-reported FID/IS scores for each dataset/baseline pair. (3) Figure 2 \u2014 qualitative and quantitative comparison of replicated vs. original figure. Produce a fidelity scorecard with per-component scores (0\u2013100) and a summary of failure modes or deviations.",
+      "role": "Score replication fidelity across Algorithm 1, Section 5 metrics, and Figure 2",
+      "depends_on": [
+        "experiment_runner"
+      ],
+      "estimated_tokens": 800,
+      "compute_weight": "light"
+    },
+    {
+      "name": "reporter",
+      "prompt": "Write a structured replication report for 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning'. Synthesize outputs from all agents into a document with sections: (1) Executive Summary \u2014 replication success/failure verdict, (2) Algorithm 1 Implementation \u2014 code walkthrough and fidelity, (3) Experimental Setup Reproduction \u2014 dataset/baseline/metric alignment, (4) Figure 2 Replication \u2014 visual comparison, (5) Fidelity Scorecard \u2014 from result_analyzer, (6) Deviations & Assumptions \u2014 what was ambiguous and how it was resolved, (7) Reproduction Checklist \u2014 status of all 8 major phases. Output as a well-formatted Markdown report `replication_report.md`.",
+      "role": "Produce final replication report summarizing all 8 phases and 206 subtasks",
+      "depends_on": [
+        "result_analyzer"
+      ],
+      "estimated_tokens": 700,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "literature_reviewer": "Read and extract the following from 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning': (1) Full specification of Algorithm 1 \u2014 training DPMs with Adversarial Noise-based Transfer, including all hyperparameters, loss functions, and training loop logic. (2) Section 5 experimental setup \u2014 datasets used, model architectures, baselines, evaluation metrics (FID, IS, etc.), and hardware/software environment. (3) Figure 2 \u2014 identify what is plotted, what data it derives from, and the visual encoding used. Output a structured JSON with keys: algorithm1, experimental_setup, figure2_spec.",
+    "experiment_designer": "Using the extracted paper details from literature_reviewer, design a replication experiment plan for 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning'. Map out all 8 major phases of the replication (data prep, pretraining, adversarial noise injection, transfer, fine-tuning, evaluation, figure generation, result comparison). For each phase specify: inputs, outputs, dependencies, and success criteria. Flag any ambiguities in the paper that require assumptions. Output as a structured phase-by-phase plan.",
+    "code_generator": "Implement Algorithm 1 from 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning' as clean, reproducible PyTorch code. Use the algorithm specification from literature_reviewer. Include: (1) The adversarial noise generation step (PGD or FGSM variant as specified), (2) The transfer learning objective integrating adversarial perturbations into the DPM training loop, (3) The full training loop with proper loss computation, optimizer steps, and EMA if specified. Follow the Section 5 experimental setup for default hyperparameters. Output: a self-contained Python module `algorithm1_train.py` with inline comments referencing paper equations.",
+    "experiment_runner": "Using the figure specification extracted by literature_reviewer and the results collected during experiment execution, reproduce Figure 2 from 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning'. Write a Python plotting script (matplotlib/seaborn) that: (1) loads the correct data outputs, (2) replicates the axes, labels, color scheme, and layout of the original figure, (3) overlays paper-reported values for visual comparison. Save output as `figure2_replicated.pdf` and `figure2_replicated.png`. Note any visual discrepancies.",
+    "result_analyzer": "Analyze the replication quality of 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning' across all three deliverables: (1) Algorithm 1 \u2014 does the implementation match the paper pseudocode and produce stable training? (2) Section 5 \u2014 compute relative error (%) between replicated and paper-reported FID/IS scores for each dataset/baseline pair. (3) Figure 2 \u2014 qualitative and quantitative comparison of replicated vs. original figure. Produce a fidelity scorecard with per-component scores (0\u2013100) and a summary of failure modes or deviations.",
+    "reporter": "Write a structured replication report for 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning'. Synthesize outputs from all agents into a document with sections: (1) Executive Summary \u2014 replication success/failure verdict, (2) Algorithm 1 Implementation \u2014 code walkthrough and fidelity, (3) Experimental Setup Reproduction \u2014 dataset/baseline/metric alignment, (4) Figure 2 Replication \u2014 visual comparison, (5) Fidelity Scorecard \u2014 from result_analyzer, (6) Deviations & Assumptions \u2014 what was ambiguous and how it was resolved, (7) Reproduction Checklist \u2014 status of all 8 major phases. Output as a well-formatted Markdown report `replication_report.md`."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a research replication workflow for a diffusion model paper with adversarial noise-based transfer learning. The complexity is moderate (0.39) with low decomposability (0.35), suggesting the core components (algorithm, experimental setup, figure replication) are tightly coupled. The three deliverables \u2014 Algorithm 1 implementation, Section 5 experimental setup, and Figure 2 replication \u2014 can largely be parallelized after an initial literature review stage, with a final analysis and reporting stage to synthesize results.\",\n  \"agents\": [\n    {\n      \"name\": \"literature_reviewer\",\n      \"role\": \"Extract Algorithm 1, Section 5 setup, and Figure 2 details from the paper\",\n      \"prompt\": \"Read and extract the following from 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning': (1) Full specification of Algorithm 1 \u2014 training DPMs with Adversarial Noise-based Transfer, including all hyperparameters, loss functions, and training loop logic. (2) Section 5 experimental setup \u2014 datasets used, model architectures, baselines, evaluation metrics (FID, IS, etc.), and hardware/software environment. (3) Figure 2 \u2014 identify what is plotted, what data it derives from, and the visual encoding used. Output a structured JSON with keys: algorithm1, experimental_setup, figure2_spec.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 600,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"experiment_designer\",\n      \"role\": \"Design the end-to-end replication experiment plan covering all 8 phases\",\n      \"prompt\": \"Using the extracted paper details from literature_reviewer, design a replication experiment plan for 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning'. Map out all 8 major phases of the replication (data prep, pretraining, adversarial noise injection, transfer, fine-tuning, evaluation, figure generation, result comparison). For each phase specify: inputs, outputs, dependencies, and success criteria. Flag any ambiguities in the paper that require assumptions. Output as a structured phase-by-phase plan.\",\n      \"depends_on\": [\"literature_reviewer\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"code_generator\",\n      \"role\": \"Implement Algorithm 1 \u2014 DPM training with Adversarial Noise-based Transfer\",\n      \"prompt\": \"Implement Algorithm 1 from 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning' as clean, reproducible PyTorch code. Use the algorithm specification from literature_reviewer. Include: (1) The adversarial noise generation step (PGD or FGSM variant as specified), (2) The transfer learning objective integrating adversarial perturbations into the DPM training loop, (3) The full training loop with proper loss computation, optimizer steps, and EMA if specified. Follow the Section 5 experimental setup for default hyperparameters. Output: a self-contained Python module `algorithm1_train.py` with inline comments referencing paper equations.\",\n      \"depends_on\": [\"literature_reviewer\", \"experiment_designer\"],\n      \"estimated_tokens\": 4000,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"experiment_runner\",\n      \"role\": \"Execute the Section 5 experimental setup and collect evaluation metrics\",\n      \"prompt\": \"Run the replication experiments as specified in Section 5 of 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning', using the implemented Algorithm 1 code from code_generator. Execute on the datasets and baselines defined in the experimental setup. Collect: FID scores, IS scores, and any other metrics reported in the paper. Log all runs with config, seed, and output paths. Compare against paper-reported numbers. Output a results table: metric \u00d7 method \u00d7 dataset, with delta from paper values highlighted.\",\n      \"depends_on\": [\"code_generator\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"experiment_runner\",\n      \"role\": \"Regenerate Figure 2 from experimental outputs\",\n      \"prompt\": \"Using the figure specification extracted by literature_reviewer and the results collected during experiment execution, reproduce Figure 2 from 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning'. Write a Python plotting script (matplotlib/seaborn) that: (1) loads the correct data outputs, (2) replicates the axes, labels, color scheme, and layout of the original figure, (3) overlays paper-reported values for visual comparison. Save output as `figure2_replicated.pdf` and `figure2_replicated.png`. Note any visual discrepancies.\",\n      \"depends_on\": [\"literature_reviewer\", \"experiment_runner\"],\n      \"estimated_tokens\": 1200,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"result_analyzer\",\n      \"role\": \"Score replication fidelity across Algorithm 1, Section 5 metrics, and Figure 2\",\n      \"prompt\": \"Analyze the replication quality of 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning' across all three deliverables: (1) Algorithm 1 \u2014 does the implementation match the paper pseudocode and produce stable training? (2) Section 5 \u2014 compute relative error (%) between replicated and paper-reported FID/IS scores for each dataset/baseline pair. (3) Figure 2 \u2014 qualitative and quantitative comparison of replicated vs. original figure. Produce a fidelity scorecard with per-component scores (0\u2013100) and a summary of failure modes or deviations.\",\n      \"depends_on\": [\"experiment_runner\"],\n      \"estimated_tokens\": 800,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"reporter\",\n      \"role\": \"Produce final replication report summarizing all 8 phases and 206 subtasks\",\n      \"prompt\": \"Write a structured replication report for 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning'. Synthesize outputs from all agents into a document with sections: (1) Executive Summary \u2014 replication success/failure verdict, (2) Algorithm 1 Implementation \u2014 code walkthrough and fidelity, (3) Experimental Setup Reproduction \u2014 dataset/baseline/metric alignment, (4) Figure 2 Replication \u2014 visual comparison, (5) Fidelity Scorecard \u2014 from result_analyzer, (6) Deviations & Assumptions \u2014 what was ambiguous and how it was resolved, (7) Reproduction Checklist \u2014 status of all 8 major phases. Output as a well-formatted Markdown report `replication_report.md`.\",\n      \"depends_on\": [\"result_analyzer\"],\n      \"estimated_tokens\": 700,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```"
+}

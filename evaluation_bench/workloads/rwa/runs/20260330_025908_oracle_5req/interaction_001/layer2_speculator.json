@@ -1,0 +1,47 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "research_workflow:0.3:['data', 'ml', 'research']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:research_workflow",
+        "domain:data",
+        "domain:ml",
+        "domain:research"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "Develop a detailed plan to replicate the APT research paper, including task decomposition, resource allocation, and potential bottlenecks. Consider the 5 major phases and 171 subtasks outlined in the original paper.",
+      "experiment_designer": "Create a set of experiment designs that replicate the Adaptive Pruning workflow, including parameters, metrics, and expected outcomes. Ensure these designs align with the existing baselines and LoRA setup.",
+      "code_generator": "Write a set of Python scripts that implement the Adaptive Pruning algorithm, incorporating existing baselines and LoRA setup. Ensure these scripts are modular, efficient, and well-documented."
+    }
+  },
+  "time_ms": 56340.27329200035
+}

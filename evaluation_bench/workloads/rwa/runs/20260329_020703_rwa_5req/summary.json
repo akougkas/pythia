@@ -1,0 +1,131 @@
+{
+  "run_dir": "/home/shazzadul/Illinois_Tech/Spring26/RA/Pythia/pythia/evaluation_bench/workloads/rwa/runs/20260329_020703_rwa_5req",
+  "config": {
+    "timestamp": "20260329_020703",
+    "prompt_mode": "original",
+    "n_requests": 5,
+    "fleet": [
+      {
+        "id": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "capabilities": [
+          "code_gen",
+          "tester",
+          "analyst",
+          "data_wrangler",
+          "code_generator"
+        ],
+        "cost_rate": 0.01,
+        "latency": 2.0
+      },
+      {
+        "id": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "capabilities": [
+          "planner",
+          "review",
+          "data_discovery",
+          "reporter",
+          "literature_reviewer",
+          "experiment_designer",
+          "experiment_runner",
+          "result_analyzer"
+        ],
+        "cost_rate": 0.005,
+        "latency": 0.5
+      },
+      {
+        "id": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "capabilities": [
+          "planner",
+          "review",
+          "tester",
+          "reporter",
+          "data_discovery",
+          "result_analyzer",
+          "experiment_runner",
+          "experiment_designer"
+        ],
+        "cost_rate": 0.02,
+        "latency": 3.0
+      },
+      {
+        "id": "claude-sonnet-cloud",
+        "model": "claude-sonnet-4-6",
+        "capabilities": [
+          "code_gen",
+          "tester",
+          "analyst",
+          "data_wrangler",
+          "code_generator",
+          "planner",
+          "review",
+          "literature_reviewer",
+          "experiment_designer"
+        ],
+        "cost_rate": 0.08,
+        "latency": 4.0
+      },
+      {
+        "id": "claude-opus-cloud",
+        "model": "claude-opus-4-6",
+        "capabilities": [
+          "code_gen",
+          "analyst",
+          "code_generator",
+          "literature_reviewer"
+        ],
+        "cost_rate": 0.15,
+        "latency": 5.0
+      }
+    ],
+    "solver": {
+      "type": "LLMAgentSelector",
+      "model": "claude-sonnet-4-6",
+      "provider": "claude"
+    },
+    "speculator": {
+      "type": "DispatchCache + BayesianConfidence"
+    },
+    "learner": {
+      "type": "Bayesian Contextual Bandit",
+      "window_size": 50,
+      "n1": 5,
+      "n2": 15
+    },
+    "thresholds": {
+      "tau_2": 0.5,
+      "tau_3": 0.8
+    },
+    "reconciliation": {
+      "L_saved": 1.0,
+      "C_redirect": 0.3,
+      "C_flush": 0.5,
+      "C_spec": 0.1
+    }
+  },
+  "total_interactions": 5,
+  "verdicts": {
+    "PARTIAL": 4,
+    "FLUSH": 1
+  },
+  "hit_rate": 0.8,
+  "mean_solver_ms": 37291.81916820016,
+  "mean_speculator_ms": 23669.53818740012,
+  "mean_speedup": 558692.6513220568,
+  "mean_pipeline_s": 394.99080964920006,
+  "total_tokens": 17569,
+  "net_benefit": 1.6800000000000002,
+  "mode_distribution": {
+    "1": 5
+  },
+  "phase_at_end": "early_learning",
+  "confidence_at_end": 0.65,
+  "baseline": "pythia",
+  "wasted_compute_ratio_W": 0.0,
+  "N_conv": 5,
+  "total_cost": 0.0,
+  "mean_salvage_ratio": 0.8,
+  "mean_dispatch_latency_ms": 37291.81916820016
+}

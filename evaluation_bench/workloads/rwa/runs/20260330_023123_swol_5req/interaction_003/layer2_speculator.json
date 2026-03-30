@@ -1,0 +1,53 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "research_workflow:0.5:['ml', 'research']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.5,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:research_workflow",
+        "domain:ml",
+        "domain:research"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "literature_reviewer": "Review the paper 'All-in-One Simulation-Based Inference' and extract: (1) Full VESDE formulation from Appendix A2.1 \u2014 SDE coefficients, noise schedules, drift/diffusion terms; (2) Simformer architecture details \u2014 transformer blocks, attention mechanisms, embedding dims, conditioning strategy; (3) Training procedure \u2014 loss functions, optimizer settings, batch sizes, learning rate schedules, number of epochs; (4) Inference procedure \u2014 posterior sampling steps, MCMC or score-based sampling details; (5) Baseline method configurations for NPE, NRE, and NLE \u2014 network architectures, training setups, and any shared components; (6) Benchmark tasks used for evaluation and the metrics reported (e.g., C2ST, log-probability, coverage). Output a structured specification document.",
+      "experiment_designer": "Using the extracted paper specifications, design a complete replication experiment plan for All-in-One SBI. Define: (1) The 5 major experimental phases and their subtask breakdown (targeting ~233 subtasks); (2) The benchmark tasks (e.g., SLCP, Lotka-Volterra, Gaussian mixture) with simulator configs; (3) A shared data/simulator interface so Simformer, NPE, NRE, and NLE all run on identical draws; (4) Evaluation protocol \u2014 number of posterior samples, reference posterior generation, metric computation (C2ST, MMD, or log-prob); (5) Directory and file structure for reproducibility (configs, checkpoints, results); (6) Which phases can run in parallel and which are sequential. Output a phased experiment plan with dependency graph.",
+      "code_generator": "Implement the following components from the All-in-One SBI paper: (1) VESDE (Variance Exploding SDE) as specified in Appendix A2.1 \u2014 implement the forward SDE, reverse SDE, and score network target; (2) Simformer architecture \u2014 transformer-based amortized score network that conditions on observed data x_o, implement multi-head attention, positional encodings, and the joint embedding of (theta, x, t); (3) Training loop \u2014 denoising score matching loss over simulated (theta, x) pairs with time-conditional noise injection following the VESDE schedule; (4) Inference \u2014 implement posterior sampling via reverse SDE or predictor-corrector sampler conditioned on x_o; Use PyTorch. Follow the exact hyperparameters from the experiment design spec. Include docstrings and config-driven hyperparameters.",
+      "code_gen": "Implement the three baseline methods for the All-in-One SBI replication: (1) Neural Posterior Estimation (NPE) \u2014 normalizing flow (e.g., MAF or NSF) trained on (theta, x) pairs to directly approximate p(theta | x); (2) Neural Ratio Estimation (NRE) \u2014 binary classifier trained to estimate the likelihood-to-evidence ratio; (3) Neural Likelihood Estimation (NLE) \u2014 normalizing flow trained to approximate p(x | theta), combined with MCMC for posterior; For each: implement training, posterior evaluation, and a common interface `sample_posterior(x_obs, n_samples)`. Use the same benchmark simulators as Simformer. Ensure all three share the same train/test data splits defined in the experiment design. Use PyTorch; sbi library wrappers are acceptable if they match paper configs."
+    }
+  },
+  "time_ms": 0.01601000076334458
+}

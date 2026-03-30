@@ -1,0 +1,75 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "data_pipeline:0.4:['data', 'environmental_science']"
+  },
+  "output": {
+    "mode": 2,
+    "confidence": 0.75,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000
+      },
+      {
+        "agent": "analyst",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:data_pipeline",
+        "domain:data",
+        "domain:environmental_science"
+      ],
+      "agents_provisioned": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ],
+      "fleet_reservations": [
+        [
+          "data_discovery",
+          "llama3.1-8b-gpu"
+        ],
+        [
+          "data_wrangler",
+          "qwen2.5-14b-gpu"
+        ],
+        [
+          "analyst",
+          "qwen2.5-14b-gpu"
+        ],
+        [
+          "reporter",
+          "llama3.1-8b-gpu"
+        ]
+      ]
+    },
+    "draft_prompts": {
+      "data_discovery": "Identify and retrieve the two data sources required to answer: 'Find the year with the highest suppression cost per acre of human-caused fire.' You need: (1) a dataset containing annual wildfire suppression costs (likely USFS or NIFC data), and (2) a dataset containing annual acreage burned by human-caused fires. Confirm field names, units (cost in USD, acreage in acres), temporal coverage, and any known data quality issues. Return a structured summary of both sources including URLs or file references, relevant column names, and year ranges available.",
+      "data_wrangler": "Using the two data sources identified by data_discovery, perform the following steps: (1) Load both datasets. (2) Filter suppression cost data to human-caused fires only (exclude lightning/natural-cause fires if the field is present; if costs are not broken out by cause, note this and proceed with total). (3) Filter acreage data to human-caused fires only. (4) Normalize year fields to a consistent integer format. (5) Join the two datasets on year. (6) Compute a new column: suppression_cost_per_acre = total_suppression_cost / total_acres_burned for each year. Handle missing values and division-by-zero cases explicitly. Return a clean tabular summary (year, cost, acres, cost_per_acre) ready for analysis.",
+      "analyst": "Using the joined and computed dataset from data_wrangler (columns: year, suppression_cost_per_acre), perform the following: (1) Identify the year with the highest suppression cost per acre of human-caused fire. (2) Extract the exact cost-per-acre value for that year. (3) Round the value to the nearest cent (2 decimal places). (4) Perform a basic sanity check \u2014 confirm the value is plausible given historical wildfire suppression cost ranges. Return: the year, the raw cost-per-acre, and the rounded cost-per-acre.",
+      "reporter": "Using the results from the analyst agent, produce a concise final answer to the question: 'Find the year with the highest suppression cost per acre of human-caused fire. What was the cost per acre, rounded to the nearest cent?' Your response should include: (1) The answer year and cost-per-acre value (rounded to nearest cent, e.g. $X.XX). (2) A one-sentence explanation of the data sources used. (3) Any caveats about data completeness or human-cause filtering assumptions. Keep the response under 150 words."
+    }
+  },
+  "time_ms": 0.060092000239819754
+}

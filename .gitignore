@@ -55,3 +55,4 @@ htmlcov/
 .scratch/
 .scratchpad/
 .scratch_src/
+evaluation_bench/benchmarks/

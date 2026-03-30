@@ -1,0 +1,44 @@
+{
+  "layer": "5_learner",
+  "input": {
+    "verdict": "PARTIAL",
+    "reward": 0.35,
+    "salvage_ratio": 0.5
+  },
+  "state_update": {
+    "phase": "cold_start",
+    "total_interactions": 1,
+    "unique_intent_keys": 1,
+    "mean_confidence": 0.6666666666666666,
+    "mode_regressions": 0,
+    "active_drift_keys": []
+  },
+  "convergence": {
+    "total_interactions": 1,
+    "phase": "cold_start",
+    "n_unique_keys": 1,
+    "per_key": {
+      "research_workflow:med:data": {
+        "observations": 1,
+        "confidence": 0.6666666666666666,
+        "ci_90": [
+          0.2789364483160431,
+          1.0
+        ],
+        "ema_accuracy": 1.0,
+        "drifting": false,
+        "regret": 0.33333333333333337
+      }
+    },
+    "total_regret": 0.33333333333333337,
+    "mean_regret_per_interaction": 0.33333333333333337
+  },
+  "fingerprint_summary": {
+    "fill_ratio": 0.02,
+    "overall_hit_rate": 1.0,
+    "mean_reward": 0.35,
+    "mean_confidence": 0.3,
+    "unique_intents": 1.0,
+    "mode3_fraction": 0.0
+  }
+}

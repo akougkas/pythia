@@ -58,6 +58,7 @@ class FleetMember:
     latency: float  # seconds, expected response latency
     capabilities: list[str]
     affinity_tags: list[str]
+    model: str = ""  # LLM model identifier (e.g., "qwen2.5:14b", "claude-sonnet-4-6")
 
     def __post_init__(self) -> None:
         _validate_non_negative(self.compute, "compute")
@@ -87,6 +88,9 @@ class AgentAssignment:
     allocated_tokens: int
     prompt: str
     order: int  # execution order index
+    compute_weight: str = "medium"  # light | medium | heavy
+    depends_on: tuple[str, ...] = ()  # agent_types this depends on
+    role: str = ""  # brief role description
 
 
 @dataclass(frozen=True, eq=True)
@@ -100,6 +104,7 @@ class DispatchPlan:
     execution_order: list[list[str]]  # DAG as list of parallel stages
     total_budget: int  # total tokens allocated
     total_estimated_latency: float
+    reasoning: str = ""  # LLM's reasoning for this plan
 
 
 @dataclass(frozen=True, eq=True)

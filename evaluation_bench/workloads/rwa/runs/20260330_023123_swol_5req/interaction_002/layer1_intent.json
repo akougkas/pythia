@@ -1,0 +1,17 @@
+{
+  "layer": "1_intent_detector",
+  "input": {
+    "request_text": "Replicate the research paper 'All In One': The paper \"All-in-one simulation-based inference\" has been reproduced. This involves 5 major phases and 233 total subtasks. The workflow includes: Variance Exploding SDE (VESDE) is implemented, as described in A2.1; The Simformer model, training process and inference process has been implemented; Baseline methods Neural Posterior Estimation (NPE), Neural Ratio Estimation (NRE), and Neural Likelihood Estimation (NLE) are implemented."
+  },
+  "output": {
+    "task_type": "research_workflow",
+    "complexity": 0.43371376811594203,
+    "domain_tags": [
+      "ml",
+      "research"
+    ],
+    "decomposability": 0.3,
+    "constraints": {}
+  },
+  "time_ms": 1.1892200000147568
+}

@@ -1,0 +1,270 @@
+{
+  "summary": {
+    "run_dir": "/home/shazzadul/Illinois_Tech/Spring26/RA/Pythia/pythia/evaluation_bench/workloads/rwa/runs/20260329_020703_rwa_5req",
+    "config": {
+      "timestamp": "20260329_020703",
+      "prompt_mode": "original",
+      "n_requests": 5,
+      "fleet": [
+        {
+          "id": "qwen2.5-14b-gpu",
+          "model": "qwen2.5:14b",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator"
+          ],
+          "cost_rate": 0.01,
+          "latency": 2.0
+        },
+        {
+          "id": "llama3.1-8b-gpu",
+          "model": "llama3.1:8b",
+          "capabilities": [
+            "planner",
+            "review",
+            "data_discovery",
+            "reporter",
+            "literature_reviewer",
+            "experiment_designer",
+            "experiment_runner",
+            "result_analyzer"
+          ],
+          "cost_rate": 0.005,
+          "latency": 0.5
+        },
+        {
+          "id": "claude-haiku-cloud",
+          "model": "claude-haiku-4-5-20251001",
+          "capabilities": [
+            "planner",
+            "review",
+            "tester",
+            "reporter",
+            "data_discovery",
+            "result_analyzer",
+            "experiment_runner",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.02,
+          "latency": 3.0
+        },
+        {
+          "id": "claude-sonnet-cloud",
+          "model": "claude-sonnet-4-6",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator",
+            "planner",
+            "review",
+            "literature_reviewer",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.08,
+          "latency": 4.0
+        },
+        {
+          "id": "claude-opus-cloud",
+          "model": "claude-opus-4-6",
+          "capabilities": [
+            "code_gen",
+            "analyst",
+            "code_generator",
+            "literature_reviewer"
+          ],
+          "cost_rate": 0.15,
+          "latency": 5.0
+        }
+      ],
+      "solver": {
+        "type": "LLMAgentSelector",
+        "model": "claude-sonnet-4-6",
+        "provider": "claude"
+      },
+      "speculator": {
+        "type": "DispatchCache + BayesianConfidence"
+      },
+      "learner": {
+        "type": "Bayesian Contextual Bandit",
+        "window_size": 50,
+        "n1": 5,
+        "n2": 15
+      },
+      "thresholds": {
+        "tau_2": 0.5,
+        "tau_3": 0.8
+      },
+      "reconciliation": {
+        "L_saved": 1.0,
+        "C_redirect": 0.3,
+        "C_flush": 0.5,
+        "C_spec": 0.1
+      }
+    },
+    "total_interactions": 5,
+    "verdicts": {
+      "PARTIAL": 4,
+      "FLUSH": 1
+    },
+    "hit_rate": 0.8,
+    "mean_solver_ms": 37291.81916820016,
+    "mean_speculator_ms": 23669.53818740012,
+    "mean_speedup": 558692.6513220568,
+    "mean_pipeline_s": 394.99080964920006,
+    "total_tokens": 17569,
+    "net_benefit": 1.6800000000000002,
+    "mode_distribution": {
+      "1": 5
+    },
+    "phase_at_end": "early_learning",
+    "confidence_at_end": 0.65
+  },
+  "events": [
+    {
+      "interaction": 1,
+      "request_id": "rwa_adaptive-pruning",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.3369642857142857,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 60493.55860900004,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer",
+        "reporter"
+      ],
+      "solver_time_ms": 41828.4677810002,
+      "verdict": "PARTIAL",
+      "reward": 0.35,
+      "pipeline_time_s": 525.2524221829999,
+      "pipeline_tokens": 4714,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.6666666666666666,
+      "speedup": 0.691453251268592
+    },
+    {
+      "interaction": 2,
+      "request_id": "rwa_all-in-one",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.43371376811594203,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 57854.020349000166,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "review",
+        "experiment_runner",
+        "result_analyzer",
+        "reporter"
+      ],
+      "solver_time_ms": 39867.422773000275,
+      "verdict": "FLUSH",
+      "reward": -0.5,
+      "pipeline_time_s": 322.56203305699955,
+      "pipeline_tokens": 2536,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.5,
+      "speedup": 0.6891037568781383
+    },
+    {
+      "interaction": 3,
+      "request_id": "rwa_bam",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.46719155844155846,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.04514400006883079,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "experiment_runner",
+        "result_analyzer",
+        "reporter"
+      ],
+      "solver_time_ms": 40750.89686800038,
+      "verdict": "PARTIAL",
+      "reward": 0.5666666666666667,
+      "pipeline_time_s": 471.88477671800047,
+      "pipeline_tokens": 3682,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.5833333333333333,
+      "speedup": 902686.8865379171
+    },
+    {
+      "interaction": 4,
+      "request_id": "rwa_bbox",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.3317424242424243,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.030918000447854865,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "experiment_runner",
+        "result_analyzer",
+        "reporter"
+      ],
+      "solver_time_ms": 24112.55885799983,
+      "verdict": "PARTIAL",
+      "reward": 0.7833333333333334,
+      "pipeline_time_s": 354.835750403,
+      "pipeline_tokens": 2138,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.625,
+      "speedup": 779887.3959739784
+    },
+    {
+      "interaction": 5,
+      "request_id": "rwa_bridging-data-gaps",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.38798076923076924,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.03591699987737229,
+      "solver_agents": [
+        "literature_reviewer",
+        "data_discovery",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer",
+        "reporter"
+      ],
+      "solver_time_ms": 39899.749561000135,
+      "verdict": "PARTIAL",
+      "reward": 0.48,
+      "pipeline_time_s": 300.41906588500024,
+      "pipeline_tokens": 4499,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.65,
+      "speedup": 1110887.5935413798
+    }
+  ]
+}

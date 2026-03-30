@@ -1,0 +1,44 @@
+{
+  "layer": "5_learner",
+  "input": {
+    "verdict": "COMMIT",
+    "reward": 1.0,
+    "salvage_ratio": 1.0
+  },
+  "state_update": {
+    "phase": "early_learning",
+    "total_interactions": 4,
+    "unique_intent_keys": 1,
+    "mean_confidence": 0.8333333333333334,
+    "mode_regressions": 0,
+    "active_drift_keys": []
+  },
+  "convergence": {
+    "total_interactions": 4,
+    "phase": "early_learning",
+    "n_unique_keys": 1,
+    "per_key": {
+      "data_pipeline:med:data": {
+        "observations": 4,
+        "confidence": 0.8333333333333334,
+        "ci_90": [
+          0.6016202084952651,
+          1.0
+        ],
+        "ema_accuracy": 1.0,
+        "drifting": false,
+        "regret": 0.6666666666666665
+      }
+    },
+    "total_regret": 0.6666666666666665,
+    "mean_regret_per_interaction": 0.16666666666666663
+  },
+  "fingerprint_summary": {
+    "fill_ratio": 0.08,
+    "overall_hit_rate": 1.0,
+    "mean_reward": 0.8375,
+    "mean_confidence": 0.4125,
+    "unique_intents": 0.25,
+    "mode3_fraction": 0.0
+  }
+}

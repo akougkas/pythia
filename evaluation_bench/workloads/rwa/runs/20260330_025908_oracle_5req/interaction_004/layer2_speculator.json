@@ -1,0 +1,47 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "research_workflow:0.3:['data', 'ml', 'research']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": 500
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": 1500
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:research_workflow",
+        "domain:data",
+        "domain:ml",
+        "domain:research"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "Develop a step-by-step plan for reproducing 'Bbox': The BBOX-ADAPTER approach, considering its 9 major phases and 421 subtasks. Ensure that each phase is well-defined and feasible to execute.",
+      "experiment_designer": "Create a detailed design for replicating the experiments in 'Bbox': The BBOX-ADAPTER approach, focusing on setting up evaluation environments and datasets for GPT-3.5 Turbo and Mixtral-8x7B.",
+      "code_generator": "Write the required code to implement Algorithm 1 (Online Adaptation) and configure baseline models for evaluations in 'Bbox': The BBOX-ADAPTER approach."
+    }
+  },
+  "time_ms": 54122.67545699979
+}

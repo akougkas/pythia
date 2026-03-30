@@ -1,0 +1,37 @@
+{
+  "layer": "3_orchestrator_reconciliation",
+  "input": {
+    "solver_plan_agents": [
+      "planner",
+      "code_gen",
+      "tester"
+    ],
+    "speculator_plan_agents": [
+      "code_gen",
+      "tester"
+    ],
+    "solver_plan_members": [
+      "llama3.1-8b-gpu",
+      "qwen2.5-14b-gpu",
+      "qwen2.5-14b-gpu"
+    ],
+    "speculator_plan_members": [
+      "qwen2.5-14b-gpu",
+      "qwen2.5-14b-gpu"
+    ]
+  },
+  "comparison": {
+    "matching_assignments": [
+      "code_gen",
+      "tester"
+    ],
+    "discarded_assignments": []
+  },
+  "output": {
+    "verdict": "PARTIAL",
+    "salvage_ratio": 1.0,
+    "reward": 1.0,
+    "redirect_cost": 0.0,
+    "wasted_compute": 0.0
+  }
+}

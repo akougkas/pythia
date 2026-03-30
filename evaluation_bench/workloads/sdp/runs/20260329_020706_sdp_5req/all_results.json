@@ -1,0 +1,259 @@
+{
+  "summary": {
+    "run_dir": "/home/shazzadul/Illinois_Tech/Spring26/RA/Pythia/pythia/evaluation_bench/workloads/sdp/runs/20260329_020706_sdp_5req",
+    "config": {
+      "timestamp": "20260329_020706",
+      "prompt_mode": "original",
+      "n_requests": 5,
+      "fleet": [
+        {
+          "id": "qwen2.5-14b-gpu",
+          "model": "qwen2.5:14b",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator"
+          ],
+          "cost_rate": 0.01,
+          "latency": 2.0
+        },
+        {
+          "id": "llama3.1-8b-gpu",
+          "model": "llama3.1:8b",
+          "capabilities": [
+            "planner",
+            "review",
+            "data_discovery",
+            "reporter",
+            "literature_reviewer",
+            "experiment_designer",
+            "experiment_runner",
+            "result_analyzer"
+          ],
+          "cost_rate": 0.005,
+          "latency": 0.5
+        },
+        {
+          "id": "claude-haiku-cloud",
+          "model": "claude-haiku-4-5-20251001",
+          "capabilities": [
+            "planner",
+            "review",
+            "tester",
+            "reporter",
+            "data_discovery",
+            "result_analyzer",
+            "experiment_runner",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.02,
+          "latency": 3.0
+        },
+        {
+          "id": "claude-sonnet-cloud",
+          "model": "claude-sonnet-4-6",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator",
+            "planner",
+            "review",
+            "literature_reviewer",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.08,
+          "latency": 4.0
+        },
+        {
+          "id": "claude-opus-cloud",
+          "model": "claude-opus-4-6",
+          "capabilities": [
+            "code_gen",
+            "analyst",
+            "code_generator",
+            "literature_reviewer"
+          ],
+          "cost_rate": 0.15,
+          "latency": 5.0
+        }
+      ],
+      "solver": {
+        "type": "LLMAgentSelector",
+        "model": "claude-sonnet-4-6",
+        "provider": "claude"
+      },
+      "speculator": {
+        "type": "DispatchCache + BayesianConfidence"
+      },
+      "learner": {
+        "type": "Bayesian Contextual Bandit",
+        "window_size": 50,
+        "n1": 5,
+        "n2": 15
+      },
+      "thresholds": {
+        "tau_2": 0.5,
+        "tau_3": 0.8
+      },
+      "reconciliation": {
+        "L_saved": 1.0,
+        "C_redirect": 0.3,
+        "C_flush": 0.5,
+        "C_spec": 0.1
+      }
+    },
+    "total_interactions": 5,
+    "verdicts": {
+      "PARTIAL": 3,
+      "COMMIT": 2
+    },
+    "hit_rate": 1.0,
+    "mean_solver_ms": 21362.154043600094,
+    "mean_speculator_ms": 12226.238432200078,
+    "mean_speedup": 276616.80380818166,
+    "mean_pipeline_s": 344.4979085602,
+    "total_tokens": 14176,
+    "net_benefit": 4.35,
+    "mode_distribution": {
+      "1": 3,
+      "2": 2
+    },
+    "phase_at_end": "early_learning",
+    "confidence_at_end": 0.8571428571428571
+  },
+  "events": [
+    {
+      "interaction": 1,
+      "request_id": "wildfire-easy-1",
+      "intent_task_type": "data_pipeline",
+      "intent_complexity": 0.3875,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 61130.936602000016,
+      "solver_agents": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ],
+      "solver_time_ms": 18923.403301000235,
+      "verdict": "PARTIAL",
+      "reward": 0.675,
+      "pipeline_time_s": 484.5965188509999,
+      "pipeline_tokens": 3355,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.6666666666666666,
+      "speedup": 0.30955526535121203
+    },
+    {
+      "interaction": 2,
+      "request_id": "wildfire-easy-2",
+      "intent_task_type": "data_pipeline",
+      "intent_complexity": 0.33112804878048785,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.06571399990207283,
+      "solver_agents": [
+        "data_discovery",
+        "data_wrangler",
+        "reporter"
+      ],
+      "solver_time_ms": 21276.732450000054,
+      "verdict": "PARTIAL",
+      "reward": 0.675,
+      "pipeline_time_s": 207.9289293920001,
+      "pipeline_tokens": 1657,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.75,
+      "speedup": 323777.77158150007
+    },
+    {
+      "interaction": 3,
+      "request_id": "wildfire-easy-3",
+      "intent_task_type": "data_pipeline",
+      "intent_complexity": 0.3314423076923077,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.071584000124858,
+      "solver_agents": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ],
+      "solver_time_ms": 22943.869215000177,
+      "verdict": "PARTIAL",
+      "reward": 1.0,
+      "pipeline_time_s": 313.1446105049995,
+      "pipeline_tokens": 2554,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.8,
+      "speedup": 320516.72405818483
+    },
+    {
+      "interaction": 4,
+      "request_id": "wildfire-hard-4",
+      "intent_task_type": "data_pipeline",
+      "intent_complexity": 0.3821683673469388,
+      "speculator_mode": 2,
+      "speculator_confidence": 0.75,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.058169000112684444,
+      "solver_agents": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ],
+      "solver_time_ms": 22038.165572000253,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "pipeline_time_s": 389.54897574200004,
+      "pipeline_tokens": 3419,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.8333333333333334,
+      "speedup": 378864.4386066139
+    },
+    {
+      "interaction": 5,
+      "request_id": "wildfire-hard-5",
+      "intent_task_type": "data_pipeline",
+      "intent_complexity": 0.38684782608695656,
+      "speculator_mode": 2,
+      "speculator_confidence": 0.75,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.060092000239819754,
+      "solver_agents": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ],
+      "solver_time_ms": 21628.599679999752,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "pipeline_time_s": 327.2705083110004,
+      "pipeline_tokens": 3191,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.8571428571428571,
+      "speedup": 359924.77523934434
+    }
+  ]
+}

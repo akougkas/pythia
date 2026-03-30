@@ -1,0 +1,53 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "data_pipeline:0.4:['data', 'environmental_science']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.5,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000
+      },
+      {
+        "agent": "analyst",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:data_pipeline",
+        "domain:data",
+        "domain:environmental_science"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "data_discovery": "Locate the NOAA dataset with historical acres burned data from January 2000 onwards and assess its quality for analysis.",
+      "data_wrangler": "Clean and preprocess the extracted data from the NOAA dataset to extract the total acres burned for each month since January 2000.",
+      "analyst": "Perform statistical analysis on the preprocessed data to identify the three-month period with the highest total acres burned since January 2000, along with the total acres burned during this period.",
+      "reporter": "Compile the results from the analysis into a clear, concise report detailing the three-month period with the highest total acres burned since January 2000 and the corresponding total acres burned."
+    }
+  },
+  "time_ms": 59266.6891709996
+}

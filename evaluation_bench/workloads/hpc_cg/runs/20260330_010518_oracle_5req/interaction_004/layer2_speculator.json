@@ -1,0 +1,53 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "hpc_code_gen:0.4:['hpc', 'openmp']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500
+      },
+      {
+        "agent": "review",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 2000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:hpc_code_gen",
+        "domain:hpc",
+        "domain:openmp"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "Develop a plan to implement OpenMP directives in the given C++ code to compute the perimeter of the smallest convex polygon containing all points in parallel.",
+      "code_gen": "Write C++ code that uses OpenMP to parallelize the computation of the smallest convex polygon containing all points and returns its perimeter.",
+      "tester": "Write test cases to verify that the parallelized code produces accurate results for various input sets of points.",
+      "review": "Inspect the code to ensure that it correctly implements the parallelization strategy and meets performance expectations."
+    }
+  },
+  "time_ms": 59589.41216899984
+}

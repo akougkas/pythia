@@ -1,0 +1,53 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "research_workflow:0.4:['ml', 'research']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": 500
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500
+      },
+      {
+        "agent": "analyst",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:research_workflow",
+        "domain:ml",
+        "domain:research"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "Create a detailed workflow plan for replicating the 'All-in-one simulation-based inference' paper, including 5 major phases and 233 subtasks. Identify potential bottlenecks and areas where tasks can be parallelized.",
+      "code_gen": "Write the implementation code for VESDE, Simformer model, training process, inference process, NPE, NRE, and NLE. Ensure that the code is well-documented and follows best practices.",
+      "tester": "Develop a testing framework to validate the performance of VESDE, Simformer model, and baseline methods. Run thorough tests to ensure that the code is correct and produces expected results.",
+      "analyst": "Compare the performance of VESDE, Simformer model, and baseline methods. Analyze the results to identify areas where the models can be improved and provide recommendations for future work."
+    }
+  },
+  "time_ms": 65619.47841100118
+}

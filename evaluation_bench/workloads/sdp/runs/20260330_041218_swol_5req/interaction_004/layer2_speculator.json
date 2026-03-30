@@ -1,0 +1,60 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "data_pipeline:0.4:['data', 'environmental_science']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.5,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000
+      },
+      {
+        "agent": "analyst",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:data_pipeline",
+        "domain:data",
+        "domain:environmental_science"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "data_discovery": "Find and evaluate exactly 2 data sources needed for this task: (1) A dataset containing US state boundaries with full state names (e.g., US Census TIGER/Line shapefiles or a GeoJSON equivalent). (2) The official NIFC (National Interagency Fire Center) Geographic Areas boundary dataset, which defines the 11 NIFC geographic coordination areas used for wildfire management. For each source, provide: the URL or access method, file format, relevant fields (especially state name and area name columns), licensing, and any known data quality issues. Confirm whether a spatial join between these two datasets is feasible.",
+      "planner": "Design a concrete 5-step data processing pipeline to answer: 'Which US states (full names) fall into the most NIFC Geographic Areas?' The pipeline must cover: (1) loading and validating both datasets, (2) ensuring both are in a common CRS (coordinate reference system) for spatial operations, (3) performing a spatial intersection/join between state polygons and NIFC Geographic Area polygons, (4) counting the number of distinct NIFC Geographic Areas each state intersects, and (5) ranking states by that count and identifying the top result(s). Specify the recommended Python libraries (e.g., geopandas, shapely) and flag any edge cases such as states on boundaries or partial overlaps that should be counted.",
+      "data_wrangler": "Using the data sources identified by data_discovery and the pipeline designed by planner, implement the data preparation steps in Python: (1) Load the US state boundaries GeoJSON/shapefile, retaining only the full state name field; drop territories if not needed. (2) Load the NIFC Geographic Areas boundary dataset, retaining the area name field. (3) Verify and reproject both datasets to a common CRS (use EPSG:4326 or an equal-area projection like EPSG:5070 for accuracy). (4) Perform a spatial join (overlay or sjoin) to find all (state, NIFC area) pairs where geometries intersect. (5) Output a clean DataFrame with columns: ['state_name', 'nifc_area_name']. Handle any geometry errors (invalid polygons) with buffer(0) fixes. Show the first 10 rows of the result.",
+      "analyst": "Using the joined DataFrame (columns: state_name, nifc_area_name) produced by data_wrangler, perform the following analysis: (1) Group by 'state_name' and count the number of distinct 'nifc_area_name' values per state. (2) Sort the results in descending order by NIFC area count. (3) Identify the state(s) with the maximum count \u2014 note if there are ties. (4) Produce a summary table showing all states that intersect more than 1 NIFC Geographic Area, with their counts. (5) Provide a brief statistical note: total number of states analyzed, total NIFC areas in the dataset, and average number of NIFC areas per state. Return the full ranked table and clearly highlight the top result.",
+      "reporter": "Using the analysis results from analyst, produce a concise final report answering: 'Which US states (full names) fall into the most NIFC Geographic Areas?' The report must include: (1) A direct answer stating the state name(s) and the number of NIFC Geographic Areas they intersect. (2) A ranked summary table of all states intersecting 2 or more NIFC areas. (3) A one-paragraph explanation of why certain states (e.g., large western states) tend to span multiple NIFC coordination zones, providing environmental/geographic context. (4) Any caveats about boundary overlap methodology (e.g., whether partial edge touches were counted). Format the output in clean Markdown suitable for a scientific report."
+    }
+  },
+  "time_ms": 0.016370999219361693
+}

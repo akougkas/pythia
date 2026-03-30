@@ -1,0 +1,26 @@
+{
+  "layer": "3_orchestrator_reconciliation",
+  "input": {
+    "solver_plan_agents": [
+      "code_gen",
+      "tester"
+    ],
+    "speculator_plan_agents": [],
+    "solver_plan_members": [
+      "qwen2.5-14b-gpu",
+      "qwen2.5-14b-gpu"
+    ],
+    "speculator_plan_members": []
+  },
+  "comparison": {
+    "matching_assignments": [],
+    "discarded_assignments": []
+  },
+  "output": {
+    "verdict": "NONE",
+    "salvage_ratio": 0.0,
+    "reward": 0.0,
+    "redirect_cost": 0.0,
+    "wasted_compute": 0.0
+  }
+}

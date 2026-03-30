@@ -1,0 +1,78 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "hpc_code_gen",
+      "complexity": 0.4195833333333333,
+      "domain_tags": [
+        "hpc",
+        "openmp"
+      ],
+      "decomposability": 0.35,
+      "constraints": {}
+    },
+    "request_text_preview": "#include <omp.h>\n\nstruct Point {\n\tdouble x, y;\n};\n\ndouble distance(Point const& p1, Point const& p2) {\n\treturn std::sqrt(std::pow(p2.x-p1.x, 2) + std::pow(p2.y-p1.y, 2));\n}\n\n/* Return the distance between the closest two points in the vector points.\n   Use OpenMP to compute in parallel.\n   Example: "
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 0
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500,
+        "order": 1
+      }
+    ],
+    "execution_order": [
+      [
+        "code_gen"
+      ],
+      [
+        "tester"
+      ]
+    ],
+    "total_budget": 5500,
+    "estimated_latency": 4.0
+  },
+  "time_ms": 19110.863230000177,
+  "llm_call_time_ms": 19110.71833699998,
+  "assignment_time_ms": 0.14489300019704388,
+  "llm_reasoning": "This is a focused HPC code generation task: implement a parallel closest-pair brute-force search using OpenMP. The spec is clear (brute-force O(n\u00b2) with parallel reduction over minimum distance), so only a code_gen agent and a lightweight tester are needed. The two stages are sequential \u2014 tester depends on code_gen output \u2014 and no planning or review overhead is warranted at complexity 0.42.",
+  "llm_parsed_agents": [
+    "code_gen",
+    "tester"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "code_gen",
+      "prompt": "Implement the body of `closestPair(std::vector<Point> const& points)` in C++ using OpenMP.\n\nRequirements:\n- Brute-force O(n\u00b2) double loop over all unique pairs (i < j).\n- Use `#pragma omp parallel for` with a `reduction(min: minDist)` clause on the outer loop to accumulate the global minimum distance in parallel.\n- Initialize `minDist` to `std::numeric_limits<double>::max()` before the loop.\n- Call the provided `distance(p1, p2)` helper for each pair.\n- Return `minDist`.\n- Do NOT modify the function signature or any code outside the function body.\n- Include only standard headers already implied by the scaffold (`<vector>`, `<cmath>`, `<limits>`).\n- The expected output for input `[{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}]` is `1.41421` (distance between {2,3} and {3,4}).\n\nReturn ONLY the completed function (signature + body), no explanation.",
+      "role": "Implement the OpenMP-parallelized closestPair function body",
+      "depends_on": [],
+      "estimated_tokens": 350,
+      "compute_weight": "light"
+    },
+    {
+      "name": "tester",
+      "prompt": "Given the following OpenMP `closestPair` implementation (provided by code_gen), write a C++ test suite using plain `assert` or a lightweight framework (no external deps).\n\nTest cases to cover:\n1. **Provided example**: `[{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}]` \u2192 expect `\u22481.41421` (tolerance 1e-5).\n2. **Two points**: `[{0,0},{3,4}]` \u2192 expect `5.0`.\n3. **Duplicate points**: `[{1,1},{1,1},{5,5}]` \u2192 expect `0.0`.\n4. **Collinear points**: `[{0,0},{1,0},{2,0},{3,0}]` \u2192 expect `1.0`.\n5. **Large n stress test**: generate 1000 random points, verify result matches a serial reference implementation.\n\nAlso verify that the function compiles and links with `-fopenmp` and runs correctly with `OMP_NUM_THREADS=4`.\n\nReturn a complete, self-contained `.cpp` test file.",
+      "role": "Generate correctness and edge-case tests for the closestPair implementation",
+      "depends_on": [
+        "code_gen"
+      ],
+      "estimated_tokens": 900,
+      "compute_weight": "medium"
+    }
+  ],
+  "llm_agent_prompts": {
+    "code_gen": "Implement the body of `closestPair(std::vector<Point> const& points)` in C++ using OpenMP.\n\nRequirements:\n- Brute-force O(n\u00b2) double loop over all unique pairs (i < j).\n- Use `#pragma omp parallel for` with a `reduction(min: minDist)` clause on the outer loop to accumulate the global minimum distance in parallel.\n- Initialize `minDist` to `std::numeric_limits<double>::max()` before the loop.\n- Call the provided `distance(p1, p2)` helper for each pair.\n- Return `minDist`.\n- Do NOT modify the function signature or any code outside the function body.\n- Include only standard headers already implied by the scaffold (`<vector>`, `<cmath>`, `<limits>`).\n- The expected output for input `[{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}]` is `1.41421` (distance between {2,3} and {3,4}).\n\nReturn ONLY the completed function (signature + body), no explanation.",
+    "tester": "Given the following OpenMP `closestPair` implementation (provided by code_gen), write a C++ test suite using plain `assert` or a lightweight framework (no external deps).\n\nTest cases to cover:\n1. **Provided example**: `[{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}]` \u2192 expect `\u22481.41421` (tolerance 1e-5).\n2. **Two points**: `[{0,0},{3,4}]` \u2192 expect `5.0`.\n3. **Duplicate points**: `[{1,1},{1,1},{5,5}]` \u2192 expect `0.0`.\n4. **Collinear points**: `[{0,0},{1,0},{2,0},{3,0}]` \u2192 expect `1.0`.\n5. **Large n stress test**: generate 1000 random points, verify result matches a serial reference implementation.\n\nAlso verify that the function compiles and links with `-fopenmp` and runs correctly with `OMP_NUM_THREADS=4`.\n\nReturn a complete, self-contained `.cpp` test file."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a focused HPC code generation task: implement a parallel closest-pair brute-force search using OpenMP. The spec is clear (brute-force O(n\u00b2) with parallel reduction over minimum distance), so only a code_gen agent and a lightweight tester are needed. The two stages are sequential \u2014 tester depends on code_gen output \u2014 and no planning or review overhead is warranted at complexity 0.42.\",\n  \"agents\": [\n    {\n      \"name\": \"code_gen\",\n      \"role\": \"Implement the OpenMP-parallelized closestPair function body\",\n      \"prompt\": \"Implement the body of `closestPair(std::vector<Point> const& points)` in C++ using OpenMP.\\n\\nRequirements:\\n- Brute-force O(n\u00b2) double loop over all unique pairs (i < j).\\n- Use `#pragma omp parallel for` with a `reduction(min: minDist)` clause on the outer loop to accumulate the global minimum distance in parallel.\\n- Initialize `minDist` to `std::numeric_limits<double>::max()` before the loop.\\n- Call the provided `distance(p1, p2)` helper for each pair.\\n- Return `minDist`.\\n- Do NOT modify the function signature or any code outside the function body.\\n- Include only standard headers already implied by the scaffold (`<vector>`, `<cmath>`, `<limits>`).\\n- The expected output for input `[{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}]` is `1.41421` (distance between {2,3} and {3,4}).\\n\\nReturn ONLY the completed function (signature + body), no explanation.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 350,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"tester\",\n      \"role\": \"Generate correctness and edge-case tests for the closestPair implementation\",\n      \"prompt\": \"Given the following OpenMP `closestPair` implementation (provided by code_gen), write a C++ test suite using plain `assert` or a lightweight framework (no external deps).\\n\\nTest cases to cover:\\n1. **Provided example**: `[{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}]` \u2192 expect `\u22481.41421` (tolerance 1e-5).\\n2. **Two points**: `[{0,0},{3,4}]` \u2192 expect `5.0`.\\n3. **Duplicate points**: `[{1,1},{1,1},{5,5}]` \u2192 expect `0.0`.\\n4. **Collinear points**: `[{0,0},{1,0},{2,0},{3,0}]` \u2192 expect `1.0`.\\n5. **Large n stress test**: generate 1000 random points, verify result matches a serial reference implementation.\\n\\nAlso verify that the function compiles and links with `-fopenmp` and runs correctly with `OMP_NUM_THREADS=4`.\\n\\nReturn a complete, self-contained `.cpp` test file.\",\n      \"depends_on\": [\"code_gen\"],\n      \"estimated_tokens\": 900,\n      \"compute_weight\": \"medium\"\n    }\n  ]\n}\n```"
+}

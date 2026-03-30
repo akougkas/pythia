@@ -1,0 +1,17 @@
+{
+  "layer": "1_intent_detector",
+  "input": {
+    "request_text": "Analyze the following scientific data pipeline task: Which US states (using full names) fall into the most number of NIFC Geographic Areas? This requires working with 2 data source(s) and involves approximately 5 processing steps. Domain: environmental science."
+  },
+  "output": {
+    "task_type": "data_pipeline",
+    "complexity": 0.3314423076923077,
+    "domain_tags": [
+      "data",
+      "environmental_science"
+    ],
+    "decomposability": 0.19999999999999998,
+    "constraints": {}
+  },
+  "time_ms": 0.8022690017241985
+}

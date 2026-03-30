@@ -1,0 +1,184 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "research_workflow",
+      "complexity": 0.46719155844155846,
+      "domain_tags": [
+        "ml",
+        "research"
+      ],
+      "decomposability": 0.45,
+      "constraints": {}
+    },
+    "request_text_preview": "Replicate the research paper 'Bam': The core contributions of the paper \"Batch and match: black-box variational inference with a score-based divergence\" have been reproduced. This involves 4 major phases and 1020 total subtasks. The workflow includes: The core variational inference algorithms studie"
+  },
+  "method": "LLM agent selection (llama3.1:8b) + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000,
+        "order": 0
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500,
+        "order": 1
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 2
+      },
+      {
+        "agent": "experiment_runner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 3000,
+        "order": 3
+      },
+      {
+        "agent": "experiment_runner",
+        "fleet_member": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": 3000,
+        "order": 4
+      },
+      {
+        "agent": "result_analyzer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 2000,
+        "order": 5
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": 1500,
+        "order": 6
+      }
+    ],
+    "execution_order": [
+      [
+        "literature_reviewer"
+      ],
+      [
+        "experiment_designer"
+      ],
+      [
+        "code_generator"
+      ],
+      [
+        "experiment_runner"
+      ],
+      [
+        "result_analyzer"
+      ],
+      [
+        "reporter"
+      ]
+    ],
+    "total_budget": 16000,
+    "estimated_latency": 9.5
+  },
+  "time_ms": 40750.89686800038,
+  "llm_call_time_ms": 40750.5397570003,
+  "assignment_time_ms": 0.3571110000848421,
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a research replication workflow for a variational inference paper ('BAM'), requiring literature understanding, algorithm implementation, and experimental replication across multiple sections. The workflow decomposes into 4 natural phases: (1) literature review and method extraction, (2) algorithm implementation, (3) parallel experimental replication for Section 5.1 and Section 5.2 figures, and (4) result analysis and reporting. Phases 3a and 3b (replicating Section 5.1 vs. Figures 5.3/E.6) are independent and can run in parallel after implementation is ready.\",\n  \"agents\": [\n    {\n      \"name\": \"literature_reviewer\",\n      \"role\": \"Extract core algorithms, divergence formulations, and experimental setup from the BAM paper\",\n      \"prompt\": \"Carefully read and analyze the paper 'Batch and Match: Black-Box Variational Inference with a Score-Based Divergence'. Extract: (1) the score-based divergence objective (the 'batch and match' loss), including its mathematical formulation; (2) the black-box VI algorithm details \u2014 gradient estimators, sample sizes, batch construction; (3) the baseline methods compared against (e.g., ADVI, BBVI variants); (4) the experimental setup for Section 5.1 (model benchmarks, metrics reported) and Section 5.2 (Figure 5.3 and Figure E.6 \u2014 what distributions/models are used, what axes are plotted, what the figures demonstrate). Produce a structured extraction document with equations, pseudocode where possible, and a replication checklist.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"experiment_designer\",\n      \"role\": \"Design the full replication experiment plan mapping paper claims to runnable experiments\",\n      \"prompt\": \"Given the structured extraction from the BAM paper literature review, design a concrete replication plan. Specify: (1) the software environment (Python, JAX/NumPy/PyTorch, any probabilistic programming libraries); (2) the exact model targets for Section 5.1 benchmarks (e.g., log-normal, Student-t, hierarchical models) with parameter settings matching the paper; (3) the experimental conditions for Figure 5.3 (e.g., varying sample sizes, step sizes, or iteration counts) and Figure E.6 (likely an ablation or convergence plot from Appendix E); (4) evaluation metrics \u2014 ELBO, KL divergence, Wasserstein distance, or whatever the paper reports; (5) a mapping of each figure/table to specific code modules. Output a machine-readable experiment config schema (JSON or YAML) and a dependency graph of experiments.\",\n      \"depends_on\": [\"literature_reviewer\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"code_generator\",\n      \"role\": \"Implement the BAM core algorithm and all baseline VI methods from scratch\",\n      \"prompt\": \"Implement the full BAM (Batch and Match) black-box variational inference algorithm as described in the paper. Your implementation must include: (1) the score-based divergence loss (the core BAM objective) \u2014 implement the batch construction, score function computation, and the matching step; (2) the gradient estimator used in BAM (REINFORCE, reparameterization, or the paper's specific estimator); (3) baseline implementations: ADVI and any other VI baselines compared in Section 5; (4) a modular variational family class (mean-field Gaussian at minimum, full-rank if used); (5) target log-probability interfaces for all benchmark models from Section 5.1; (6) utility functions for ELBO computation and KL divergence metrics. Use JAX or PyTorch (prefer JAX for auto-diff and JIT). Structure as a clean Python package with separation between algorithm, models, and evaluation. Include docstrings and inline comments referencing paper equations by number.\",\n      \"depends_on\": [\"experiment_designer\"],\n      \"estimated_tokens\": 4000,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"experiment_runner\",\n      \"role\": \"Execute Section 5.1 benchmark experiments and collect quantitative results\",\n      \"prompt\": \"Using the implemented BAM algorithm and baselines, run all Section 5.1 benchmark experiments. For each target model in the Section 5.1 suite: (1) run BAM and all baselines for the number of iterations specified in the paper; (2) record the final ELBO, convergence curves, and any other metrics reported in Section 5.1 tables/figures; (3) run with the same random seeds and hyperparameters as specified in the paper (or appendix); (4) save results to structured CSV/JSON files with columns: method, model, seed, iteration, metric_name, metric_value. Produce a summary table comparing BAM vs. baselines across all models, matching the format of Table/Figure in Section 5.1. Flag any numerical discrepancies > 5% from reported values.\",\n      \"depends_on\": [\"code_generator\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"experiment_runner\",\n      \"role\": \"Execute Section 5.2 experiments to replicate Figure 5.3 and Figure E.6\",\n      \"prompt\": \"Using the implemented BAM algorithm, replicate Figure 5.3 and Figure E.6 from the paper. For Figure 5.3: identify the exact experimental variable on each axis (e.g., number of samples, batch size, or a hyperparameter sweep), run the grid of conditions specified, and collect the plotted metric at each point. For Figure E.6 (Appendix E): identify whether this is an ablation, sensitivity analysis, or convergence diagnostic \u2014 run the corresponding experiment. For both figures: (1) match axis ranges and scales to the paper; (2) save raw data to files; (3) generate matplotlib/seaborn plots that visually match the paper figures; (4) annotate any deviations from the paper's reported curves. Run experiments in parallel across conditions where possible.\",\n      \"depends_on\": [\"code_generator\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"result_analyzer\",\n      \"role\": \"Compare replicated results against paper claims and score replication fidelity\",\n      \"prompt\": \"Analyze the outputs from both experiment runners (Section 5.1 benchmarks and Section 5.2 figures) and produce a replication fidelity report. For each paper claim: (1) state the original reported result (number, trend, or qualitative claim); (2) state the replicated result; (3) compute a numerical match score (percentage error for quantitative, qualitative match for trends); (4) classify as: EXACT MATCH (< 1% error), CLOSE MATCH (1-5%), PARTIAL MATCH (5-20%), or DEVIATION (> 20%). Identify any systematic differences and hypothesize causes (hyperparameter sensitivity, stochasticity, implementation ambiguity). Produce a structured JSON replication scorecard and a human-readable summary table.\",\n      \"depends_on\": [\"experiment_runner\"],\n      \"estimated_tokens\": 1000,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"reporter\",\n      \"role\": \"Synthesize all findings into a final replication report with figures and conclusions\",\n      \"prompt\": \"Produce a comprehensive replication report for the BAM paper ('Batch and Match: Black-Box Variational Inference with a Score-Based Divergence'). Structure the report as: (1) Executive Summary \u2014 what was replicated, overall fidelity score; (2) Methods \u2014 description of implementation choices, deviations from paper, software stack; (3) Section 5.1 Results \u2014 replicated table vs. paper table, side-by-side comparison; (4) Section 5.2 Results \u2014 replicated Figure 5.3 and Figure E.6 with commentary on visual/numerical match; (5) Replication Scorecard \u2014 per-claim fidelity scores from the result analyzer; (6) Discussion \u2014 what was easy/hard to replicate, what the paper could clarify, lessons learned. Format as a well-structured Markdown document suitable for inclusion in a research artifact. Embed or reference all generated figures.\",\n      \"depends_on\": [\"result_analyzer\"],\n      \"estimated_tokens\": 1000,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```",
+  "llm_reasoning": "This is a research replication workflow for a variational inference paper ('BAM'), requiring literature understanding, algorithm implementation, and experimental replication across multiple sections. The workflow decomposes into 4 natural phases: (1) literature review and method extraction, (2) algorithm implementation, (3) parallel experimental replication for Section 5.1 and Section 5.2 figures, and (4) result analysis and reporting. Phases 3a and 3b (replicating Section 5.1 vs. Figures 5.3/E.6) are independent and can run in parallel after implementation is ready.",
+  "llm_parsed_agents": [
+    "literature_reviewer",
+    "experiment_designer",
+    "code_generator",
+    "experiment_runner",
+    "experiment_runner",
+    "result_analyzer",
+    "reporter"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "literature_reviewer",
+      "prompt": "Carefully read and analyze the paper 'Batch and Match: Black-Box Variational Inference with a Score-Based Divergence'. Extract: (1) the score-based divergence objective (the 'batch and match' loss), including its mathematical formulation; (2) the black-box VI algorithm details \u2014 gradient estimators, sample sizes, batch construction; (3) the baseline methods compared against (e.g., ADVI, BBVI variants); (4) the experimental setup for Section 5.1 (model benchmarks, metrics reported) and Section 5.2 (Figure 5.3 and Figure E.6 \u2014 what distributions/models are used, what axes are plotted, what the figures demonstrate). Produce a structured extraction document with equations, pseudocode where possible, and a replication checklist.",
+      "role": "Extract core algorithms, divergence formulations, and experimental setup from the BAM paper",
+      "depends_on": [],
+      "estimated_tokens": 1500,
+      "compute_weight": "light"
+    },
+    {
+      "name": "experiment_designer",
+      "prompt": "Given the structured extraction from the BAM paper literature review, design a concrete replication plan. Specify: (1) the software environment (Python, JAX/NumPy/PyTorch, any probabilistic programming libraries); (2) the exact model targets for Section 5.1 benchmarks (e.g., log-normal, Student-t, hierarchical models) with parameter settings matching the paper; (3) the experimental conditions for Figure 5.3 (e.g., varying sample sizes, step sizes, or iteration counts) and Figure E.6 (likely an ablation or convergence plot from Appendix E); (4) evaluation metrics \u2014 ELBO, KL divergence, Wasserstein distance, or whatever the paper reports; (5) a mapping of each figure/table to specific code modules. Output a machine-readable experiment config schema (JSON or YAML) and a dependency graph of experiments.",
+      "role": "Design the full replication experiment plan mapping paper claims to runnable experiments",
+      "depends_on": [
+        "literature_reviewer"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "code_generator",
+      "prompt": "Implement the full BAM (Batch and Match) black-box variational inference algorithm as described in the paper. Your implementation must include: (1) the score-based divergence loss (the core BAM objective) \u2014 implement the batch construction, score function computation, and the matching step; (2) the gradient estimator used in BAM (REINFORCE, reparameterization, or the paper's specific estimator); (3) baseline implementations: ADVI and any other VI baselines compared in Section 5; (4) a modular variational family class (mean-field Gaussian at minimum, full-rank if used); (5) target log-probability interfaces for all benchmark models from Section 5.1; (6) utility functions for ELBO computation and KL divergence metrics. Use JAX or PyTorch (prefer JAX for auto-diff and JIT). Structure as a clean Python package with separation between algorithm, models, and evaluation. Include docstrings and inline comments referencing paper equations by number.",
+      "role": "Implement the BAM core algorithm and all baseline VI methods from scratch",
+      "depends_on": [
+        "experiment_designer"
+      ],
+      "estimated_tokens": 4000,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "experiment_runner",
+      "prompt": "Using the implemented BAM algorithm and baselines, run all Section 5.1 benchmark experiments. For each target model in the Section 5.1 suite: (1) run BAM and all baselines for the number of iterations specified in the paper; (2) record the final ELBO, convergence curves, and any other metrics reported in Section 5.1 tables/figures; (3) run with the same random seeds and hyperparameters as specified in the paper (or appendix); (4) save results to structured CSV/JSON files with columns: method, model, seed, iteration, metric_name, metric_value. Produce a summary table comparing BAM vs. baselines across all models, matching the format of Table/Figure in Section 5.1. Flag any numerical discrepancies > 5% from reported values.",
+      "role": "Execute Section 5.1 benchmark experiments and collect quantitative results",
+      "depends_on": [
+        "code_generator"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "experiment_runner",
+      "prompt": "Using the implemented BAM algorithm, replicate Figure 5.3 and Figure E.6 from the paper. For Figure 5.3: identify the exact experimental variable on each axis (e.g., number of samples, batch size, or a hyperparameter sweep), run the grid of conditions specified, and collect the plotted metric at each point. For Figure E.6 (Appendix E): identify whether this is an ablation, sensitivity analysis, or convergence diagnostic \u2014 run the corresponding experiment. For both figures: (1) match axis ranges and scales to the paper; (2) save raw data to files; (3) generate matplotlib/seaborn plots that visually match the paper figures; (4) annotate any deviations from the paper's reported curves. Run experiments in parallel across conditions where possible.",
+      "role": "Execute Section 5.2 experiments to replicate Figure 5.3 and Figure E.6",
+      "depends_on": [
+        "code_generator"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "result_analyzer",
+      "prompt": "Analyze the outputs from both experiment runners (Section 5.1 benchmarks and Section 5.2 figures) and produce a replication fidelity report. For each paper claim: (1) state the original reported result (number, trend, or qualitative claim); (2) state the replicated result; (3) compute a numerical match score (percentage error for quantitative, qualitative match for trends); (4) classify as: EXACT MATCH (< 1% error), CLOSE MATCH (1-5%), PARTIAL MATCH (5-20%), or DEVIATION (> 20%). Identify any systematic differences and hypothesize causes (hyperparameter sensitivity, stochasticity, implementation ambiguity). Produce a structured JSON replication scorecard and a human-readable summary table.",
+      "role": "Compare replicated results against paper claims and score replication fidelity",
+      "depends_on": [
+        "experiment_runner"
+      ],
+      "estimated_tokens": 1000,
+      "compute_weight": "light"
+    },
+    {
+      "name": "reporter",
+      "prompt": "Produce a comprehensive replication report for the BAM paper ('Batch and Match: Black-Box Variational Inference with a Score-Based Divergence'). Structure the report as: (1) Executive Summary \u2014 what was replicated, overall fidelity score; (2) Methods \u2014 description of implementation choices, deviations from paper, software stack; (3) Section 5.1 Results \u2014 replicated table vs. paper table, side-by-side comparison; (4) Section 5.2 Results \u2014 replicated Figure 5.3 and Figure E.6 with commentary on visual/numerical match; (5) Replication Scorecard \u2014 per-claim fidelity scores from the result analyzer; (6) Discussion \u2014 what was easy/hard to replicate, what the paper could clarify, lessons learned. Format as a well-structured Markdown document suitable for inclusion in a research artifact. Embed or reference all generated figures.",
+      "role": "Synthesize all findings into a final replication report with figures and conclusions",
+      "depends_on": [
+        "result_analyzer"
+      ],
+      "estimated_tokens": 1000,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "literature_reviewer": "Carefully read and analyze the paper 'Batch and Match: Black-Box Variational Inference with a Score-Based Divergence'. Extract: (1) the score-based divergence objective (the 'batch and match' loss), including its mathematical formulation; (2) the black-box VI algorithm details \u2014 gradient estimators, sample sizes, batch construction; (3) the baseline methods compared against (e.g., ADVI, BBVI variants); (4) the experimental setup for Section 5.1 (model benchmarks, metrics reported) and Section 5.2 (Figure 5.3 and Figure E.6 \u2014 what distributions/models are used, what axes are plotted, what the figures demonstrate). Produce a structured extraction document with equations, pseudocode where possible, and a replication checklist.",
+    "experiment_designer": "Given the structured extraction from the BAM paper literature review, design a concrete replication plan. Specify: (1) the software environment (Python, JAX/NumPy/PyTorch, any probabilistic programming libraries); (2) the exact model targets for Section 5.1 benchmarks (e.g., log-normal, Student-t, hierarchical models) with parameter settings matching the paper; (3) the experimental conditions for Figure 5.3 (e.g., varying sample sizes, step sizes, or iteration counts) and Figure E.6 (likely an ablation or convergence plot from Appendix E); (4) evaluation metrics \u2014 ELBO, KL divergence, Wasserstein distance, or whatever the paper reports; (5) a mapping of each figure/table to specific code modules. Output a machine-readable experiment config schema (JSON or YAML) and a dependency graph of experiments.",
+    "code_generator": "Implement the full BAM (Batch and Match) black-box variational inference algorithm as described in the paper. Your implementation must include: (1) the score-based divergence loss (the core BAM objective) \u2014 implement the batch construction, score function computation, and the matching step; (2) the gradient estimator used in BAM (REINFORCE, reparameterization, or the paper's specific estimator); (3) baseline implementations: ADVI and any other VI baselines compared in Section 5; (4) a modular variational family class (mean-field Gaussian at minimum, full-rank if used); (5) target log-probability interfaces for all benchmark models from Section 5.1; (6) utility functions for ELBO computation and KL divergence metrics. Use JAX or PyTorch (prefer JAX for auto-diff and JIT). Structure as a clean Python package with separation between algorithm, models, and evaluation. Include docstrings and inline comments referencing paper equations by number.",
+    "experiment_runner": "Using the implemented BAM algorithm, replicate Figure 5.3 and Figure E.6 from the paper. For Figure 5.3: identify the exact experimental variable on each axis (e.g., number of samples, batch size, or a hyperparameter sweep), run the grid of conditions specified, and collect the plotted metric at each point. For Figure E.6 (Appendix E): identify whether this is an ablation, sensitivity analysis, or convergence diagnostic \u2014 run the corresponding experiment. For both figures: (1) match axis ranges and scales to the paper; (2) save raw data to files; (3) generate matplotlib/seaborn plots that visually match the paper figures; (4) annotate any deviations from the paper's reported curves. Run experiments in parallel across conditions where possible.",
+    "result_analyzer": "Analyze the outputs from both experiment runners (Section 5.1 benchmarks and Section 5.2 figures) and produce a replication fidelity report. For each paper claim: (1) state the original reported result (number, trend, or qualitative claim); (2) state the replicated result; (3) compute a numerical match score (percentage error for quantitative, qualitative match for trends); (4) classify as: EXACT MATCH (< 1% error), CLOSE MATCH (1-5%), PARTIAL MATCH (5-20%), or DEVIATION (> 20%). Identify any systematic differences and hypothesize causes (hyperparameter sensitivity, stochasticity, implementation ambiguity). Produce a structured JSON replication scorecard and a human-readable summary table.",
+    "reporter": "Produce a comprehensive replication report for the BAM paper ('Batch and Match: Black-Box Variational Inference with a Score-Based Divergence'). Structure the report as: (1) Executive Summary \u2014 what was replicated, overall fidelity score; (2) Methods \u2014 description of implementation choices, deviations from paper, software stack; (3) Section 5.1 Results \u2014 replicated table vs. paper table, side-by-side comparison; (4) Section 5.2 Results \u2014 replicated Figure 5.3 and Figure E.6 with commentary on visual/numerical match; (5) Replication Scorecard \u2014 per-claim fidelity scores from the result analyzer; (6) Discussion \u2014 what was easy/hard to replicate, what the paper could clarify, lessons learned. Format as a well-structured Markdown document suitable for inclusion in a research artifact. Embed or reference all generated figures."
+  }
+}

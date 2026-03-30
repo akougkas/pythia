@@ -1,0 +1,46 @@
+{
+  "layer": "5_learner",
+  "baseline": "pythia",
+  "learner_active": true,
+  "input": {
+    "verdict": "PARTIAL",
+    "reward": 1.0,
+    "salvage_ratio": 1.0
+  },
+  "state_update": {
+    "phase": "early_learning",
+    "total_interactions": 3,
+    "unique_intent_keys": 1,
+    "mean_confidence": 0.8,
+    "mode_regressions": 0,
+    "active_drift_keys": []
+  },
+  "convergence": {
+    "total_interactions": 3,
+    "phase": "early_learning",
+    "n_unique_keys": 1,
+    "per_key": {
+      "hpc_code_gen:med:hpc": {
+        "observations": 3,
+        "confidence": 0.8,
+        "ci_90": [
+          0.5313726248747781,
+          1.0
+        ],
+        "ema_accuracy": 1.0,
+        "drifting": false,
+        "regret": 0.5999999999999999
+      }
+    },
+    "total_regret": 0.5999999999999999,
+    "mean_regret_per_interaction": 0.19999999999999996
+  },
+  "fingerprint_summary": {
+    "fill_ratio": 0.06,
+    "overall_hit_rate": 1.0,
+    "mean_reward": 0.8555555555555555,
+    "mean_confidence": 0.3,
+    "unique_intents": 0.3333333333333333,
+    "mode3_fraction": 0.0
+  }
+}

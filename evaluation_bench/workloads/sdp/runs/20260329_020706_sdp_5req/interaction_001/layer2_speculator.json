@@ -1,0 +1,53 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "data_pipeline:0.4:['data', 'environmental_science']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000
+      },
+      {
+        "agent": "analyst",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:data_pipeline",
+        "domain:data",
+        "domain:environmental_science"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "Develop a plan to identify the 3-month period with the highest total acres burned since Jan 2000, including relevant data extraction and processing steps. Consider the environmental science domain and the need for accurate results.",
+      "data_discovery": "Locate the NOAA dataset containing information on total acres burned for each month since January 2000. Evaluate its quality, relevance, and potential issues that may impact analysis.",
+      "data_wrangler": "Extract the required data from NOAA's dataset for the specified period. Clean, transform, and join the data into a suitable format for analysis, considering any potential issues or inconsistencies.",
+      "analyst": "Analyze the prepared data to determine the 3-month period with the highest total acres burned since Jan 2000. Calculate the total acres burned during this period, considering any relevant statistical methods or techniques from environmental science."
+    }
+  },
+  "time_ms": 61130.936602000016
+}

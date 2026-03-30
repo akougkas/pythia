@@ -1,0 +1,122 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "data_pipeline",
+      "complexity": 0.3314423076923077,
+      "domain_tags": [
+        "data",
+        "environmental_science"
+      ],
+      "decomposability": 0.19999999999999998,
+      "constraints": {}
+    },
+    "request_text_preview": "Analyze the following scientific data pipeline task: Which US states (using full names) fall into the most number of NIFC Geographic Areas? This requires working with 2 data source(s) and involves approximately 5 processing steps. Domain: environmental science."
+  },
+  "method": "LLM agent selection (llama3.1:8b) + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500,
+        "order": 0
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000,
+        "order": 1
+      },
+      {
+        "agent": "analyst",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000,
+        "order": 2
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500,
+        "order": 3
+      }
+    ],
+    "execution_order": [
+      [
+        "data_discovery"
+      ],
+      [
+        "data_wrangler"
+      ],
+      [
+        "analyst"
+      ],
+      [
+        "reporter"
+      ]
+    ],
+    "total_budget": 7000,
+    "estimated_latency": 5.0
+  },
+  "time_ms": 22943.869215000177,
+  "llm_call_time_ms": 22943.612494000263,
+  "assignment_time_ms": 0.25672099991425057,
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a moderate-complexity data pipeline task requiring geographic data discovery, joining, and analysis across 2 sources. The decomposability is low (0.20), meaning most steps are sequential \u2014 we must discover and wrangle data before analysis. The task is domain-specific (NIFC geographic areas vs. US state boundaries) but analytically straightforward once the data is joined, so we avoid over-engineering with too many agents.\",\n  \"agents\": [\n    {\n      \"name\": \"data_discovery\",\n      \"role\": \"Locate NIFC Geographic Area boundary data and US state boundary data from authoritative sources\",\n      \"prompt\": \"Find two data sources needed for this analysis: (1) NIFC (National Interagency Fire Center) Geographic Area boundaries \u2014 these are the 11 geographic coordination areas used for wildfire management in the US (e.g., Northwest, Southwest, Rocky Mountain, etc.). Locate a GeoJSON, shapefile, or tabular mapping of which states belong to which NIFC Geographic Area. (2) US state full names and geometries or a state-to-NIFC mapping table. Preferred sources: NIFC.gov, USGS, data.gov, or ArcGIS Open Data. Return the URLs, formats, and a brief schema description for each source.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 500,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"data_wrangler\",\n      \"role\": \"Load, clean, and join NIFC Geographic Area and US state data into a unified mapping table\",\n      \"prompt\": \"Using the data sources identified by data_discovery, perform the following steps: (1) Load the NIFC Geographic Area boundary or membership data. (2) Load the US state list with full state names (not abbreviations). (3) Resolve any state name inconsistencies or abbreviation mismatches \u2014 ensure all state names are full (e.g., 'California', not 'CA'). (4) Join the two datasets to produce a table with columns: [state_full_name, nifc_geographic_area]. (5) Note that some states may span multiple NIFC Geographic Areas \u2014 retain ALL such rows (one row per state-area pair). Output: a clean, deduplicated table of (state, nifc_area) pairs.\",\n      \"depends_on\": [\"data_discovery\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"analyst\",\n      \"role\": \"Count NIFC Geographic Area memberships per state and identify which states belong to the most areas\",\n      \"prompt\": \"Using the cleaned (state, nifc_geographic_area) mapping table from data_wrangler, perform the following analysis: (1) Group by full state name and count the number of distinct NIFC Geographic Areas each state belongs to. (2) Rank states by this count in descending order. (3) Identify the state(s) with the MAXIMUM number of NIFC Geographic Area memberships. (4) Flag any ties. (5) Produce a summary table: [state_full_name, num_nifc_areas, nifc_area_names_list] sorted by num_nifc_areas descending. Provide the final answer clearly: 'The US state(s) falling into the most NIFC Geographic Areas are: ...'\",\n      \"depends_on\": [\"data_wrangler\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"reporter\",\n      \"role\": \"Summarize findings into a clear, citable answer with the ranked state table\",\n      \"prompt\": \"Using the output from the analyst, produce a concise final report answering: 'Which US states (using full names) fall into the most NIFC Geographic Areas?' The report should include: (1) A direct answer naming the state(s) and their NIFC area count. (2) A ranked table of all states with more than 1 NIFC Geographic Area membership, showing full state name and the list of areas. (3) A brief note on data sources used and any caveats (e.g., states that straddle area boundaries). Format the output in Markdown.\",\n      \"depends_on\": [\"analyst\"],\n      \"estimated_tokens\": 500,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```",
+  "llm_reasoning": "This is a moderate-complexity data pipeline task requiring geographic data discovery, joining, and analysis across 2 sources. The decomposability is low (0.20), meaning most steps are sequential \u2014 we must discover and wrangle data before analysis. The task is domain-specific (NIFC geographic areas vs. US state boundaries) but analytically straightforward once the data is joined, so we avoid over-engineering with too many agents.",
+  "llm_parsed_agents": [
+    "data_discovery",
+    "data_wrangler",
+    "analyst",
+    "reporter"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "data_discovery",
+      "prompt": "Find two data sources needed for this analysis: (1) NIFC (National Interagency Fire Center) Geographic Area boundaries \u2014 these are the 11 geographic coordination areas used for wildfire management in the US (e.g., Northwest, Southwest, Rocky Mountain, etc.). Locate a GeoJSON, shapefile, or tabular mapping of which states belong to which NIFC Geographic Area. (2) US state full names and geometries or a state-to-NIFC mapping table. Preferred sources: NIFC.gov, USGS, data.gov, or ArcGIS Open Data. Return the URLs, formats, and a brief schema description for each source.",
+      "role": "Locate NIFC Geographic Area boundary data and US state boundary data from authoritative sources",
+      "depends_on": [],
+      "estimated_tokens": 500,
+      "compute_weight": "light"
+    },
+    {
+      "name": "data_wrangler",
+      "prompt": "Using the data sources identified by data_discovery, perform the following steps: (1) Load the NIFC Geographic Area boundary or membership data. (2) Load the US state list with full state names (not abbreviations). (3) Resolve any state name inconsistencies or abbreviation mismatches \u2014 ensure all state names are full (e.g., 'California', not 'CA'). (4) Join the two datasets to produce a table with columns: [state_full_name, nifc_geographic_area]. (5) Note that some states may span multiple NIFC Geographic Areas \u2014 retain ALL such rows (one row per state-area pair). Output: a clean, deduplicated table of (state, nifc_area) pairs.",
+      "role": "Load, clean, and join NIFC Geographic Area and US state data into a unified mapping table",
+      "depends_on": [
+        "data_discovery"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "analyst",
+      "prompt": "Using the cleaned (state, nifc_geographic_area) mapping table from data_wrangler, perform the following analysis: (1) Group by full state name and count the number of distinct NIFC Geographic Areas each state belongs to. (2) Rank states by this count in descending order. (3) Identify the state(s) with the MAXIMUM number of NIFC Geographic Area memberships. (4) Flag any ties. (5) Produce a summary table: [state_full_name, num_nifc_areas, nifc_area_names_list] sorted by num_nifc_areas descending. Provide the final answer clearly: 'The US state(s) falling into the most NIFC Geographic Areas are: ...'",
+      "role": "Count NIFC Geographic Area memberships per state and identify which states belong to the most areas",
+      "depends_on": [
+        "data_wrangler"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "reporter",
+      "prompt": "Using the output from the analyst, produce a concise final report answering: 'Which US states (using full names) fall into the most NIFC Geographic Areas?' The report should include: (1) A direct answer naming the state(s) and their NIFC area count. (2) A ranked table of all states with more than 1 NIFC Geographic Area membership, showing full state name and the list of areas. (3) A brief note on data sources used and any caveats (e.g., states that straddle area boundaries). Format the output in Markdown.",
+      "role": "Summarize findings into a clear, citable answer with the ranked state table",
+      "depends_on": [
+        "analyst"
+      ],
+      "estimated_tokens": 500,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "data_discovery": "Find two data sources needed for this analysis: (1) NIFC (National Interagency Fire Center) Geographic Area boundaries \u2014 these are the 11 geographic coordination areas used for wildfire management in the US (e.g., Northwest, Southwest, Rocky Mountain, etc.). Locate a GeoJSON, shapefile, or tabular mapping of which states belong to which NIFC Geographic Area. (2) US state full names and geometries or a state-to-NIFC mapping table. Preferred sources: NIFC.gov, USGS, data.gov, or ArcGIS Open Data. Return the URLs, formats, and a brief schema description for each source.",
+    "data_wrangler": "Using the data sources identified by data_discovery, perform the following steps: (1) Load the NIFC Geographic Area boundary or membership data. (2) Load the US state list with full state names (not abbreviations). (3) Resolve any state name inconsistencies or abbreviation mismatches \u2014 ensure all state names are full (e.g., 'California', not 'CA'). (4) Join the two datasets to produce a table with columns: [state_full_name, nifc_geographic_area]. (5) Note that some states may span multiple NIFC Geographic Areas \u2014 retain ALL such rows (one row per state-area pair). Output: a clean, deduplicated table of (state, nifc_area) pairs.",
+    "analyst": "Using the cleaned (state, nifc_geographic_area) mapping table from data_wrangler, perform the following analysis: (1) Group by full state name and count the number of distinct NIFC Geographic Areas each state belongs to. (2) Rank states by this count in descending order. (3) Identify the state(s) with the MAXIMUM number of NIFC Geographic Area memberships. (4) Flag any ties. (5) Produce a summary table: [state_full_name, num_nifc_areas, nifc_area_names_list] sorted by num_nifc_areas descending. Provide the final answer clearly: 'The US state(s) falling into the most NIFC Geographic Areas are: ...'",
+    "reporter": "Using the output from the analyst, produce a concise final report answering: 'Which US states (using full names) fall into the most NIFC Geographic Areas?' The report should include: (1) A direct answer naming the state(s) and their NIFC area count. (2) A ranked table of all states with more than 1 NIFC Geographic Area membership, showing full state name and the list of areas. (3) A brief note on data sources used and any caveats (e.g., states that straddle area boundaries). Format the output in Markdown."
+  }
+}

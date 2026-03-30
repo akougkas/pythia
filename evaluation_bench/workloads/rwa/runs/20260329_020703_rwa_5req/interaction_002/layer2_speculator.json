@@ -1,0 +1,46 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "research_workflow:0.4:['ml', 'research']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": 500
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:research_workflow",
+        "domain:ml",
+        "domain:research"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "Break down the 'All-in-one simulation-based inference' paper into its constituent parts, identifying key tasks and dependencies. Consider the implementation of VESDE, Simformer model, training process, inference process, NPE, NRE, and NLE methods.",
+      "code_gen": "Write the necessary Python code to implement each of the mentioned models and methods. Ensure that the code is well-documented and follows best practices for readability and maintainability.",
+      "tester": "Develop a testing framework to validate the performance of each model and method. This includes generating test data, running experiments, and analyzing results to identify any issues or areas for improvement."
+    }
+  },
+  "time_ms": 57854.020349000166
+}

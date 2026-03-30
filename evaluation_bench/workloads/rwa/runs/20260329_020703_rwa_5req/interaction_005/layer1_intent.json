@@ -1,0 +1,18 @@
+{
+  "layer": "1_intent_detector",
+  "input": {
+    "request_text": "Replicate the research paper 'Bridging Data Gaps': The paper \"Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning\" has been reproduced. This involves 8 major phases and 206 total subtasks. The workflow includes: Algorithm 1 for training DPMs with Adversarial Noise-based Transfer has been implemented.; The experimental setup has been implemented, as described in Section 5.; Figure 2 has been replicated.."
+  },
+  "output": {
+    "task_type": "research_workflow",
+    "complexity": 0.38798076923076924,
+    "domain_tags": [
+      "data",
+      "ml",
+      "research"
+    ],
+    "decomposability": 0.35,
+    "constraints": {}
+  },
+  "time_ms": 1.9290879999971366
+}

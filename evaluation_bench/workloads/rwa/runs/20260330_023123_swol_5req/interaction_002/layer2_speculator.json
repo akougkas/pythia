@@ -1,0 +1,46 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "research_workflow:0.4:['ml', 'research']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.5,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "claude-sonnet-cloud",
+        "model": "claude-sonnet-4-6",
+        "tokens": 1000
+      },
+      {
+        "agent": "planner",
+        "fleet_member": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": 500
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:research_workflow",
+        "domain:ml",
+        "domain:research"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "literature_reviewer": "Carefully read the research paper 'All-in-one simulation-based inference' and identify the key components, including the Variance Exploding SDE (VESDE) implementation, Simformer model training and inference process, and baseline methods Neural Posterior Estimation (NPE), Neural Ratio Estimation (NRE), and Neural Likelihood Estimation (NLE).",
+      "planner": "Develop a detailed plan to replicate the 'All-in-one simulation-based inference' research paper, taking into account its complex workflow with multiple phases and subtasks. Identify potential dependencies between stages and propose an efficient execution order.",
+      "experiment_designer": "Based on the literature review and replication strategy, design a set of experiments to replicate the 'All-in-one simulation-based inference' research paper. Consider the implementation details of each method, including VESDE, Simformer model training and inference process, and baseline methods NPE, NRE, and NLE."
+    }
+  },
+  "time_ms": 59447.976886000106
+}

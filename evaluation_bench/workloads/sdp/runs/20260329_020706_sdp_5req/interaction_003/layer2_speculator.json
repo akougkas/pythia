@@ -1,0 +1,46 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "data_pipeline:0.3:['data', 'environmental_science']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:data_pipeline",
+        "domain:data",
+        "domain:environmental_science"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "data_discovery": "Find two authoritative spatial data sources needed for this analysis: (1) NIFC (National Interagency Fire Center) geographic area boundary polygons \u2014 check https://data-nifc.opendata.arcgis.com/ for a GeoJSON or Shapefile of the 10+ NIFC geographic coordination areas (e.g., 'GB' for Great Basin, 'SW' for Southwest, etc.); (2) US state boundary polygons \u2014 e.g., from the US Census Bureau TIGER/Line shapefiles or a public GeoJSON. For each source, confirm: URL or access method, file format, CRS/projection, and whether it includes abbreviation fields for NIFC areas. Return the confirmed source URLs and field names.",
+      "data_wrangler": "Using the data sources identified by data_discovery, implement a spatial data pipeline in Python (geopandas + shapely) to answer: which NIFC geographic area intersects the most US states? Steps: (1) Load NIFC geographic area polygons (GeoJSON or Shapefile) and US state polygons. (2) Reproject both datasets to a common CRS (e.g., EPSG:4326 or EPSG:5070 Albers Equal Area). (3) Perform a spatial intersection/overlay (gpd.overlay or sjoin) to find which states each NIFC area touches (use 'intersects' predicate, not just centroid containment). (4) For each NIFC geographic area, count the number of distinct US states it intersects. (5) Exclude non-contiguous territories if needed (confirm whether Alaska, Hawaii, Puerto Rico are relevant). (6) Identify the NIFC area with the highest state intersection count and extract its official abbreviation. Return a table of all NIFC areas with their state intersection counts, and highlight the winner with its abbreviation.",
+      "reporter": "Using the spatial join results from data_wrangler, produce a concise answer to the question: 'Which NIFC geographic area intersects with the most US states?' Your response must include: (1) The abbreviation of the winning NIFC geographic area (e.g., 'RM', 'SW', 'SA', etc.). (2) The full name of that geographic area. (3) The number of US states it intersects. (4) A brief ranked summary table of all NIFC areas and their state counts for verification. Keep the answer direct and cite the data sources used."
+    }
+  },
+  "time_ms": 0.071584000124858
+}

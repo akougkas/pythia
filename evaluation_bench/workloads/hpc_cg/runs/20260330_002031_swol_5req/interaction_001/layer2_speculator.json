@@ -1,0 +1,39 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "hpc_code_gen:0.4:['hpc', 'openmp']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.5,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:hpc_code_gen",
+        "domain:hpc",
+        "domain:openmp"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "Given a vector of points, implement an OpenMP-parallelized function to find the distance between the closest two points. Consider using a divide-and-conquer approach and parallelize the computation of distances between pairs.",
+      "code_gen": "Implement the OpenMP-parallelized closest pair function using the algorithm designed by the planner. Ensure that the code is efficient, readable, and follows best practices for parallel programming."
+    }
+  },
+  "time_ms": 45300.68931900041
+}

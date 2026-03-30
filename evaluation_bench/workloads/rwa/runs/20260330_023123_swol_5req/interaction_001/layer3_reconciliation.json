@@ -1,0 +1,45 @@
+{
+  "layer": "3_orchestrator_reconciliation",
+  "input": {
+    "solver_plan_agents": [
+      "literature_reviewer",
+      "experiment_designer",
+      "code_generator",
+      "experiment_runner",
+      "result_analyzer"
+    ],
+    "speculator_plan_agents": [
+      "experiment_designer",
+      "code_generator",
+      "tester"
+    ],
+    "solver_plan_members": [
+      "llama3.1-8b-gpu",
+      "llama3.1-8b-gpu",
+      "qwen2.5-14b-gpu",
+      "llama3.1-8b-gpu",
+      "llama3.1-8b-gpu"
+    ],
+    "speculator_plan_members": [
+      "llama3.1-8b-gpu",
+      "qwen2.5-14b-gpu",
+      "qwen2.5-14b-gpu"
+    ]
+  },
+  "comparison": {
+    "matching_assignments": [
+      "experiment_designer",
+      "code_generator"
+    ],
+    "discarded_assignments": [
+      "tester"
+    ]
+  },
+  "output": {
+    "verdict": "PARTIAL",
+    "salvage_ratio": 0.6666666666666666,
+    "reward": 0.5666666666666667,
+    "redirect_cost": 0.3,
+    "wasted_compute": 0.1
+  }
+}

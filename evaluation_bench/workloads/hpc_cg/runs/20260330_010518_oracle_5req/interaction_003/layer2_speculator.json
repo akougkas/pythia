@@ -1,0 +1,39 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "hpc_code_gen:0.5:['hpc', 'mpi']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:hpc_code_gen",
+        "domain:hpc",
+        "domain:mpi"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "planner": "Given a vector of 2D points, design a parallel algorithm using MPI that computes the distance between the closest pair of points. Assume each rank has a complete copy of the points and the final result should be returned on rank 0.",
+      "code_gen": "Implement the parallel algorithm for computing the closest pair of points using MPI. The input is a vector of 2D points, and the output should be the distance between the closest pair on rank 0."
+    }
+  },
+  "time_ms": 48014.98381999954
+}

@@ -1,0 +1,67 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "research_workflow:0.5:['ml', 'research']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      },
+      {
+        "agent": "review",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 2000
+      },
+      {
+        "agent": "experiment_runner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 3000
+      },
+      {
+        "agent": "result_analyzer",
+        "fleet_member": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": 2000
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "claude-haiku-cloud",
+        "model": "claude-haiku-4-5-20251001",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:research_workflow",
+        "domain:ml",
+        "domain:research"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "literature_reviewer": "Review the paper 'All-in-One Simulation-Based Inference' (Gloeckler et al.). Extract: (1) the core claims about Simformer vs NPE/NRE/NLE baselines \u2014 specific metrics such as C2ST scores, log-posterior accuracy, or calibration values on benchmark tasks (e.g., SLCP, two-moons, Lotka-Volterra); (2) the VESDE score network architecture specs from Appendix A2.1 \u2014 noise schedules, sigma_min/max, number of diffusion steps; (3) the Simformer training protocol \u2014 batch size, optimizer, learning rate schedule, number of simulations; (4) any ablation results that distinguish the 'all-in-one' capability (amortized over multiple observations, posterior/likelihood/ratio all from one model). Produce a structured checklist of claims to verify during replication.",
+      "experiment_designer": "Design a replication experiment plan for 'All-in-One SBI'. Given that VESDE, Simformer, NPE, NRE, and NLE are already implemented, define: (1) the benchmark task suite to run \u2014 at minimum two-moons, SLCP, and one ODE-based task like Lotka-Volterra; (2) evaluation metrics: C2ST (classifier two-sample test), expected log-posterior predictive (ELPP), and marginal coverage; (3) number of simulations per task (e.g., 10k/50k/100k), number of posterior samples, and number of test observations; (4) a comparison matrix: Simformer vs NPE vs NRE vs NLE on each task/metric; (5) the 'all-in-one' test \u2014 verify a single trained Simformer can produce posterior, likelihood ratio, and marginal posteriors without retraining. Output as a structured experiment config spec (JSON or YAML schema).",
+      "review": "Perform a correctness review of the existing implementations: (1) VESDE (Variance Exploding SDE) \u2014 verify the forward SDE is dx = sigma(t)^2 * dW with the correct noise schedule from Song et al. (sigma(t) = sigma_min * (sigma_max/sigma_min)^t), that the score network is conditioned on simulation context, and that the reverse-time SDE sampler (Euler-Maruyama or Predictor-Corrector) matches Appendix A2.1; (2) Simformer \u2014 verify the transformer architecture uses cross-attention over (theta, x) pairs, that it supports amortized inference over variable numbers of observations, and that the training loss is the denoising score matching objective; (3) Baselines (NPE/NRE/NLE) \u2014 verify they use sbi-library-standard implementations or equivalent normalizing flows. Flag any deviations from the paper spec with severity (critical/minor).",
+      "experiment_runner": "Execute the replication experiments as specified by the experiment designer. For each benchmark task (two-moons, SLCP, Lotka-Volterra): (1) train the Simformer model using the implemented training loop \u2014 log training loss curves and confirm convergence; (2) run NPE, NRE, and NLE baselines with matched simulation budgets; (3) draw posterior samples for 10 held-out observations per task; (4) compute C2ST scores comparing each method's posterior samples to reference posteriors; (5) test the Simformer's 'all-in-one' capability by querying posterior, likelihood ratio, and marginal posteriors from a single trained model without retraining. Save all results as structured outputs (numpy arrays or JSON) with method/task/metric labels for the result analyzer.",
+      "result_analyzer": "Analyze the experiment results against the paper's reported benchmarks. For each task-method-metric combination: (1) compute the deviation between replicated C2ST/ELPP values and paper-reported values \u2014 flag anything >5% relative error as a discrepancy; (2) assess whether Simformer outperforms baselines on the same tasks as claimed in the paper; (3) verify the all-in-one property holds \u2014 that a single Simformer model's posterior, likelihood, and ratio estimates are consistent with dedicated single-task models; (4) check calibration: are posterior coverage probabilities within expected error bands? (5) produce a replication fidelity score (0-100) based on: metric match (50%), qualitative trend match (30%), all-in-one capability confirmed (20%). Identify root causes for any major discrepancies.",
+      "reporter": "Produce a comprehensive replication report for 'All-in-One Simulation-Based Inference'. Structure it as: (1) **Executive Summary** \u2014 overall replication fidelity score and one-paragraph verdict; (2) **Implementation Status** \u2014 table of components (VESDE, Simformer, NPE, NRE, NLE) with review findings (correct / minor deviation / critical issue); (3) **Benchmark Results Table** \u2014 rows = tasks, columns = methods, cells = C2ST score (replicated vs paper); (4) **All-in-One Capability Verification** \u2014 did a single Simformer reproduce posterior/likelihood/ratio without retraining? Yes/No with evidence; (5) **Discrepancies and Hypotheses** \u2014 list of deviations with likely causes (hyperparameter mismatch, random seed, dataset split, etc.); (6) **Recommendations** \u2014 specific code or config changes to close remaining gaps. Output as a clean Markdown document suitable for a research lab report."
+    }
+  },
+  "time_ms": 0.04514400006883079
+}

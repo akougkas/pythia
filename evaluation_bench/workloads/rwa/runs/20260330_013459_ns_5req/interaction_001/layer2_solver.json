@@ -1,0 +1,160 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "research_workflow",
+      "complexity": 0.3369642857142857,
+      "domain_tags": [
+        "data",
+        "ml",
+        "research"
+      ],
+      "decomposability": 0.3,
+      "constraints": {}
+    },
+    "request_text_preview": "Replicate the research paper 'Adaptive Pruning': The paper \"APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference\" has been reproduced This involves 5 major phases and 171 total subtasks. The workflow includes: The required pre-trained models, datasets, and"
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "literature_reviewer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1000,
+        "order": 0
+      },
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500,
+        "order": 1
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 2
+      },
+      {
+        "agent": "experiment_runner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 3000,
+        "order": 3
+      },
+      {
+        "agent": "result_analyzer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500,
+        "order": 4
+      }
+    ],
+    "execution_order": [
+      [
+        "literature_reviewer"
+      ],
+      [
+        "experiment_designer"
+      ],
+      [
+        "code_generator"
+      ],
+      [
+        "experiment_runner"
+      ],
+      [
+        "result_analyzer"
+      ],
+      [
+        "reporter"
+      ]
+    ],
+    "total_budget": 10000,
+    "estimated_latency": 4.0
+  },
+  "time_ms": 33590.7569459996,
+  "llm_call_time_ms": 33590.5402089993,
+  "assignment_time_ms": 0.2167370003007818,
+  "llm_reasoning": "The request involves replicating a research paper (APT: Adaptive Pruning and Tuning) with significant prior setup already completed \u2014 models, datasets, metrics, LoRA, and baselines are all in place. Given the decomposability score of 0.30 and complexity of 0.34, the remaining work is moderate: understanding the paper's methodology, designing/running the replication experiments, and analyzing/reporting results. The pipeline is largely sequential (understand \u2192 design \u2192 implement \u2192 run \u2192 analyze \u2192 report), though literature review and experiment design can partially overlap.",
+  "llm_parsed_agents": [
+    "literature_reviewer",
+    "experiment_designer",
+    "code_generator",
+    "experiment_runner",
+    "result_analyzer",
+    "reporter"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "literature_reviewer",
+      "prompt": "Review the paper 'APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference'. Extract and document: (1) the adaptive pruning criterion and schedule (how heads/neurons are scored and removed), (2) the joint tuning mechanism (how LoRA interacts with pruning), (3) the training objective and loss formulation, (4) key hyperparameters reported (pruning ratio, LoRA rank, learning rate schedules), (5) evaluation benchmarks and metrics used (GLUE, SQuAD, perplexity, latency, etc.), and (6) the baseline comparisons made. Output a structured methodology summary that can directly guide experiment design. Note: LoRA is already configured and baselines are implemented.",
+      "role": "Extract APT's core adaptive pruning and tuning methodology from the paper",
+      "depends_on": [],
+      "estimated_tokens": 800,
+      "compute_weight": "light"
+    },
+    {
+      "name": "experiment_designer",
+      "prompt": "Using the APT methodology summary provided, design a concrete replication experiment plan covering the paper's 5 major phases. For each phase specify: (1) exact configuration (model checkpoint, dataset split, pruning ratio schedule, LoRA rank), (2) the expected output artifact (checkpoint, metric table, latency profile), (3) which baselines to compare against (already implemented), and (4) success criteria aligned with the paper's reported numbers. Ensure the plan maps onto the 171 subtasks already identified. Pre-trained models, datasets, LoRA setup, and baselines are confirmed available \u2014 focus on experiment sequencing, ablation variants, and any edge cases that could cause deviation from reported results.",
+      "role": "Design the replication experiment plan for APT's 5 major phases",
+      "depends_on": [
+        "literature_reviewer"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "code_generator",
+      "prompt": "Implement the APT adaptive pruning and tuning code on top of the existing LoRA configuration. Required components: (1) importance scoring function for attention heads and FFN neurons (use the paper's criterion \u2014 typically first-order Taylor expansion or gradient-magnitude based), (2) adaptive pruning scheduler that incrementally removes units across training steps according to the target sparsity schedule, (3) joint training loop that alternates or combines LoRA gradient updates with pruning mask updates, (4) checkpoint saving at each pruning stage for ablation, (5) inference-time pruning application (structural removal for latency gains). Code must be compatible with the pre-configured LoRA setup and available model/dataset infrastructure. Output clean, modular code with inline comments referencing paper sections.",
+      "role": "Implement APT adaptive pruning logic integrated with the existing LoRA setup",
+      "depends_on": [
+        "experiment_designer"
+      ],
+      "estimated_tokens": 4000,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "experiment_runner",
+      "prompt": "Execute the full APT replication pipeline according to the experiment design plan. Run all 5 major phases: (1) baseline fine-tuning runs for reference metrics, (2) APT training with adaptive pruning at configured sparsity targets, (3) evaluation on all designated benchmarks (GLUE subtasks, SQuAD, or domain-specific metrics as per paper), (4) latency/throughput profiling on pruned vs. unpruned models, (5) ablation runs (e.g., pruning without LoRA tuning, static vs. adaptive schedule). Log all metrics, training curves, and intermediate checkpoints. Flag any runs where results deviate >5% from paper-reported numbers for later analysis. Output a raw results table covering all conditions.",
+      "role": "Execute the APT replication experiments across all 5 phases and collect results",
+      "depends_on": [
+        "code_generator"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "result_analyzer",
+      "prompt": "Analyze the collected experimental results against the APT paper's reported numbers. For each benchmark and condition: (1) compute delta between replicated and reported metrics (accuracy, F1, perplexity, latency speedup), (2) classify deviations as within noise (<1%), minor gap (1-5%), or significant gap (>5%), (3) for significant gaps, hypothesize root causes (hyperparameter sensitivity, dataset preprocessing differences, hardware-dependent latency, LoRA rank mismatch), (4) verify ablation results are internally consistent with the paper's claims about adaptive vs. static pruning and LoRA contribution, (5) produce a fidelity score per experimental condition. Output a structured comparison table and gap analysis.",
+      "role": "Compare replication results against paper-reported numbers and diagnose gaps",
+      "depends_on": [
+        "experiment_runner"
+      ],
+      "estimated_tokens": 1200,
+      "compute_weight": "light"
+    },
+    {
+      "name": "reporter",
+      "prompt": "Write the final replication report for APT (Adaptive Pruning and Tuning). Structure: (1) Executive Summary \u2014 overall replication fidelity verdict, (2) Methodology Recap \u2014 key APT mechanisms implemented, (3) Results Table \u2014 side-by-side paper vs. replicated numbers across all benchmarks, (4) Gap Analysis \u2014 explanation of any deviations with likely causes, (5) Ablation Findings \u2014 what the ablations confirm or contradict from the paper's claims, (6) Infrastructure Notes \u2014 confirmed working components (LoRA, baselines, datasets) and any environment-specific caveats, (7) Recommendations \u2014 suggested fixes for gaps or extensions. Output as a well-structured Markdown document suitable for submission or archival.",
+      "role": "Produce the final replication report with findings, fidelity assessment, and recommendations",
+      "depends_on": [
+        "result_analyzer"
+      ],
+      "estimated_tokens": 1000,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "literature_reviewer": "Review the paper 'APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference'. Extract and document: (1) the adaptive pruning criterion and schedule (how heads/neurons are scored and removed), (2) the joint tuning mechanism (how LoRA interacts with pruning), (3) the training objective and loss formulation, (4) key hyperparameters reported (pruning ratio, LoRA rank, learning rate schedules), (5) evaluation benchmarks and metrics used (GLUE, SQuAD, perplexity, latency, etc.), and (6) the baseline comparisons made. Output a structured methodology summary that can directly guide experiment design. Note: LoRA is already configured and baselines are implemented.",
+    "experiment_designer": "Using the APT methodology summary provided, design a concrete replication experiment plan covering the paper's 5 major phases. For each phase specify: (1) exact configuration (model checkpoint, dataset split, pruning ratio schedule, LoRA rank), (2) the expected output artifact (checkpoint, metric table, latency profile), (3) which baselines to compare against (already implemented), and (4) success criteria aligned with the paper's reported numbers. Ensure the plan maps onto the 171 subtasks already identified. Pre-trained models, datasets, LoRA setup, and baselines are confirmed available \u2014 focus on experiment sequencing, ablation variants, and any edge cases that could cause deviation from reported results.",
+    "code_generator": "Implement the APT adaptive pruning and tuning code on top of the existing LoRA configuration. Required components: (1) importance scoring function for attention heads and FFN neurons (use the paper's criterion \u2014 typically first-order Taylor expansion or gradient-magnitude based), (2) adaptive pruning scheduler that incrementally removes units across training steps according to the target sparsity schedule, (3) joint training loop that alternates or combines LoRA gradient updates with pruning mask updates, (4) checkpoint saving at each pruning stage for ablation, (5) inference-time pruning application (structural removal for latency gains). Code must be compatible with the pre-configured LoRA setup and available model/dataset infrastructure. Output clean, modular code with inline comments referencing paper sections.",
+    "experiment_runner": "Execute the full APT replication pipeline according to the experiment design plan. Run all 5 major phases: (1) baseline fine-tuning runs for reference metrics, (2) APT training with adaptive pruning at configured sparsity targets, (3) evaluation on all designated benchmarks (GLUE subtasks, SQuAD, or domain-specific metrics as per paper), (4) latency/throughput profiling on pruned vs. unpruned models, (5) ablation runs (e.g., pruning without LoRA tuning, static vs. adaptive schedule). Log all metrics, training curves, and intermediate checkpoints. Flag any runs where results deviate >5% from paper-reported numbers for later analysis. Output a raw results table covering all conditions.",
+    "result_analyzer": "Analyze the collected experimental results against the APT paper's reported numbers. For each benchmark and condition: (1) compute delta between replicated and reported metrics (accuracy, F1, perplexity, latency speedup), (2) classify deviations as within noise (<1%), minor gap (1-5%), or significant gap (>5%), (3) for significant gaps, hypothesize root causes (hyperparameter sensitivity, dataset preprocessing differences, hardware-dependent latency, LoRA rank mismatch), (4) verify ablation results are internally consistent with the paper's claims about adaptive vs. static pruning and LoRA contribution, (5) produce a fidelity score per experimental condition. Output a structured comparison table and gap analysis.",
+    "reporter": "Write the final replication report for APT (Adaptive Pruning and Tuning). Structure: (1) Executive Summary \u2014 overall replication fidelity verdict, (2) Methodology Recap \u2014 key APT mechanisms implemented, (3) Results Table \u2014 side-by-side paper vs. replicated numbers across all benchmarks, (4) Gap Analysis \u2014 explanation of any deviations with likely causes, (5) Ablation Findings \u2014 what the ablations confirm or contradict from the paper's claims, (6) Infrastructure Notes \u2014 confirmed working components (LoRA, baselines, datasets) and any environment-specific caveats, (7) Recommendations \u2014 suggested fixes for gaps or extensions. Output as a well-structured Markdown document suitable for submission or archival."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"The request involves replicating a research paper (APT: Adaptive Pruning and Tuning) with significant prior setup already completed \u2014 models, datasets, metrics, LoRA, and baselines are all in place. Given the decomposability score of 0.30 and complexity of 0.34, the remaining work is moderate: understanding the paper's methodology, designing/running the replication experiments, and analyzing/reporting results. The pipeline is largely sequential (understand \u2192 design \u2192 implement \u2192 run \u2192 analyze \u2192 report), though literature review and experiment design can partially overlap.\",\n  \"agents\": [\n    {\n      \"name\": \"literature_reviewer\",\n      \"role\": \"Extract APT's core adaptive pruning and tuning methodology from the paper\",\n      \"prompt\": \"Review the paper 'APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference'. Extract and document: (1) the adaptive pruning criterion and schedule (how heads/neurons are scored and removed), (2) the joint tuning mechanism (how LoRA interacts with pruning), (3) the training objective and loss formulation, (4) key hyperparameters reported (pruning ratio, LoRA rank, learning rate schedules), (5) evaluation benchmarks and metrics used (GLUE, SQuAD, perplexity, latency, etc.), and (6) the baseline comparisons made. Output a structured methodology summary that can directly guide experiment design. Note: LoRA is already configured and baselines are implemented.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 800,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"experiment_designer\",\n      \"role\": \"Design the replication experiment plan for APT's 5 major phases\",\n      \"prompt\": \"Using the APT methodology summary provided, design a concrete replication experiment plan covering the paper's 5 major phases. For each phase specify: (1) exact configuration (model checkpoint, dataset split, pruning ratio schedule, LoRA rank), (2) the expected output artifact (checkpoint, metric table, latency profile), (3) which baselines to compare against (already implemented), and (4) success criteria aligned with the paper's reported numbers. Ensure the plan maps onto the 171 subtasks already identified. Pre-trained models, datasets, LoRA setup, and baselines are confirmed available \u2014 focus on experiment sequencing, ablation variants, and any edge cases that could cause deviation from reported results.\",\n      \"depends_on\": [\"literature_reviewer\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"code_generator\",\n      \"role\": \"Implement APT adaptive pruning logic integrated with the existing LoRA setup\",\n      \"prompt\": \"Implement the APT adaptive pruning and tuning code on top of the existing LoRA configuration. Required components: (1) importance scoring function for attention heads and FFN neurons (use the paper's criterion \u2014 typically first-order Taylor expansion or gradient-magnitude based), (2) adaptive pruning scheduler that incrementally removes units across training steps according to the target sparsity schedule, (3) joint training loop that alternates or combines LoRA gradient updates with pruning mask updates, (4) checkpoint saving at each pruning stage for ablation, (5) inference-time pruning application (structural removal for latency gains). Code must be compatible with the pre-configured LoRA setup and available model/dataset infrastructure. Output clean, modular code with inline comments referencing paper sections.\",\n      \"depends_on\": [\"experiment_designer\"],\n      \"estimated_tokens\": 4000,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"experiment_runner\",\n      \"role\": \"Execute the APT replication experiments across all 5 phases and collect results\",\n      \"prompt\": \"Execute the full APT replication pipeline according to the experiment design plan. Run all 5 major phases: (1) baseline fine-tuning runs for reference metrics, (2) APT training with adaptive pruning at configured sparsity targets, (3) evaluation on all designated benchmarks (GLUE subtasks, SQuAD, or domain-specific metrics as per paper), (4) latency/throughput profiling on pruned vs. unpruned models, (5) ablation runs (e.g., pruning without LoRA tuning, static vs. adaptive schedule). Log all metrics, training curves, and intermediate checkpoints. Flag any runs where results deviate >5% from paper-reported numbers for later analysis. Output a raw results table covering all conditions.\",\n      \"depends_on\": [\"code_generator\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"result_analyzer\",\n      \"role\": \"Compare replication results against paper-reported numbers and diagnose gaps\",\n      \"prompt\": \"Analyze the collected experimental results against the APT paper's reported numbers. For each benchmark and condition: (1) compute delta between replicated and reported metrics (accuracy, F1, perplexity, latency speedup), (2) classify deviations as within noise (<1%), minor gap (1-5%), or significant gap (>5%), (3) for significant gaps, hypothesize root causes (hyperparameter sensitivity, dataset preprocessing differences, hardware-dependent latency, LoRA rank mismatch), (4) verify ablation results are internally consistent with the paper's claims about adaptive vs. static pruning and LoRA contribution, (5) produce a fidelity score per experimental condition. Output a structured comparison table and gap analysis.\",\n      \"depends_on\": [\"experiment_runner\"],\n      \"estimated_tokens\": 1200,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"reporter\",\n      \"role\": \"Produce the final replication report with findings, fidelity assessment, and recommendations\",\n      \"prompt\": \"Write the final replication report for APT (Adaptive Pruning and Tuning). Structure: (1) Executive Summary \u2014 overall replication fidelity verdict, (2) Methodology Recap \u2014 key APT mechanisms implemented, (3) Results Table \u2014 side-by-side paper vs. replicated numbers across all benchmarks, (4) Gap Analysis \u2014 explanation of any deviations with likely causes, (5) Ablation Findings \u2014 what the ablations confirm or contradict from the paper's claims, (6) Infrastructure Notes \u2014 confirmed working components (LoRA, baselines, datasets) and any environment-specific caveats, (7) Recommendations \u2014 suggested fixes for gaps or extensions. Output as a well-structured Markdown document suitable for submission or archival.\",\n      \"depends_on\": [\"result_analyzer\"],\n      \"estimated_tokens\": 1000,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```"
+}

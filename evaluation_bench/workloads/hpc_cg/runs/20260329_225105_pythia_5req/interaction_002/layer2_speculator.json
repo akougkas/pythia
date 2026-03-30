@@ -1,0 +1,40 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "hpc_code_gen:0.5:['hpc', 'mpi', 'openmp']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:hpc_code_gen",
+        "domain:hpc",
+        "domain:mpi",
+        "domain:openmp"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "code_gen": "Implement the following C++ function that finds the minimum distance between any two points in a vector, parallelized with OpenMP:\n\ncpp\n#include <omp.h>\n#include <vector>\n#include <cmath>\n#include <limits>\n\nstruct Point { double x, y; };\n\ndouble distance(Point const& p1, Point const& p2) {\n    return std::sqrt(std::pow(p2.x-p1.x,2) + std::pow(p2.y-p1.y,2));\n}\n\ndouble closestPair(std::vector<Point> const& points);\n\n\nRequirements:\n1. Use a brute-force O(n\u00b2) double loop over all unique pairs (i < j).\n2. Parallelize the OUTER loop with `#pragma omp parallel for` and apply a `reduction(min: minDist)` clause so no explicit mutex/critical section is needed.\n3. Initialize minDist to `std::numeric_limits<double>::max()`.\n4. The inner loop runs j from i+1 to n \u2014 keep it serial inside the parallel outer loop.\n5. Return minDist after the parallel region.\n6. The expected output for [{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}] is 1.41421 (distance between {2,3} and {3,4}).\n7. Add a brief comment block explaining the parallelization strategy and any thread-safety considerations.\n\nReturn ONLY the completed function body (and any needed includes), no main(), no test harness.",
+      "tester": "Given the OpenMP-parallelized closestPair() implementation (output of code_gen), write a C++ test harness that verifies:\n\n1. **Provided example**: points = [{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}] \u2192 expect \u2248 1.41421 (within 1e-4 tolerance).\n2. **Two-point case**: [{0,0},{3,4}] \u2192 expect 5.0.\n3. **Duplicate points**: [{1,1},{1,1},{5,5}] \u2192 expect 0.0.\n4. **Large n stress test**: generate 10,000 random points and assert result matches a serial reference implementation (same algorithm, no OMP).\n5. **Thread count variation**: run with OMP_NUM_THREADS=1 and OMP_NUM_THREADS=4 and assert both return the same result (determinism check).\n\nFor each test, print PASS/FAIL and the computed vs expected value. Include the serial reference implementation for comparison. Note any data races or undefined behavior risks you observe in the parallelization strategy."
+    }
+  },
+  "time_ms": 0.027170999999270862
+}

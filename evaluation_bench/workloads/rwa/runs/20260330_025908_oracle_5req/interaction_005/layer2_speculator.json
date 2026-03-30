@@ -1,0 +1,54 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "research_workflow:0.4:['data', 'ml', 'research']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "experiment_designer",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      },
+      {
+        "agent": "code_generator",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000
+      },
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "review",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 2000
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:research_workflow",
+        "domain:data",
+        "domain:ml",
+        "domain:research"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "experiment_designer": "Design a set of experiments to replicate the results from 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning', focusing on the implementation described in Section 5.",
+      "code_generator": "Write the necessary code to implement Algorithm 1 for training DPMs with Adversarial Noise-based Transfer, as described in the paper.",
+      "data_discovery": "Identify and evaluate the necessary data sources to support the replication of the results from 'Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning'.",
+      "review": "Review the code generated to implement Algorithm 1 for training DPMs with Adversarial Noise-based Transfer, ensuring it meets the requirements and standards of the original paper."
+    }
+  },
+  "time_ms": 59387.18436600175
+}

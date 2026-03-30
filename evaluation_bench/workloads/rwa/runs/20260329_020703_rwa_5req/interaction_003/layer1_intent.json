@@ -1,0 +1,17 @@
+{
+  "layer": "1_intent_detector",
+  "input": {
+    "request_text": "Replicate the research paper 'Bam': The core contributions of the paper \"Batch and match: black-box variational inference with a score-based divergence\" have been reproduced. This involves 4 major phases and 1020 total subtasks. The workflow includes: The core variational inference algorithms studied in the paper have been implemented; The results of section 5.1 have been replicated; The results of Figure 5.3 and of Figure E.6 from Section 5.2 have been replicated."
+  },
+  "output": {
+    "task_type": "research_workflow",
+    "complexity": 0.46719155844155846,
+    "domain_tags": [
+      "ml",
+      "research"
+    ],
+    "decomposability": 0.45,
+    "constraints": {}
+  },
+  "time_ms": 3.204329000254802
+}

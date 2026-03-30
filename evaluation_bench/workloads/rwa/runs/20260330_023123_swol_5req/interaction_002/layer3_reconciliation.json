@@ -1,0 +1,42 @@
+{
+  "layer": "3_orchestrator_reconciliation",
+  "input": {
+    "solver_plan_agents": [
+      "literature_reviewer",
+      "experiment_designer",
+      "code_generator",
+      "code_gen"
+    ],
+    "speculator_plan_agents": [
+      "literature_reviewer",
+      "planner",
+      "experiment_designer"
+    ],
+    "solver_plan_members": [
+      "llama3.1-8b-gpu",
+      "llama3.1-8b-gpu",
+      "qwen2.5-14b-gpu",
+      "qwen2.5-14b-gpu"
+    ],
+    "speculator_plan_members": [
+      "claude-sonnet-cloud",
+      "claude-haiku-cloud",
+      "claude-haiku-cloud"
+    ]
+  },
+  "comparison": {
+    "matching_assignments": [],
+    "discarded_assignments": [
+      "literature_reviewer",
+      "planner",
+      "experiment_designer"
+    ]
+  },
+  "output": {
+    "verdict": "FLUSH",
+    "salvage_ratio": 0.0,
+    "reward": -0.5,
+    "redirect_cost": 0.8999999999999999,
+    "wasted_compute": 0.30000000000000004
+  }
+}

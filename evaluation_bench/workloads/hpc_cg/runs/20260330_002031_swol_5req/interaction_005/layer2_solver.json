@@ -1,0 +1,121 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "hpc_code_gen",
+      "complexity": 0.4725225225225226,
+      "domain_tags": [
+        "hpc",
+        "mpi",
+        "openmp"
+      ],
+      "decomposability": 0.4,
+      "constraints": {}
+    },
+    "request_text_preview": "#include <mpi.h>\n#include <omp.h>\n\nstruct Point {\n\tdouble x, y;\n};\n\ndouble distance(Point const& p1, Point const& p2) {\n\treturn std::sqrt(std::pow(p2.x-p1.x, 2) + std::pow(p2.y-p1.y, 2));\n}\n\n/* Return the perimeter of the smallest convex polygon that contains all the points in the vector points.\n   "
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500,
+        "order": 0
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 1
+      },
+      {
+        "agent": "tester",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 1500,
+        "order": 2
+      },
+      {
+        "agent": "review",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 2000,
+        "order": 3
+      }
+    ],
+    "execution_order": [
+      [
+        "planner"
+      ],
+      [
+        "code_gen"
+      ],
+      [
+        "review",
+        "tester"
+      ]
+    ],
+    "total_budget": 8000,
+    "estimated_latency": 4.5
+  },
+  "time_ms": 36514.08917000026,
+  "llm_call_time_ms": 36513.94183299999,
+  "assignment_time_ms": 0.14733700027136365,
+  "llm_reasoning": "This is a focused HPC code generation task: implement a parallel convex hull perimeter function using MPI+OpenMP. The algorithm design (which convex hull approach works well with MPI decomposition) must precede code generation, and a tester should validate correctness and parallel behavior. Complexity is medium \u2014 the parallel convex hull has non-trivial merge logic but the scope is a single function. Planner and tester are lightweight bookends around the heavy code_gen core.",
+  "llm_parsed_agents": [
+    "planner",
+    "code_gen",
+    "tester",
+    "review"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "planner",
+      "prompt": "Design a parallel algorithm for computing the convex hull perimeter of a 2D point set using MPI + OpenMP. Each MPI rank has a full copy of the points vector. Requirements:\n1. Choose an appropriate convex hull algorithm (e.g., Graham scan, Andrew's monotone chain, Jarvis march) that parallelizes well.\n2. Describe how to partition work across MPI ranks \u2014 e.g., split points by index range, compute local hulls, then merge.\n3. Describe the OpenMP parallelization within each rank (e.g., parallel sort, parallel local hull construction if applicable).\n4. Describe the MPI merge step: how local convex hulls are gathered on rank 0 and combined into the global hull.\n5. Note any edge cases: fewer points than ranks, collinear points, single-point or two-point inputs.\nOutput a concise algorithm outline (pseudocode or bullet steps) that the code_gen agent will implement.",
+      "role": "Design the parallel convex hull strategy (MPI decomposition + OpenMP threading + merge phase)",
+      "depends_on": [],
+      "estimated_tokens": 500,
+      "compute_weight": "light"
+    },
+    {
+      "name": "code_gen",
+      "prompt": "Implement the following C++ function using the algorithm plan provided by the planner:\n\ncpp\n#include <mpi.h>\n#include <omp.h>\n#include <vector>\n#include <cmath>\n#include <algorithm>\n\nstruct Point { double x, y; };\n\ndouble distance(Point const& p1, Point const& p2) {\n    return std::sqrt(std::pow(p2.x-p1.x,2) + std::pow(p2.y-p1.y,2));\n}\n\ndouble convexHullPerimeter(std::vector<Point> const& points);\n\n\nRequirements:\n- Use Andrew's monotone chain (or the algorithm chosen by planner) for correctness and O(n log n) complexity.\n- Each MPI rank processes a subset of points to build a local partial hull, then all local hull points are gathered to rank 0 via MPI_Gather or MPI_Gatherv.\n- Rank 0 computes the global convex hull from the union of all gathered hull points.\n- Use OpenMP (`#pragma omp parallel for`) to parallelize the sorting or the local hull point processing within each rank.\n- MPI is already initialized; do NOT call MPI_Init/MPI_Finalize.\n- Return the perimeter (sum of Euclidean distances between consecutive hull vertices) only on rank 0; other ranks may return 0.0.\n- Handle edge cases: n < 2 points, all collinear, fewer points than ranks.\n- Use MPI_Bcast or MPI_Scatter to distribute index ranges; use MPI_Gatherv since local hull sizes differ per rank.\n- The function must compile with: `mpicxx -fopenmp -std=c++17`\n\nProvide the complete, compilable implementation with inline comments explaining the MPI and OpenMP logic.",
+      "role": "Implement convexHullPerimeter() in C++ using MPI + OpenMP per the planner's design",
+      "depends_on": [
+        "planner"
+      ],
+      "estimated_tokens": 4000,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "tester",
+      "prompt": "Write a test suite for the `convexHullPerimeter` MPI+OpenMP function. Include:\n\n1. **Correctness tests** (run with `mpirun -n 4`):\n   - Example from spec: points = {(0,3),(1,1),(2,2),(4,4),(0,0),(1,2),(3,1),(3,3)} \u2192 expected perimeter \u2248 13.4477 (tolerance 1e-3)\n   - Unit square: {(0,0),(1,0),(1,1),(0,1)} \u2192 perimeter = 4.0\n   - Collinear points: {(0,0),(1,0),(2,0),(3,0)} \u2192 perimeter = 6.0\n   - Triangle: {(0,0),(3,0),(0,4)} \u2192 perimeter = 12.0\n   - Single point: {(1,1)} \u2192 perimeter = 0.0\n   - Two points: {(0,0),(3,4)} \u2192 perimeter = 10.0\n\n2. **Parallel consistency test**: verify the result is identical when run with 1, 2, and 4 MPI ranks.\n\n3. **Edge case**: n_points < n_ranks (e.g., 2 points, 4 ranks) \u2014 must not crash.\n\nProvide test code as a self-contained `main()` that calls `convexHullPerimeter`, checks results with assertions, and prints PASS/FAIL per case. Include the MPI boilerplate (MPI_Init/Finalize) in main.",
+      "role": "Write correctness and parallel-behavior tests for convexHullPerimeter()",
+      "depends_on": [
+        "code_gen"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "review",
+      "prompt": "Review the MPI+OpenMP implementation of `convexHullPerimeter` produced by code_gen. Evaluate:\n\n1. **Correctness**: Does the convex hull algorithm (monotone chain or chosen variant) correctly handle all edge cases (collinear, duplicate points, n<3)? Is the perimeter calculation over the ordered hull vertices correct?\n2. **MPI correctness**: Are MPI_Gatherv buffer sizes and displacements computed correctly? Is there a risk of deadlock? Are all ranks synchronized before gather?\n3. **OpenMP safety**: Are there any data races in the parallel regions? Are shared vs. private variables correctly scoped?\n4. **Performance**: Is the parallelization meaningful \u2014 does each rank do O(n/p) work before the merge? Is the OpenMP parallelism applied to a sufficiently large loop?\n5. **Robustness**: Does it handle the case where some ranks receive 0 points gracefully?\n\nScore each dimension 1-5 and provide specific fix suggestions for any score below 4.",
+      "role": "Review the implementation for correctness, MPI safety, OpenMP race conditions, and performance",
+      "depends_on": [
+        "code_gen"
+      ],
+      "estimated_tokens": 600,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "planner": "Design a parallel algorithm for computing the convex hull perimeter of a 2D point set using MPI + OpenMP. Each MPI rank has a full copy of the points vector. Requirements:\n1. Choose an appropriate convex hull algorithm (e.g., Graham scan, Andrew's monotone chain, Jarvis march) that parallelizes well.\n2. Describe how to partition work across MPI ranks \u2014 e.g., split points by index range, compute local hulls, then merge.\n3. Describe the OpenMP parallelization within each rank (e.g., parallel sort, parallel local hull construction if applicable).\n4. Describe the MPI merge step: how local convex hulls are gathered on rank 0 and combined into the global hull.\n5. Note any edge cases: fewer points than ranks, collinear points, single-point or two-point inputs.\nOutput a concise algorithm outline (pseudocode or bullet steps) that the code_gen agent will implement.",
+    "code_gen": "Implement the following C++ function using the algorithm plan provided by the planner:\n\ncpp\n#include <mpi.h>\n#include <omp.h>\n#include <vector>\n#include <cmath>\n#include <algorithm>\n\nstruct Point { double x, y; };\n\ndouble distance(Point const& p1, Point const& p2) {\n    return std::sqrt(std::pow(p2.x-p1.x,2) + std::pow(p2.y-p1.y,2));\n}\n\ndouble convexHullPerimeter(std::vector<Point> const& points);\n\n\nRequirements:\n- Use Andrew's monotone chain (or the algorithm chosen by planner) for correctness and O(n log n) complexity.\n- Each MPI rank processes a subset of points to build a local partial hull, then all local hull points are gathered to rank 0 via MPI_Gather or MPI_Gatherv.\n- Rank 0 computes the global convex hull from the union of all gathered hull points.\n- Use OpenMP (`#pragma omp parallel for`) to parallelize the sorting or the local hull point processing within each rank.\n- MPI is already initialized; do NOT call MPI_Init/MPI_Finalize.\n- Return the perimeter (sum of Euclidean distances between consecutive hull vertices) only on rank 0; other ranks may return 0.0.\n- Handle edge cases: n < 2 points, all collinear, fewer points than ranks.\n- Use MPI_Bcast or MPI_Scatter to distribute index ranges; use MPI_Gatherv since local hull sizes differ per rank.\n- The function must compile with: `mpicxx -fopenmp -std=c++17`\n\nProvide the complete, compilable implementation with inline comments explaining the MPI and OpenMP logic.",
+    "tester": "Write a test suite for the `convexHullPerimeter` MPI+OpenMP function. Include:\n\n1. **Correctness tests** (run with `mpirun -n 4`):\n   - Example from spec: points = {(0,3),(1,1),(2,2),(4,4),(0,0),(1,2),(3,1),(3,3)} \u2192 expected perimeter \u2248 13.4477 (tolerance 1e-3)\n   - Unit square: {(0,0),(1,0),(1,1),(0,1)} \u2192 perimeter = 4.0\n   - Collinear points: {(0,0),(1,0),(2,0),(3,0)} \u2192 perimeter = 6.0\n   - Triangle: {(0,0),(3,0),(0,4)} \u2192 perimeter = 12.0\n   - Single point: {(1,1)} \u2192 perimeter = 0.0\n   - Two points: {(0,0),(3,4)} \u2192 perimeter = 10.0\n\n2. **Parallel consistency test**: verify the result is identical when run with 1, 2, and 4 MPI ranks.\n\n3. **Edge case**: n_points < n_ranks (e.g., 2 points, 4 ranks) \u2014 must not crash.\n\nProvide test code as a self-contained `main()` that calls `convexHullPerimeter`, checks results with assertions, and prints PASS/FAIL per case. Include the MPI boilerplate (MPI_Init/Finalize) in main.",
+    "review": "Review the MPI+OpenMP implementation of `convexHullPerimeter` produced by code_gen. Evaluate:\n\n1. **Correctness**: Does the convex hull algorithm (monotone chain or chosen variant) correctly handle all edge cases (collinear, duplicate points, n<3)? Is the perimeter calculation over the ordered hull vertices correct?\n2. **MPI correctness**: Are MPI_Gatherv buffer sizes and displacements computed correctly? Is there a risk of deadlock? Are all ranks synchronized before gather?\n3. **OpenMP safety**: Are there any data races in the parallel regions? Are shared vs. private variables correctly scoped?\n4. **Performance**: Is the parallelization meaningful \u2014 does each rank do O(n/p) work before the merge? Is the OpenMP parallelism applied to a sufficiently large loop?\n5. **Robustness**: Does it handle the case where some ranks receive 0 points gracefully?\n\nScore each dimension 1-5 and provide specific fix suggestions for any score below 4."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a focused HPC code generation task: implement a parallel convex hull perimeter function using MPI+OpenMP. The algorithm design (which convex hull approach works well with MPI decomposition) must precede code generation, and a tester should validate correctness and parallel behavior. Complexity is medium \u2014 the parallel convex hull has non-trivial merge logic but the scope is a single function. Planner and tester are lightweight bookends around the heavy code_gen core.\",\n  \"agents\": [\n    {\n      \"name\": \"planner\",\n      \"role\": \"Design the parallel convex hull strategy (MPI decomposition + OpenMP threading + merge phase)\",\n      \"prompt\": \"Design a parallel algorithm for computing the convex hull perimeter of a 2D point set using MPI + OpenMP. Each MPI rank has a full copy of the points vector. Requirements:\\n1. Choose an appropriate convex hull algorithm (e.g., Graham scan, Andrew's monotone chain, Jarvis march) that parallelizes well.\\n2. Describe how to partition work across MPI ranks \u2014 e.g., split points by index range, compute local hulls, then merge.\\n3. Describe the OpenMP parallelization within each rank (e.g., parallel sort, parallel local hull construction if applicable).\\n4. Describe the MPI merge step: how local convex hulls are gathered on rank 0 and combined into the global hull.\\n5. Note any edge cases: fewer points than ranks, collinear points, single-point or two-point inputs.\\nOutput a concise algorithm outline (pseudocode or bullet steps) that the code_gen agent will implement.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 500,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"code_gen\",\n      \"role\": \"Implement convexHullPerimeter() in C++ using MPI + OpenMP per the planner's design\",\n      \"prompt\": \"Implement the following C++ function using the algorithm plan provided by the planner:\\n\\n```cpp\\n#include <mpi.h>\\n#include <omp.h>\\n#include <vector>\\n#include <cmath>\\n#include <algorithm>\\n\\nstruct Point { double x, y; };\\n\\ndouble distance(Point const& p1, Point const& p2) {\\n    return std::sqrt(std::pow(p2.x-p1.x,2) + std::pow(p2.y-p1.y,2));\\n}\\n\\ndouble convexHullPerimeter(std::vector<Point> const& points);\\n```\\n\\nRequirements:\\n- Use Andrew's monotone chain (or the algorithm chosen by planner) for correctness and O(n log n) complexity.\\n- Each MPI rank processes a subset of points to build a local partial hull, then all local hull points are gathered to rank 0 via MPI_Gather or MPI_Gatherv.\\n- Rank 0 computes the global convex hull from the union of all gathered hull points.\\n- Use OpenMP (`#pragma omp parallel for`) to parallelize the sorting or the local hull point processing within each rank.\\n- MPI is already initialized; do NOT call MPI_Init/MPI_Finalize.\\n- Return the perimeter (sum of Euclidean distances between consecutive hull vertices) only on rank 0; other ranks may return 0.0.\\n- Handle edge cases: n < 2 points, all collinear, fewer points than ranks.\\n- Use MPI_Bcast or MPI_Scatter to distribute index ranges; use MPI_Gatherv since local hull sizes differ per rank.\\n- The function must compile with: `mpicxx -fopenmp -std=c++17`\\n\\nProvide the complete, compilable implementation with inline comments explaining the MPI and OpenMP logic.\",\n      \"depends_on\": [\"planner\"],\n      \"estimated_tokens\": 4000,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"tester\",\n      \"role\": \"Write correctness and parallel-behavior tests for convexHullPerimeter()\",\n      \"prompt\": \"Write a test suite for the `convexHullPerimeter` MPI+OpenMP function. Include:\\n\\n1. **Correctness tests** (run with `mpirun -n 4`):\\n   - Example from spec: points = {(0,3),(1,1),(2,2),(4,4),(0,0),(1,2),(3,1),(3,3)} \u2192 expected perimeter \u2248 13.4477 (tolerance 1e-3)\\n   - Unit square: {(0,0),(1,0),(1,1),(0,1)} \u2192 perimeter = 4.0\\n   - Collinear points: {(0,0),(1,0),(2,0),(3,0)} \u2192 perimeter = 6.0\\n   - Triangle: {(0,0),(3,0),(0,4)} \u2192 perimeter = 12.0\\n   - Single point: {(1,1)} \u2192 perimeter = 0.0\\n   - Two points: {(0,0),(3,4)} \u2192 perimeter = 10.0\\n\\n2. **Parallel consistency test**: verify the result is identical when run with 1, 2, and 4 MPI ranks.\\n\\n3. **Edge case**: n_points < n_ranks (e.g., 2 points, 4 ranks) \u2014 must not crash.\\n\\nProvide test code as a self-contained `main()` that calls `convexHullPerimeter`, checks results with assertions, and prints PASS/FAIL per case. Include the MPI boilerplate (MPI_Init/Finalize) in main.\",\n      \"depends_on\": [\"code_gen\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"review\",\n      \"role\": \"Review the implementation for correctness, MPI safety, OpenMP race conditions, and performance\",\n      \"prompt\": \"Review the MPI+OpenMP implementation of `convexHullPerimeter` produced by code_gen. Evaluate:\\n\\n1. **Correctness**: Does the convex hull algorithm (monotone chain or chosen variant) correctly handle all edge cases (collinear, duplicate points, n<3)? Is the perimeter calculation over the ordered hull vertices correct?\\n2. **MPI correctness**: Are MPI_Gatherv buffer sizes and displacements computed correctly? Is there a risk of deadlock? Are all ranks synchronized before gather?\\n3. **OpenMP safety**: Are there any data races in the parallel regions? Are shared vs. private variables correctly scoped?\\n4. **Performance**: Is the parallelization meaningful \u2014 does each rank do O(n/p) work before the merge? Is the OpenMP parallelism applied to a sufficiently large loop?\\n5. **Robustness**: Does it handle the case where some ranks receive 0 points gracefully?\\n\\nScore each dimension 1-5 and provide specific fix suggestions for any score below 4.\",\n      \"depends_on\": [\"code_gen\"],\n      \"estimated_tokens\": 600,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```"
+}

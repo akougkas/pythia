@@ -1,0 +1,122 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "data_pipeline",
+      "complexity": 0.38684782608695656,
+      "domain_tags": [
+        "data",
+        "environmental_science"
+      ],
+      "decomposability": 0.3,
+      "constraints": {}
+    },
+    "request_text_preview": "Analyze the following scientific data pipeline task: On average, how many more annual fires are reported by NOAA compared to NIFC since 2000? Round to the nearest whole number. This requires working with 2 data source(s) and involves approximately 7 processing steps. Domain: environmental science."
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500,
+        "order": 0
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000,
+        "order": 1
+      },
+      {
+        "agent": "analyst",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000,
+        "order": 2
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500,
+        "order": 3
+      }
+    ],
+    "execution_order": [
+      [
+        "data_discovery"
+      ],
+      [
+        "data_wrangler"
+      ],
+      [
+        "analyst"
+      ],
+      [
+        "reporter"
+      ]
+    ],
+    "total_budget": 7000,
+    "estimated_latency": 5.0
+  },
+  "time_ms": 25064.181218000158,
+  "llm_call_time_ms": 25064.04119400031,
+  "assignment_time_ms": 0.14002399984747171,
+  "llm_reasoning": "This is a moderately simple data pipeline task requiring two data sources (NOAA and NIFC fire records) to be fetched, aligned, and compared. The complexity is low (0.39) and decomposability is modest (0.30), suggesting a linear pipeline rather than heavy parallelism. The core challenge is sourcing and harmonizing two datasets across matching years (2000\u2013present), then computing a straightforward annual average difference.",
+  "llm_parsed_agents": [
+    "data_discovery",
+    "data_wrangler",
+    "analyst",
+    "reporter"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "data_discovery",
+      "prompt": "Find accessible data sources for annual wildfire/fire counts from two agencies: (1) NOAA \u2014 identify which NOAA dataset or product reports annual fire counts (e.g., NOAA's Storm Events Database, NOAA Climate.gov, or affiliated sources), and (2) NIFC (National Interagency Fire Center) \u2014 locate their annual wildfire statistics table (nifc.gov/fire-information/statistics). For each source, document: the URL or access method, the years available (filter to 2000\u2013present), the column/field representing total annual fire count, and any caveats (e.g., reporting methodology differences, what counts as a 'fire'). Return a structured summary of both sources ready for ingestion.",
+      "role": "Locate and assess NOAA and NIFC annual fire count datasets since 2000",
+      "depends_on": [],
+      "estimated_tokens": 600,
+      "compute_weight": "light"
+    },
+    {
+      "name": "data_wrangler",
+      "prompt": "Using the data sources identified by data_discovery, ingest and clean both datasets: (1) Parse NOAA annual fire counts for each year from 2000 to the most recent available year. (2) Parse NIFC annual fire counts for the same year range from their published statistics. (3) Align both datasets on a common 'year' key \u2014 retain only years present in BOTH datasets. (4) Handle any missing values, formatting issues, or unit inconsistencies (e.g., ensure both are raw fire count integers, not acreage). (5) Output a clean merged table with columns: [year, noaa_fire_count, nifc_fire_count]. Flag any years with data gaps or anomalies.",
+      "role": "Ingest, clean, and align NOAA and NIFC annual fire count data into a comparable year-indexed table",
+      "depends_on": [
+        "data_discovery"
+      ],
+      "estimated_tokens": 1500,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "analyst",
+      "prompt": "Using the merged dataset from data_wrangler with columns [year, noaa_fire_count, nifc_fire_count]: (1) For each year, compute the difference: diff = noaa_fire_count - nifc_fire_count. (2) Calculate the mean of all annual differences across all available years since 2000. (3) Round the result to the nearest whole number. (4) Also report: the per-year differences table, the min/max difference years, and whether NOAA consistently reports more fires than NIFC or if it varies by year. (5) Note any years where one agency's count is significantly higher and provide a brief methodological explanation if possible (e.g., NOAA may include prescribed burns or different fire size thresholds).",
+      "role": "Compute the average annual difference in fire counts between NOAA and NIFC since 2000",
+      "depends_on": [
+        "data_wrangler"
+      ],
+      "estimated_tokens": 1200,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "reporter",
+      "prompt": "Using the analysis from analyst, produce a final answer report for the question: 'On average, how many more annual fires are reported by NOAA compared to NIFC since 2000?' Structure your response as: (1) **Direct Answer**: State the rounded whole-number average difference prominently. (2) **Data Coverage**: Specify which years were included in the analysis and how many data points. (3) **Key Observations**: Note any trends, outliers, or important caveats about how NOAA and NIFC differ in fire reporting methodology. (4) **Confidence Note**: Flag any data sourcing limitations (e.g., if NOAA fire data required indirect sourcing). Keep the report concise and suitable for a scientific computing context.",
+      "role": "Summarize the final answer and key findings in a clear, concise response",
+      "depends_on": [
+        "analyst"
+      ],
+      "estimated_tokens": 500,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "data_discovery": "Find accessible data sources for annual wildfire/fire counts from two agencies: (1) NOAA \u2014 identify which NOAA dataset or product reports annual fire counts (e.g., NOAA's Storm Events Database, NOAA Climate.gov, or affiliated sources), and (2) NIFC (National Interagency Fire Center) \u2014 locate their annual wildfire statistics table (nifc.gov/fire-information/statistics). For each source, document: the URL or access method, the years available (filter to 2000\u2013present), the column/field representing total annual fire count, and any caveats (e.g., reporting methodology differences, what counts as a 'fire'). Return a structured summary of both sources ready for ingestion.",
+    "data_wrangler": "Using the data sources identified by data_discovery, ingest and clean both datasets: (1) Parse NOAA annual fire counts for each year from 2000 to the most recent available year. (2) Parse NIFC annual fire counts for the same year range from their published statistics. (3) Align both datasets on a common 'year' key \u2014 retain only years present in BOTH datasets. (4) Handle any missing values, formatting issues, or unit inconsistencies (e.g., ensure both are raw fire count integers, not acreage). (5) Output a clean merged table with columns: [year, noaa_fire_count, nifc_fire_count]. Flag any years with data gaps or anomalies.",
+    "analyst": "Using the merged dataset from data_wrangler with columns [year, noaa_fire_count, nifc_fire_count]: (1) For each year, compute the difference: diff = noaa_fire_count - nifc_fire_count. (2) Calculate the mean of all annual differences across all available years since 2000. (3) Round the result to the nearest whole number. (4) Also report: the per-year differences table, the min/max difference years, and whether NOAA consistently reports more fires than NIFC or if it varies by year. (5) Note any years where one agency's count is significantly higher and provide a brief methodological explanation if possible (e.g., NOAA may include prescribed burns or different fire size thresholds).",
+    "reporter": "Using the analysis from analyst, produce a final answer report for the question: 'On average, how many more annual fires are reported by NOAA compared to NIFC since 2000?' Structure your response as: (1) **Direct Answer**: State the rounded whole-number average difference prominently. (2) **Data Coverage**: Specify which years were included in the analysis and how many data points. (3) **Key Observations**: Note any trends, outliers, or important caveats about how NOAA and NIFC differ in fire reporting methodology. (4) **Confidence Note**: Flag any data sourcing limitations (e.g., if NOAA fire data required indirect sourcing). Keep the report concise and suitable for a scientific computing context."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a moderately simple data pipeline task requiring two data sources (NOAA and NIFC fire records) to be fetched, aligned, and compared. The complexity is low (0.39) and decomposability is modest (0.30), suggesting a linear pipeline rather than heavy parallelism. The core challenge is sourcing and harmonizing two datasets across matching years (2000\u2013present), then computing a straightforward annual average difference.\",\n  \"agents\": [\n    {\n      \"name\": \"data_discovery\",\n      \"role\": \"Locate and assess NOAA and NIFC annual fire count datasets since 2000\",\n      \"prompt\": \"Find accessible data sources for annual wildfire/fire counts from two agencies: (1) NOAA \u2014 identify which NOAA dataset or product reports annual fire counts (e.g., NOAA's Storm Events Database, NOAA Climate.gov, or affiliated sources), and (2) NIFC (National Interagency Fire Center) \u2014 locate their annual wildfire statistics table (nifc.gov/fire-information/statistics). For each source, document: the URL or access method, the years available (filter to 2000\u2013present), the column/field representing total annual fire count, and any caveats (e.g., reporting methodology differences, what counts as a 'fire'). Return a structured summary of both sources ready for ingestion.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 600,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"data_wrangler\",\n      \"role\": \"Ingest, clean, and align NOAA and NIFC annual fire count data into a comparable year-indexed table\",\n      \"prompt\": \"Using the data sources identified by data_discovery, ingest and clean both datasets: (1) Parse NOAA annual fire counts for each year from 2000 to the most recent available year. (2) Parse NIFC annual fire counts for the same year range from their published statistics. (3) Align both datasets on a common 'year' key \u2014 retain only years present in BOTH datasets. (4) Handle any missing values, formatting issues, or unit inconsistencies (e.g., ensure both are raw fire count integers, not acreage). (5) Output a clean merged table with columns: [year, noaa_fire_count, nifc_fire_count]. Flag any years with data gaps or anomalies.\",\n      \"depends_on\": [\"data_discovery\"],\n      \"estimated_tokens\": 1500,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"analyst\",\n      \"role\": \"Compute the average annual difference in fire counts between NOAA and NIFC since 2000\",\n      \"prompt\": \"Using the merged dataset from data_wrangler with columns [year, noaa_fire_count, nifc_fire_count]: (1) For each year, compute the difference: diff = noaa_fire_count - nifc_fire_count. (2) Calculate the mean of all annual differences across all available years since 2000. (3) Round the result to the nearest whole number. (4) Also report: the per-year differences table, the min/max difference years, and whether NOAA consistently reports more fires than NIFC or if it varies by year. (5) Note any years where one agency's count is significantly higher and provide a brief methodological explanation if possible (e.g., NOAA may include prescribed burns or different fire size thresholds).\",\n      \"depends_on\": [\"data_wrangler\"],\n      \"estimated_tokens\": 1200,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"reporter\",\n      \"role\": \"Summarize the final answer and key findings in a clear, concise response\",\n      \"prompt\": \"Using the analysis from analyst, produce a final answer report for the question: 'On average, how many more annual fires are reported by NOAA compared to NIFC since 2000?' Structure your response as: (1) **Direct Answer**: State the rounded whole-number average difference prominently. (2) **Data Coverage**: Specify which years were included in the analysis and how many data points. (3) **Key Observations**: Note any trends, outliers, or important caveats about how NOAA and NIFC differ in fire reporting methodology. (4) **Confidence Note**: Flag any data sourcing limitations (e.g., if NOAA fire data required indirect sourcing). Keep the report concise and suitable for a scientific computing context.\",\n      \"depends_on\": [\"analyst\"],\n      \"estimated_tokens\": 500,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```"
+}

@@ -1,0 +1,324 @@
+{
+  "summary": {
+    "run_dir": "/home/shazzadul/Illinois_Tech/Spring26/RA/Pythia/pythia/evaluation_bench/workloads/rwa/runs/20260330_023123_swol_5req",
+    "baseline": "swol",
+    "config": {
+      "timestamp": "20260330_023123",
+      "baseline": "swol",
+      "prompt_mode": "original",
+      "n_requests": 5,
+      "fleet": [
+        {
+          "id": "qwen2.5-14b-gpu",
+          "model": "qwen2.5:14b",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator"
+          ],
+          "cost_rate": 0.01,
+          "latency": 2.0
+        },
+        {
+          "id": "llama3.1-8b-gpu",
+          "model": "llama3.1:8b",
+          "capabilities": [
+            "planner",
+            "review",
+            "data_discovery",
+            "reporter",
+            "literature_reviewer",
+            "experiment_designer",
+            "experiment_runner",
+            "result_analyzer"
+          ],
+          "cost_rate": 0.005,
+          "latency": 0.5
+        },
+        {
+          "id": "claude-haiku-cloud",
+          "model": "claude-haiku-4-5-20251001",
+          "capabilities": [
+            "planner",
+            "review",
+            "tester",
+            "reporter",
+            "data_discovery",
+            "result_analyzer",
+            "experiment_runner",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.02,
+          "latency": 3.0
+        },
+        {
+          "id": "claude-sonnet-cloud",
+          "model": "claude-sonnet-4-6",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator",
+            "planner",
+            "review",
+            "literature_reviewer",
+            "experiment_designer"
+          ],
+          "cost_rate": 0.08,
+          "latency": 4.0
+        },
+        {
+          "id": "claude-opus-cloud",
+          "model": "claude-opus-4-6",
+          "capabilities": [
+            "code_gen",
+            "analyst",
+            "code_generator",
+            "literature_reviewer"
+          ],
+          "cost_rate": 0.15,
+          "latency": 5.0
+        }
+      ],
+      "solver": {
+        "type": "LLMAgentSelector",
+        "model": "claude-sonnet-4-6",
+        "provider": "claude"
+      },
+      "speculator": {
+        "type": "frozen (SwoL)"
+      },
+      "learner": {
+        "type": "disabled",
+        "window_size": 50,
+        "n1": 2,
+        "n2": 6
+      },
+      "thresholds": {
+        "tau_2": 0.5,
+        "tau_3": 0.8
+      },
+      "reconciliation": {
+        "L_saved": 1.0,
+        "C_redirect": 0.3,
+        "C_flush": 0.5,
+        "C_spec": 0.1
+      }
+    },
+    "total_interactions": 5,
+    "mean_dispatch_latency_ms": 38291.9925400005,
+    "mean_solver_ms": 38291.9925400005,
+    "mean_speculator_ms": 21781.28737879997,
+    "mean_speedup": 1137922.60582694,
+    "mean_pipeline_s": 272.8811007615997,
+    "verdicts": {
+      "PARTIAL": 3,
+      "FLUSH": 1,
+      "COMMIT": 1
+    },
+    "hit_rate": 0.8,
+    "mode_distribution": {
+      "1": 5
+    },
+    "N_conv": 3,
+    "total_tokens": 18172,
+    "total_cost": 360.0,
+    "net_benefit": 2.481666666666667,
+    "wasted_compute_ratio_W": 0.25000000000000006,
+    "mean_salvage_ratio": 0.6433333333333333,
+    "phase_at_end": "cold_start",
+    "confidence_at_end": 0.0
+  },
+  "events": [
+    {
+      "interaction": 1,
+      "request_id": "rwa_adaptive-pruning",
+      "baseline": "swol",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.3369642857142857,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.5,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 49458.40397599932,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ],
+      "solver_time_ms": 41452.327712000624,
+      "verdict": "PARTIAL",
+      "reward": 0.5666666666666667,
+      "salvage_ratio": 0.6666666666666666,
+      "wasted_compute": 0.1,
+      "redirect_cost": 0.3,
+      "pipeline_time_s": 265.0641963679991,
+      "pipeline_tokens": 3878,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0.8381250582229908,
+      "agent_costs": {
+        "literature_reviewer": 5.0,
+        "experiment_designer": 7.5,
+        "code_generator": 40.0,
+        "experiment_runner": 15.0,
+        "result_analyzer": 2.5
+      }
+    },
+    {
+      "interaction": 2,
+      "request_id": "rwa_all-in-one",
+      "baseline": "swol",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.43371376811594203,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.5,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 59447.976886000106,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "code_gen"
+      ],
+      "solver_time_ms": 47090.12220099976,
+      "verdict": "FLUSH",
+      "reward": -0.5,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.30000000000000004,
+      "redirect_cost": 0.8999999999999999,
+      "pipeline_time_s": 353.2048363299982,
+      "pipeline_tokens": 3526,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0.7921232086888629,
+      "agent_costs": {
+        "literature_reviewer": 5.0,
+        "experiment_designer": 7.5,
+        "code_generator": 40.0,
+        "code_gen": 35.0
+      }
+    },
+    {
+      "interaction": 3,
+      "request_id": "rwa_bam",
+      "baseline": "swol",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.46719155844155846,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.5,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.01601000076334458,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ],
+      "solver_time_ms": 41023.314140000366,
+      "verdict": "PARTIAL",
+      "reward": 0.675,
+      "salvage_ratio": 0.75,
+      "wasted_compute": 0.1,
+      "redirect_cost": 0.3,
+      "pipeline_time_s": 237.36271045500143,
+      "pipeline_tokens": 3696,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 2562355.5392904533,
+      "agent_costs": {
+        "literature_reviewer": 5.0,
+        "experiment_designer": 7.5,
+        "code_generator": 40.0,
+        "experiment_runner": 15.0,
+        "result_analyzer": 2.5
+      }
+    },
+    {
+      "interaction": 4,
+      "request_id": "rwa_bbox",
+      "baseline": "swol",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.3317424242424243,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.5,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.01765100023476407,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ],
+      "solver_time_ms": 30162.424789001307,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 324.73347251700034,
+      "pipeline_tokens": 4765,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 1708822.4116385023,
+      "agent_costs": {
+        "literature_reviewer": 5.0,
+        "experiment_designer": 7.5,
+        "code_generator": 40.0,
+        "experiment_runner": 15.0,
+        "result_analyzer": 2.5
+      }
+    },
+    {
+      "interaction": 5,
+      "request_id": "rwa_bridging-data-gaps",
+      "baseline": "swol",
+      "intent_task_type": "research_workflow",
+      "intent_complexity": 0.38798076923076924,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.5,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.022370999431586824,
+      "solver_agents": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "experiment_runner"
+      ],
+      "solver_time_ms": 31731.77385800045,
+      "verdict": "PARTIAL",
+      "reward": 0.7400000000000001,
+      "salvage_ratio": 0.8,
+      "wasted_compute": 0.1,
+      "redirect_cost": 0.3,
+      "pipeline_time_s": 184.0402881379996,
+      "pipeline_tokens": 2307,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 1418433.4479574768,
+      "agent_costs": {
+        "literature_reviewer": 5.0,
+        "experiment_designer": 7.5,
+        "code_generator": 40.0,
+        "experiment_runner": 10.0
+      }
+    }
+  ]
+}

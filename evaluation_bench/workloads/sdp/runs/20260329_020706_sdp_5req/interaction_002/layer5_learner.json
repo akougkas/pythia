@@ -1,0 +1,44 @@
+{
+  "layer": "5_learner",
+  "input": {
+    "verdict": "PARTIAL",
+    "reward": 0.675,
+    "salvage_ratio": 0.75
+  },
+  "state_update": {
+    "phase": "early_learning",
+    "total_interactions": 2,
+    "unique_intent_keys": 1,
+    "mean_confidence": 0.75,
+    "mode_regressions": 0,
+    "active_drift_keys": []
+  },
+  "convergence": {
+    "total_interactions": 2,
+    "phase": "early_learning",
+    "n_unique_keys": 1,
+    "per_key": {
+      "data_pipeline:med:data": {
+        "observations": 2,
+        "confidence": 0.75,
+        "ci_90": [
+          0.43144711977443995,
+          1.0
+        ],
+        "ema_accuracy": 1.0,
+        "drifting": false,
+        "regret": 0.5
+      }
+    },
+    "total_regret": 0.5,
+    "mean_regret_per_interaction": 0.25
+  },
+  "fingerprint_summary": {
+    "fill_ratio": 0.04,
+    "overall_hit_rate": 1.0,
+    "mean_reward": 0.675,
+    "mean_confidence": 0.3,
+    "unique_intents": 0.5,
+    "mode3_fraction": 0.0
+  }
+}

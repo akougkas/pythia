@@ -1,0 +1,100 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "hpc_code_gen",
+      "complexity": 0.4706185567010309,
+      "domain_tags": [
+        "hpc",
+        "mpi"
+      ],
+      "decomposability": 0.4,
+      "constraints": {}
+    },
+    "request_text_preview": "#include <mpi.h>\n\nstruct Point {\n\tdouble x, y;\n};\n\ndouble distance(Point const& p1, Point const& p2) {\n\treturn std::sqrt(std::pow(p2.x-p1.x, 2) + std::pow(p2.y-p1.y, 2));\n}\n\n/* Return the distance between the closest two points in the vector points.\n   Use MPI to compute in parallel. Assume MPI has "
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500,
+        "order": 0
+      },
+      {
+        "agent": "code_gen",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 4000,
+        "order": 1
+      },
+      {
+        "agent": "review",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 2000,
+        "order": 2
+      }
+    ],
+    "execution_order": [
+      [
+        "planner"
+      ],
+      [
+        "code_gen"
+      ],
+      [
+        "review"
+      ]
+    ],
+    "total_budget": 6500,
+    "estimated_latency": 3.0
+  },
+  "time_ms": 28731.547878999663,
+  "llm_call_time_ms": 28731.384452000384,
+  "assignment_time_ms": 0.16342699927918147,
+  "llm_reasoning": "This is a focused HPC code generation task: implement a parallel closest-pair algorithm in MPI C++. The complexity is moderate \u2014 the algorithm requires partitioning work across ranks, local computation, and a global reduction \u2014 but the spec is tight and self-contained. A planner should first decide the parallel strategy (e.g., divide pairs across ranks, each rank computes a local minimum, then MPI_Allreduce), then code_gen produces the implementation, and a reviewer validates correctness and MPI best practices. The planner and code_gen are sequential; review can overlap with light verification.",
+  "llm_parsed_agents": [
+    "planner",
+    "code_gen",
+    "review"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "planner",
+      "prompt": "Design the parallelization strategy for a closest-pair problem in MPI C++. Given: every rank holds a complete copy of `std::vector<Point> points` (each Point has double x, y). The naive O(n\u00b2) approach checks all pairs \u2014 partition this work across MPI ranks. Decide: (1) how to assign index pairs (i,j) where i<j to each rank without overlap, (2) how each rank computes its local minimum distance, (3) which MPI collective (MPI_Allreduce with MPI_MIN or MPI_Reduce) to use to get the global minimum on rank 0. Output a concise numbered algorithm with the exact index-partition formula and the MPI reduction call signature. No code yet \u2014 only the algorithm.",
+      "role": "Design the parallel closest-pair strategy for MPI across all ranks",
+      "depends_on": [],
+      "estimated_tokens": 400,
+      "compute_weight": "light"
+    },
+    {
+      "name": "code_gen",
+      "prompt": "Implement the following C++ function using MPI:\n\ncpp\n#include <mpi.h>\n#include <vector>\n#include <cmath>\n#include <limits>\n\nstruct Point { double x, y; };\n\ndouble distance(Point const& p1, Point const& p2) {\n    return std::sqrt(std::pow(p2.x-p1.x,2) + std::pow(p2.y-p1.y,2));\n}\n\n// Return the minimum pairwise distance. MPI already initialized.\n// Every rank has a complete copy of points.\n// Final result returned on rank 0 (other ranks may return any value).\ndouble closestPair(std::vector<Point> const& points);\n\n\nRequirements:\n- Use MPI_Comm_rank / MPI_Comm_size to split the O(n\u00b2) pair space across ranks. Enumerate all pairs (i,j) with i<j; assign pair index k = rank, rank+size, rank+2*size, \u2026 (striped partition) so load is balanced.\n- Each rank tracks a local `double localMin = DBL_MAX`.\n- Use `MPI_Reduce(&localMin, &globalMin, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD)` to get the answer on rank 0.\n- Handle edge cases: n<2 should return 0.0 or infinity as appropriate.\n- Use only standard MPI-1 calls; no MPI_Allreduce needed since only rank 0 must return the result.\n- Output ONLY the complete compilable implementation of closestPair() (plus any needed includes). Verify mentally against the example: points={{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}} \u2192 expected output 1.41421 (distance between {2,3} and {3,4}).",
+      "role": "Implement closestPair() in MPI C++ following the planner's strategy",
+      "depends_on": [
+        "planner"
+      ],
+      "estimated_tokens": 3500,
+      "compute_weight": "heavy"
+    },
+    {
+      "name": "review",
+      "prompt": "Review the MPI C++ implementation of closestPair() produced by code_gen. Check for: (1) Correctness of the striped pair-index partition \u2014 confirm every pair (i,j) with i<j is covered exactly once across all ranks for any n and any number of ranks. (2) Correct MPI_Reduce usage \u2014 right root rank, right datatype, no uninitialized buffers. (3) Edge cases: n=0, n=1, n=2, single rank. (4) No use of MPI_Bcast/MPI_Scatter (unnecessary since all ranks already have data). (5) Numerical correctness \u2014 does the example {2,3},{12,30},{40,50},{5,1},{12,10},{3,4} yield 1.41421? Flag any bugs with line-level fixes. Output a short scored review (Correctness / MPI Usage / Edge Cases / Efficiency) and a corrected snippet if needed.",
+      "role": "Verify MPI correctness, load balance, and edge-case handling in the generated code",
+      "depends_on": [
+        "code_gen"
+      ],
+      "estimated_tokens": 600,
+      "compute_weight": "light"
+    }
+  ],
+  "llm_agent_prompts": {
+    "planner": "Design the parallelization strategy for a closest-pair problem in MPI C++. Given: every rank holds a complete copy of `std::vector<Point> points` (each Point has double x, y). The naive O(n\u00b2) approach checks all pairs \u2014 partition this work across MPI ranks. Decide: (1) how to assign index pairs (i,j) where i<j to each rank without overlap, (2) how each rank computes its local minimum distance, (3) which MPI collective (MPI_Allreduce with MPI_MIN or MPI_Reduce) to use to get the global minimum on rank 0. Output a concise numbered algorithm with the exact index-partition formula and the MPI reduction call signature. No code yet \u2014 only the algorithm.",
+    "code_gen": "Implement the following C++ function using MPI:\n\ncpp\n#include <mpi.h>\n#include <vector>\n#include <cmath>\n#include <limits>\n\nstruct Point { double x, y; };\n\ndouble distance(Point const& p1, Point const& p2) {\n    return std::sqrt(std::pow(p2.x-p1.x,2) + std::pow(p2.y-p1.y,2));\n}\n\n// Return the minimum pairwise distance. MPI already initialized.\n// Every rank has a complete copy of points.\n// Final result returned on rank 0 (other ranks may return any value).\ndouble closestPair(std::vector<Point> const& points);\n\n\nRequirements:\n- Use MPI_Comm_rank / MPI_Comm_size to split the O(n\u00b2) pair space across ranks. Enumerate all pairs (i,j) with i<j; assign pair index k = rank, rank+size, rank+2*size, \u2026 (striped partition) so load is balanced.\n- Each rank tracks a local `double localMin = DBL_MAX`.\n- Use `MPI_Reduce(&localMin, &globalMin, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD)` to get the answer on rank 0.\n- Handle edge cases: n<2 should return 0.0 or infinity as appropriate.\n- Use only standard MPI-1 calls; no MPI_Allreduce needed since only rank 0 must return the result.\n- Output ONLY the complete compilable implementation of closestPair() (plus any needed includes). Verify mentally against the example: points={{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}} \u2192 expected output 1.41421 (distance between {2,3} and {3,4}).",
+    "review": "Review the MPI C++ implementation of closestPair() produced by code_gen. Check for: (1) Correctness of the striped pair-index partition \u2014 confirm every pair (i,j) with i<j is covered exactly once across all ranks for any n and any number of ranks. (2) Correct MPI_Reduce usage \u2014 right root rank, right datatype, no uninitialized buffers. (3) Edge cases: n=0, n=1, n=2, single rank. (4) No use of MPI_Bcast/MPI_Scatter (unnecessary since all ranks already have data). (5) Numerical correctness \u2014 does the example {2,3},{12,30},{40,50},{5,1},{12,10},{3,4} yield 1.41421? Flag any bugs with line-level fixes. Output a short scored review (Correctness / MPI Usage / Edge Cases / Efficiency) and a corrected snippet if needed."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a focused HPC code generation task: implement a parallel closest-pair algorithm in MPI C++. The complexity is moderate \u2014 the algorithm requires partitioning work across ranks, local computation, and a global reduction \u2014 but the spec is tight and self-contained. A planner should first decide the parallel strategy (e.g., divide pairs across ranks, each rank computes a local minimum, then MPI_Allreduce), then code_gen produces the implementation, and a reviewer validates correctness and MPI best practices. The planner and code_gen are sequential; review can overlap with light verification.\",\n  \"agents\": [\n    {\n      \"name\": \"planner\",\n      \"role\": \"Design the parallel closest-pair strategy for MPI across all ranks\",\n      \"prompt\": \"Design the parallelization strategy for a closest-pair problem in MPI C++. Given: every rank holds a complete copy of `std::vector<Point> points` (each Point has double x, y). The naive O(n\u00b2) approach checks all pairs \u2014 partition this work across MPI ranks. Decide: (1) how to assign index pairs (i,j) where i<j to each rank without overlap, (2) how each rank computes its local minimum distance, (3) which MPI collective (MPI_Allreduce with MPI_MIN or MPI_Reduce) to use to get the global minimum on rank 0. Output a concise numbered algorithm with the exact index-partition formula and the MPI reduction call signature. No code yet \u2014 only the algorithm.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 400,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"code_gen\",\n      \"role\": \"Implement closestPair() in MPI C++ following the planner's strategy\",\n      \"prompt\": \"Implement the following C++ function using MPI:\\n\\n```cpp\\n#include <mpi.h>\\n#include <vector>\\n#include <cmath>\\n#include <limits>\\n\\nstruct Point { double x, y; };\\n\\ndouble distance(Point const& p1, Point const& p2) {\\n    return std::sqrt(std::pow(p2.x-p1.x,2) + std::pow(p2.y-p1.y,2));\\n}\\n\\n// Return the minimum pairwise distance. MPI already initialized.\\n// Every rank has a complete copy of points.\\n// Final result returned on rank 0 (other ranks may return any value).\\ndouble closestPair(std::vector<Point> const& points);\\n```\\n\\nRequirements:\\n- Use MPI_Comm_rank / MPI_Comm_size to split the O(n\u00b2) pair space across ranks. Enumerate all pairs (i,j) with i<j; assign pair index k = rank, rank+size, rank+2*size, \u2026 (striped partition) so load is balanced.\\n- Each rank tracks a local `double localMin = DBL_MAX`.\\n- Use `MPI_Reduce(&localMin, &globalMin, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD)` to get the answer on rank 0.\\n- Handle edge cases: n<2 should return 0.0 or infinity as appropriate.\\n- Use only standard MPI-1 calls; no MPI_Allreduce needed since only rank 0 must return the result.\\n- Output ONLY the complete compilable implementation of closestPair() (plus any needed includes). Verify mentally against the example: points={{2,3},{12,30},{40,50},{5,1},{12,10},{3,4}} \u2192 expected output 1.41421 (distance between {2,3} and {3,4}).\",\n      \"depends_on\": [\"planner\"],\n      \"estimated_tokens\": 3500,\n      \"compute_weight\": \"heavy\"\n    },\n    {\n      \"name\": \"review\",\n      \"role\": \"Verify MPI correctness, load balance, and edge-case handling in the generated code\",\n      \"prompt\": \"Review the MPI C++ implementation of closestPair() produced by code_gen. Check for: (1) Correctness of the striped pair-index partition \u2014 confirm every pair (i,j) with i<j is covered exactly once across all ranks for any n and any number of ranks. (2) Correct MPI_Reduce usage \u2014 right root rank, right datatype, no uninitialized buffers. (3) Edge cases: n=0, n=1, n=2, single rank. (4) No use of MPI_Bcast/MPI_Scatter (unnecessary since all ranks already have data). (5) Numerical correctness \u2014 does the example {2,3},{12,30},{40,50},{5,1},{12,10},{3,4} yield 1.41421? Flag any bugs with line-level fixes. Output a short scored review (Correctness / MPI Usage / Edge Cases / Efficiency) and a corrected snippet if needed.\",\n      \"depends_on\": [\"code_gen\"],\n      \"estimated_tokens\": 600,\n      \"compute_weight\": \"light\"\n    }\n  ]\n}\n```"
+}

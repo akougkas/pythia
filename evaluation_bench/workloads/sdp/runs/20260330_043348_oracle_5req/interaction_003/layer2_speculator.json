@@ -1,0 +1,53 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "data_pipeline:0.3:['data', 'environmental_science']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.3,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000
+      },
+      {
+        "agent": "planner",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:data_pipeline",
+        "domain:data",
+        "domain:environmental_science"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "data_discovery": "Locate two reliable datasets containing information on NIFC Geographic Areas and their corresponding state-level associations. Ensure the datasets are relevant, up-to-date, and suitable for analysis.",
+      "data_wrangler": "Merge the two datasets obtained in the previous stage into a single, cohesive dataset. Perform necessary cleaning, transformation, and joining operations to ensure accurate state-level associations with NIFC Geographic Areas.",
+      "planner": "Develop an algorithmic approach to analyze the merged dataset and identify the top-performing US states in terms of their association with multiple NIFC Geographic Areas. Consider efficient data structures, aggregation methods, and visualization techniques.",
+      "reporter": "Present the results of the analysis in a concise, easy-to-understand format. Identify the top US states that fall into the most number of NIFC Geographic Areas and provide relevant statistics or visualizations to support the conclusion."
+    }
+  },
+  "time_ms": 60183.403479000845
+}

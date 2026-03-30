@@ -1,0 +1,100 @@
+{
+  "layer": "2_dispatch_solver",
+  "input": {
+    "intent": {
+      "task_type": "data_pipeline",
+      "complexity": 0.33112804878048785,
+      "domain_tags": [
+        "data",
+        "environmental_science"
+      ],
+      "decomposability": 0.19999999999999998,
+      "constraints": {}
+    },
+    "request_text_preview": "Analyze the following scientific data pipeline task: Which NIFC geographic area intersects with the most US states? Give the abbreviation of the geographic area This requires working with 2 data source(s) and involves approximately 6 processing steps. Domain: environmental science."
+  },
+  "method": "LLM agent selection + greedy fleet assignment",
+  "output": {
+    "plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500,
+        "order": 0
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000,
+        "order": 1
+      },
+      {
+        "agent": "analyst",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 3000,
+        "order": 2
+      }
+    ],
+    "execution_order": [
+      [
+        "data_discovery"
+      ],
+      [
+        "data_wrangler"
+      ],
+      [
+        "analyst"
+      ]
+    ],
+    "total_budget": 5500,
+    "estimated_latency": 4.5
+  },
+  "time_ms": 21981.732382999326,
+  "llm_call_time_ms": 21981.59699700045,
+  "assignment_time_ms": 0.1353859988739714,
+  "llm_reasoning": "This is a moderate-complexity geospatial data pipeline task requiring two data sources (NIFC geographic areas and US state boundaries) and a spatial intersection analysis. The decomposability is low (0.20), meaning steps are largely sequential \u2014 data must be found and loaded before it can be wrangled, and wrangling must complete before the intersection analysis can run. The pipeline is straightforward enough to resolve in 3 focused agents without heavy parallelism.",
+  "llm_parsed_agents": [
+    "data_discovery",
+    "data_wrangler",
+    "analyst"
+  ],
+  "llm_agent_details": [
+    {
+      "name": "data_discovery",
+      "prompt": "Find the two data sources needed for a geospatial intersection analysis:\n1. NIFC (National Interagency Fire Center) geographic area boundaries \u2014 identify the canonical source (e.g., NIFC ArcGIS REST API, NIFC Open Data portal, or a publicly available GeoJSON/Shapefile). Document the field that contains the geographic area abbreviation.\n2. US State boundaries \u2014 identify a reliable public source (e.g., US Census Bureau TIGER/Line shapefiles, or a GeoJSON from a public CDN).\nFor each source, provide: the URL or access method, the relevant geometry and attribute fields, the CRS/projection, and any download/API instructions needed for the next stage.",
+      "role": "Locate and assess the two required data sources: NIFC geographic area boundaries and US state boundaries",
+      "depends_on": [],
+      "estimated_tokens": 600,
+      "compute_weight": "light"
+    },
+    {
+      "name": "data_wrangler",
+      "prompt": "Using the data sources identified in the previous step, perform the following data preparation steps:\n1. Load the NIFC geographic area boundaries (GeoJSON or Shapefile) into a GeoDataFrame using GeoPandas.\n2. Load the US state boundaries into a second GeoDataFrame.\n3. Ensure both datasets share the same CRS (reproject to EPSG:4326 or a suitable planar CRS like EPSG:5070 Albers Equal Area for accurate intersection).\n4. Clean the data: drop null geometries, fix any invalid geometries using `.buffer(0)`, and retain only the relevant attribute columns (NIFC area abbreviation, state name/FIPS).\n5. Output two clean, CRS-aligned GeoDataFrames ready for spatial join/intersection.\nProvide the Python code (using geopandas, shapely) to accomplish these steps.",
+      "role": "Load, reproject, and prepare both datasets for spatial intersection analysis",
+      "depends_on": [
+        "data_discovery"
+      ],
+      "estimated_tokens": 1800,
+      "compute_weight": "medium"
+    },
+    {
+      "name": "analyst",
+      "prompt": "Using the two clean GeoDataFrames prepared in the previous step (NIFC geographic areas and US states), perform the following analysis:\n1. Run a spatial join (gpd.sjoin) using predicate 'intersects' to find all (NIFC area, US state) pairs that spatially overlap.\n2. For each NIFC geographic area, count the number of distinct US states it intersects.\n3. Identify the NIFC geographic area with the highest state intersection count.\n4. Extract and report the **abbreviation** of that geographic area (e.g., 'SW', 'RM', 'NR', etc.).\n5. Provide a summary table showing all NIFC areas and their respective state intersection counts for verification.\nProvide the Python code to perform the spatial join and aggregation, and clearly state the final answer: the abbreviation of the NIFC geographic area that intersects the most US states.",
+      "role": "Perform spatial intersection to count how many US states each NIFC geographic area overlaps, then identify the area with the maximum count",
+      "depends_on": [
+        "data_wrangler"
+      ],
+      "estimated_tokens": 2000,
+      "compute_weight": "heavy"
+    }
+  ],
+  "llm_agent_prompts": {
+    "data_discovery": "Find the two data sources needed for a geospatial intersection analysis:\n1. NIFC (National Interagency Fire Center) geographic area boundaries \u2014 identify the canonical source (e.g., NIFC ArcGIS REST API, NIFC Open Data portal, or a publicly available GeoJSON/Shapefile). Document the field that contains the geographic area abbreviation.\n2. US State boundaries \u2014 identify a reliable public source (e.g., US Census Bureau TIGER/Line shapefiles, or a GeoJSON from a public CDN).\nFor each source, provide: the URL or access method, the relevant geometry and attribute fields, the CRS/projection, and any download/API instructions needed for the next stage.",
+    "data_wrangler": "Using the data sources identified in the previous step, perform the following data preparation steps:\n1. Load the NIFC geographic area boundaries (GeoJSON or Shapefile) into a GeoDataFrame using GeoPandas.\n2. Load the US state boundaries into a second GeoDataFrame.\n3. Ensure both datasets share the same CRS (reproject to EPSG:4326 or a suitable planar CRS like EPSG:5070 Albers Equal Area for accurate intersection).\n4. Clean the data: drop null geometries, fix any invalid geometries using `.buffer(0)`, and retain only the relevant attribute columns (NIFC area abbreviation, state name/FIPS).\n5. Output two clean, CRS-aligned GeoDataFrames ready for spatial join/intersection.\nProvide the Python code (using geopandas, shapely) to accomplish these steps.",
+    "analyst": "Using the two clean GeoDataFrames prepared in the previous step (NIFC geographic areas and US states), perform the following analysis:\n1. Run a spatial join (gpd.sjoin) using predicate 'intersects' to find all (NIFC area, US state) pairs that spatially overlap.\n2. For each NIFC geographic area, count the number of distinct US states it intersects.\n3. Identify the NIFC geographic area with the highest state intersection count.\n4. Extract and report the **abbreviation** of that geographic area (e.g., 'SW', 'RM', 'NR', etc.).\n5. Provide a summary table showing all NIFC areas and their respective state intersection counts for verification.\nProvide the Python code to perform the spatial join and aggregation, and clearly state the final answer: the abbreviation of the NIFC geographic area that intersects the most US states."
+  },
+  "llm_raw_response": "```json\n{\n  \"reasoning\": \"This is a moderate-complexity geospatial data pipeline task requiring two data sources (NIFC geographic areas and US state boundaries) and a spatial intersection analysis. The decomposability is low (0.20), meaning steps are largely sequential \u2014 data must be found and loaded before it can be wrangled, and wrangling must complete before the intersection analysis can run. The pipeline is straightforward enough to resolve in 3 focused agents without heavy parallelism.\",\n  \"agents\": [\n    {\n      \"name\": \"data_discovery\",\n      \"role\": \"Locate and assess the two required data sources: NIFC geographic area boundaries and US state boundaries\",\n      \"prompt\": \"Find the two data sources needed for a geospatial intersection analysis:\\n1. NIFC (National Interagency Fire Center) geographic area boundaries \u2014 identify the canonical source (e.g., NIFC ArcGIS REST API, NIFC Open Data portal, or a publicly available GeoJSON/Shapefile). Document the field that contains the geographic area abbreviation.\\n2. US State boundaries \u2014 identify a reliable public source (e.g., US Census Bureau TIGER/Line shapefiles, or a GeoJSON from a public CDN).\\nFor each source, provide: the URL or access method, the relevant geometry and attribute fields, the CRS/projection, and any download/API instructions needed for the next stage.\",\n      \"depends_on\": [],\n      \"estimated_tokens\": 600,\n      \"compute_weight\": \"light\"\n    },\n    {\n      \"name\": \"data_wrangler\",\n      \"role\": \"Load, reproject, and prepare both datasets for spatial intersection analysis\",\n      \"prompt\": \"Using the data sources identified in the previous step, perform the following data preparation steps:\\n1. Load the NIFC geographic area boundaries (GeoJSON or Shapefile) into a GeoDataFrame using GeoPandas.\\n2. Load the US state boundaries into a second GeoDataFrame.\\n3. Ensure both datasets share the same CRS (reproject to EPSG:4326 or a suitable planar CRS like EPSG:5070 Albers Equal Area for accurate intersection).\\n4. Clean the data: drop null geometries, fix any invalid geometries using `.buffer(0)`, and retain only the relevant attribute columns (NIFC area abbreviation, state name/FIPS).\\n5. Output two clean, CRS-aligned GeoDataFrames ready for spatial join/intersection.\\nProvide the Python code (using geopandas, shapely) to accomplish these steps.\",\n      \"depends_on\": [\"data_discovery\"],\n      \"estimated_tokens\": 1800,\n      \"compute_weight\": \"medium\"\n    },\n    {\n      \"name\": \"analyst\",\n      \"role\": \"Perform spatial intersection to count how many US states each NIFC geographic area overlaps, then identify the area with the maximum count\",\n      \"prompt\": \"Using the two clean GeoDataFrames prepared in the previous step (NIFC geographic areas and US states), perform the following analysis:\\n1. Run a spatial join (gpd.sjoin) using predicate 'intersects' to find all (NIFC area, US state) pairs that spatially overlap.\\n2. For each NIFC geographic area, count the number of distinct US states it intersects.\\n3. Identify the NIFC geographic area with the highest state intersection count.\\n4. Extract and report the **abbreviation** of that geographic area (e.g., 'SW', 'RM', 'NR', etc.).\\n5. Provide a summary table showing all NIFC areas and their respective state intersection counts for verification.\\nProvide the Python code to perform the spatial join and aggregation, and clearly state the final answer: the abbreviation of the NIFC geographic area that intersects the most US states.\",\n      \"depends_on\": [\"data_wrangler\"],\n      \"estimated_tokens\": 2000,\n      \"compute_weight\": \"heavy\"\n    }\n  ]\n}\n```"
+}

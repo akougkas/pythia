@@ -52,6 +52,18 @@ _DEFAULT_TASK_TYPE_VOCAB: dict[str, list[str]] = {
         "hdf5", "netcdf", "fits", "zarr", "root", "pipeline", "data",
         "dataset", "convert", "ingest", "etl", "h5py", "xarray",
         "parquet", "csv", "process", "transform", "extract",
+        "analyz", "wrangl", "clean", "statistic", "domain",
+    ],
+    "data_pipeline": [
+        "pipeline", "data", "dataset", "analyz", "process", "source",
+        "wrangl", "clean", "statistic", "compute", "load",
+        "domain", "scientific", "environmental", "biomedical",
+        "wildfire", "astronomy", "legal", "archeology",
+    ],
+    "research_workflow": [
+        "replicat", "reproduc", "paper", "research", "experiment",
+        "workflow", "subtask", "phase", "implement", "train",
+        "evaluat", "model", "benchmark", "result",
     ],
     "research_writing": [
         "paper", "draft", "section", "abstract", "review", "literature",
@@ -61,7 +73,7 @@ _DEFAULT_TASK_TYPE_VOCAB: dict[str, list[str]] = {
 }
 
 _DEFAULT_DOMAIN_VOCAB: dict[str, list[str]] = {
-    "hpc": ["hpc", "supercomputer", "cluster", "slurm", "pbs"],
+    "hpc": ["hpc", "supercomputer", "cluster", "slurm", "pbs", "parallel", "high-performance"],
     "mpi": ["mpi", "mpirun", "rank", "scatter", "gather"],
     "gpu": ["cuda", "gpu", "nvidia", "opencl"],
     "hdf5": ["hdf5", "h5py", "hdf"],
@@ -75,6 +87,14 @@ _DEFAULT_DOMAIN_VOCAB: dict[str, list[str]] = {
     "parquet": ["parquet", "arrow"],
     "docker": ["docker", "container", "singularity"],
     "python": ["python", "numpy", "scipy", "pandas"],
+    "data": ["data", "dataset", "pipeline", "csv", "json", "database"],
+    "research": ["research", "paper", "experiment", "replicat", "reproduc"],
+    "ml": ["model", "train", "neural", "deep", "learning", "inference"],
+    "environmental_science": ["wildfire", "climate", "weather", "environmental", "noaa"],
+    "astronomy": ["astronomy", "stellar", "galaxy", "telescope"],
+    "biomedical": ["biomedical", "protein", "gene", "clinical"],
+    "legal_analytics": ["legal", "court", "contract", "regulation"],
+    "archeology": ["archeology", "excavat", "artifact"],
 }
 
 _SUBTASK_INDICATORS = re.compile(

@@ -1,0 +1,46 @@
+{
+  "layer": "2_speculative_dispatcher",
+  "input": {
+    "intent_key": "data_pipeline:0.3:['data', 'environmental_science']"
+  },
+  "output": {
+    "mode": 1,
+    "confidence": 0.5,
+    "cache_hit": true,
+    "draft_plan": [
+      {
+        "agent": "data_discovery",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 500
+      },
+      {
+        "agent": "data_wrangler",
+        "fleet_member": "qwen2.5-14b-gpu",
+        "model": "qwen2.5:14b",
+        "tokens": 2000
+      },
+      {
+        "agent": "reporter",
+        "fleet_member": "llama3.1-8b-gpu",
+        "model": "llama3.1:8b",
+        "tokens": 1500
+      }
+    ],
+    "manifest": {
+      "context_prepared": [
+        "task:data_pipeline",
+        "domain:data",
+        "domain:environmental_science"
+      ],
+      "agents_provisioned": [],
+      "fleet_reservations": []
+    },
+    "draft_prompts": {
+      "data_discovery": "Find and assess two data sources needed for a geospatial intersection analysis:\n1. NIFC (National Interagency Fire Center) Geographic Area boundaries \u2014 locate the official shapefile or GeoJSON from nifc.gov or the NIFC ArcGIS REST API (https://services3.arcgis.com/T4QMspbfLg3qoC1Y/arcgis/rest/services). Identify the layer containing the 11 NIFC geographic coordination center areas (e.g., Northern Rockies, Southwest, etc.) and their abbreviations.\n2. US State boundaries \u2014 locate a reliable source such as the US Census Bureau TIGER/Line shapefiles (https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html) or a GeoPandas built-in dataset.\nFor each source, return: the exact URL or access method, the format (shapefile, GeoJSON, API), the relevant field names (especially the abbreviation field for NIFC areas), and any CRS/projection info. Confirm both datasets can be spatially joined.",
+      "data_wrangler": "Using the data sources identified by data_discovery, execute the following 6-step pipeline in Python with GeoPandas:\n1. LOAD: Read the NIFC geographic area boundaries (GeoJSON/shapefile) into a GeoDataFrame. Retain the area name and abbreviation columns.\n2. LOAD: Read the US state boundaries (Census TIGER or equivalent) into a separate GeoDataFrame. Retain state name/FIPS columns.\n3. REPROJECT: Ensure both GeoDataFrames share a common CRS suitable for spatial operations (use EPSG:5070 Albers Equal Area Conic or EPSG:4326).\n4. INTERSECT: Perform a spatial join (gpd.sjoin) between NIFC areas and US states using predicate='intersects' to find which states each NIFC area touches.\n5. COUNT: Group by NIFC area abbreviation and count the number of distinct states each area intersects.\n6. RANK: Sort by state count descending and identify the NIFC area with the maximum intersection count.\nOutput a summary table: NIFC Abbreviation | Area Name | State Count. Flag the top result clearly.",
+      "reporter": "Based on the intersection analysis from data_wrangler, produce a concise answer report:\n1. State the NIFC geographic area ABBREVIATION that intersects with the most US states (this is the primary answer).\n2. Include the full area name and the exact count of states it intersects.\n3. Provide a brief ranked summary table of all NIFC geographic areas by state intersection count.\n4. Note any edge cases (e.g., areas that only touch a state border vs. overlap substantially, Alaska/Hawaii handling).\nFormat the answer clearly with the abbreviation highlighted as the direct answer to: 'Which NIFC geographic area intersects with the most US states?'"
+    }
+  },
+  "time_ms": 0.017703001503832638
+}

@@ -1,0 +1,10 @@
+{
+  "layer1_intent_ms": 1.7194619995279936,
+  "layer2_speculator_ms": 0.019266999515821226,
+  "layer2_solver_ms": 28925.95687099947,
+  "layer2_solver_llm_ms": 28925.817127999835,
+  "layer2_solver_assign_ms": 0.13974299963592784,
+  "layer4_pipeline_s": 276.07356625600005,
+  "layer4_draft_s": 0,
+  "speculator_vs_solver_speedup": 1501321.3057511486
+}
