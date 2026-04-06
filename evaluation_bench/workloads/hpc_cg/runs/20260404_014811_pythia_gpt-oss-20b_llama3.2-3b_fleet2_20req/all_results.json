@@ -1,0 +1,717 @@
+{
+  "summary": {
+    "run_dir": "/u/sislam3/pythia/evaluation_bench/workloads/hpc_cg/runs/20260404_014811_pythia_gpt-oss-20b_llama3.2-3b_fleet2_20req",
+    "baseline": "pythia",
+    "config": {
+      "timestamp": "20260404_014811",
+      "baseline": "pythia",
+      "prompt_mode": "original",
+      "n_requests": 20,
+      "fleet": [
+        {
+          "id": "gpt-oss-20b-gpu",
+          "model": "gpt-oss:20b",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator"
+          ],
+          "cost_rate": 0.01,
+          "latency": 2.0
+        },
+        {
+          "id": "gpt-oss-20b-gpu-fast",
+          "model": "gpt-oss:20b",
+          "capabilities": [
+            "planner",
+            "review",
+            "data_discovery",
+            "reporter",
+            "literature_reviewer",
+            "experiment_designer",
+            "experiment_runner",
+            "result_analyzer"
+          ],
+          "cost_rate": 0.005,
+          "latency": 0.5
+        }
+      ],
+      "solver": {
+        "type": "LLMAgentSelector",
+        "model": "gpt-oss:20b",
+        "provider": "ollama",
+        "temperature": 0.1
+      },
+      "draft": {
+        "model": "llama3.2:3b",
+        "provider": "ollama"
+      },
+      "agent_temperature": 0.3,
+      "speculator": {
+        "type": "DispatchCache + BayesianConfidence"
+      },
+      "learner": {
+        "type": "Bayesian Contextual Bandit",
+        "window_size": 50,
+        "n1": 2,
+        "n2": 6
+      },
+      "thresholds": {
+        "tau_2": 0.5,
+        "tau_3": 0.8
+      },
+      "reconciliation": {
+        "L_saved": 1.0,
+        "C_redirect": 0.3,
+        "C_flush": 0.5,
+        "C_spec": 0.1
+      }
+    },
+    "total_interactions": 20,
+    "mean_dispatch_latency_ms": 2993.1723827670794,
+    "mean_solver_ms": 2993.1723827670794,
+    "mean_speculator_ms": 2610.517239244655,
+    "mean_speedup": 20547.810218561477,
+    "mean_pipeline_s": 6.537024691910483,
+    "verdicts": {
+      "PARTIAL": 11,
+      "COMMIT": 9
+    },
+    "hit_rate": 1.0,
+    "mode_distribution": {
+      "1": 3,
+      "2": 3,
+      "3": 14
+    },
+    "N_conv": 3,
+    "total_tokens": 41518,
+    "total_cost": 875.0,
+    "net_benefit": 15.125,
+    "wasted_compute_ratio_W": 0.3448275862068965,
+    "mean_salvage_ratio": 0.8125,
+    "phase_at_end": "mature",
+    "confidence_at_end": 0.9545454545454546
+  },
+  "events": [
+    {
+      "interaction": 1,
+      "request_id": "omp_13_geometry_closest_pair_2d",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4195833333333333,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 26594.994081999175,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2580.1155600929633,
+      "verdict": "PARTIAL",
+      "reward": 0.025000000000000022,
+      "salvage_ratio": 0.25,
+      "wasted_compute": 0.30000000000000004,
+      "redirect_cost": 0.8999999999999999,
+      "pipeline_time_s": 2.7412814950803295,
+      "pipeline_tokens": 921,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.6666666666666666,
+      "speedup": 0.0970150830693102,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 2,
+      "request_id": "mpi+omp_13_geometry_closest_pair_2d",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4745098039215686,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.02883095294237137,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 3800.7518080994487,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 3.6442287489771843,
+      "pipeline_tokens": 1168,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.75,
+      "speedup": 131828.8651678134,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 3,
+      "request_id": "mpi_13_geometry_closest_pair_2d",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4706185567010309,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.02364697866141796,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2220.0773400254548,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 3.4709016759879887,
+      "pipeline_tokens": 1124,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.8,
+      "speedup": 93884.18587477723,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 4,
+      "request_id": "omp_11_geometry_convex_hull_perimeter",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.42440476190476184,
+      "speculator_mode": 2,
+      "speculator_confidence": 0.75,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.04470301792025566,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2302.4053090484813,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 4.977310526999645,
+      "pipeline_tokens": 1454,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.8333333333333334,
+      "speedup": 51504.4714241815,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 5,
+      "request_id": "mpi+omp_11_geometry_convex_hull_perimeter",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4725225225225226,
+      "speculator_mode": 2,
+      "speculator_confidence": 0.75,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.0426549231633544,
+      "solver_agents": [
+        "planner",
+        "code_gen"
+      ],
+      "solver_time_ms": 3086.017652065493,
+      "verdict": "PARTIAL",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 11.289056263980456,
+      "pipeline_tokens": 3773,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "early_learning",
+      "learner_confidence": 0.8571428571428571,
+      "speedup": 72348.45178942312,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 6,
+      "request_id": "mpi_11_geometry_convex_hull_perimeter",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.46886792452830195,
+      "speculator_mode": 2,
+      "speculator_confidence": 0.75,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.039615086279809475,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2430.947752087377,
+      "verdict": "PARTIAL",
+      "reward": 0.35,
+      "salvage_ratio": 0.5,
+      "wasted_compute": 0.1,
+      "redirect_cost": 0.3,
+      "pipeline_time_s": 6.938085092930123,
+      "pipeline_tokens": 1966,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "mature",
+      "learner_confidence": 0.875,
+      "speedup": 61364.19178585387,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 7,
+      "request_id": "omp_12_geometry_smallest_triangle",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.46176470588235297,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.875,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 3429.493011091836,
+      "solver_agents": [
+        "code_gen",
+        "tester"
+      ],
+      "solver_time_ms": 2921.015389962122,
+      "verdict": "PARTIAL",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 7.857023423071951,
+      "pipeline_tokens": 2662,
+      "draft_time_s": 3429.4510289328173,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.8888888888888888,
+      "speedup": 0.8517338803475701,
+      "agent_costs": {
+        "code_gen": 40.0,
+        "tester": 15.0
+      }
+    },
+    {
+      "interaction": 8,
+      "request_id": "mpi+omp_12_geometry_smallest_triangle",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4682291666666667,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.8888888888888888,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 1424.549637013115,
+      "solver_agents": [
+        "code_gen",
+        "tester"
+      ],
+      "solver_time_ms": 3251.6324080061167,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 7.9868592920247465,
+      "pipeline_tokens": 2893,
+      "draft_time_s": 1424.5078780222684,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.9,
+      "speedup": 2.28256869646458,
+      "agent_costs": {
+        "code_gen": 40.0,
+        "tester": 15.0
+      }
+    },
+    {
+      "interaction": 9,
+      "request_id": "mpi_12_geometry_smallest_triangle",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.46373626373626375,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.9,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 2712.7087849657983,
+      "solver_agents": [
+        "planner",
+        "code_gen"
+      ],
+      "solver_time_ms": 3434.530297992751,
+      "verdict": "PARTIAL",
+      "reward": 0.35,
+      "salvage_ratio": 0.5,
+      "wasted_compute": 0.1,
+      "redirect_cost": 0.3,
+      "pipeline_time_s": 11.72574232693296,
+      "pipeline_tokens": 3770,
+      "draft_time_s": 2712.667891057208,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.9090909090909091,
+      "speedup": 1.2660888323241277,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 10,
+      "request_id": "omp_14_geometry_closest_pair_1d",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.35665816326530614,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.9090909090909091,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 1391.9355199905112,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2313.123975065537,
+      "verdict": "PARTIAL",
+      "reward": 0.35,
+      "salvage_ratio": 0.5,
+      "wasted_compute": 0.1,
+      "redirect_cost": 0.3,
+      "pipeline_time_s": 3.2099314250517637,
+      "pipeline_tokens": 959,
+      "draft_time_s": 1391.894752974622,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.9166666666666666,
+      "speedup": 1.6618039714090387,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 11,
+      "request_id": "mpi+omp_14_geometry_closest_pair_1d",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.3784110169491526,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.9166666666666666,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 1221.326919971034,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2622.9282529093325,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 3.3605298950569704,
+      "pipeline_tokens": 1029,
+      "draft_time_s": 1221.2863459717482,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.9230769230769231,
+      "speedup": 2.1476053708629794,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 12,
+      "request_id": "mpi_14_geometry_closest_pair_1d",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.36564814814814817,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.9230769230769231,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 2261.532444972545,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2717.004671925679,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 5.2049929780187085,
+      "pipeline_tokens": 1464,
+      "draft_time_s": 2261.492190998979,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.9285714285714286,
+      "speedup": 1.2013998198282154,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 13,
+      "request_id": "omp_10_geometry_convex_hull",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.38748376623376624,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.9285714285714286,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 1712.5271459808573,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 1865.153479971923,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 5.8905809910502285,
+      "pipeline_tokens": 1688,
+      "draft_time_s": 1712.4897059984505,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.9333333333333333,
+      "speedup": 1.089123453808756,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 14,
+      "request_id": "mpi+omp_10_geometry_convex_hull",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.43677184466019414,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.9333333333333333,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 2468.255579005927,
+      "solver_agents": [
+        "planner",
+        "code_gen",
+        "tester",
+        "review"
+      ],
+      "solver_time_ms": 9983.50107704755,
+      "verdict": "PARTIAL",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 19.735802063019946,
+      "pipeline_tokens": 6413,
+      "draft_time_s": 2468.217403977178,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.9375,
+      "speedup": 4.044759854677746,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0,
+        "tester": 15.0,
+        "review": 10.0
+      }
+    },
+    {
+      "interaction": 15,
+      "request_id": "mpi_10_geometry_convex_hull",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4329081632653061,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.9375,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 1291.7391060618684,
+      "solver_agents": [
+        "planner",
+        "code_gen"
+      ],
+      "solver_time_ms": 3752.9986050212756,
+      "verdict": "PARTIAL",
+      "reward": 0.35,
+      "salvage_ratio": 0.5,
+      "wasted_compute": 0.2,
+      "redirect_cost": 0.6,
+      "pipeline_time_s": 11.786565516027622,
+      "pipeline_tokens": 3846,
+      "draft_time_s": 1291.6936989640817,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.9411764705882353,
+      "speedup": 2.905384367020568,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 16,
+      "request_id": "omp_59_transform_map_function",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.37266129032258066,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.9411764705882353,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 2115.5401499709114,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2033.7792469654232,
+      "verdict": "PARTIAL",
+      "reward": 0.35,
+      "salvage_ratio": 0.5,
+      "wasted_compute": 0.1,
+      "redirect_cost": 0.3,
+      "pipeline_time_s": 2.6562564050545916,
+      "pipeline_tokens": 883,
+      "draft_time_s": 2115.502552012913,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.9444444444444444,
+      "speedup": 0.9613522329006082,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 17,
+      "request_id": "mpi+omp_59_transform_map_function",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4427197802197802,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.9444444444444444,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 1373.0332710547373,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 1952.6871549896896,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 5.851857937988825,
+      "pipeline_tokens": 1685,
+      "draft_time_s": 1372.9952879948542,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.9473684210526315,
+      "speedup": 1.4221703116412274,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 18,
+      "request_id": "mpi_59_transform_map_function",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.43866279069767444,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.9473684210526315,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 1988.1021119654179,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 1849.7866820544004,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 4.13734790997114,
+      "pipeline_tokens": 1264,
+      "draft_time_s": 1988.0610579857603,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.95,
+      "speedup": 0.9304284075357275,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 19,
+      "request_id": "omp_57_transform_inverse_offset",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4645058139534884,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.95,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 1585.4365959530696,
+      "solver_agents": [
+        "code_gen",
+        "review"
+      ],
+      "solver_time_ms": 2407.1909829508513,
+      "verdict": "PARTIAL",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 5.027202141005546,
+      "pipeline_tokens": 1535,
+      "draft_time_s": 1585.3965340647846,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.9523809523809523,
+      "speedup": 1.5183142543166743,
+      "agent_costs": {
+        "code_gen": 40.0,
+        "review": 10.0
+      }
+    },
+    {
+      "interaction": 20,
+      "request_id": "mpi+omp_57_transform_inverse_offset",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.5482142857142858,
+      "speculator_mode": 3,
+      "speculator_confidence": 0.9523809523809523,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 638.9909739373252,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2337.8000090597197,
+      "verdict": "PARTIAL",
+      "reward": 0.35,
+      "salvage_ratio": 0.5,
+      "wasted_compute": 0.1,
+      "redirect_cost": 0.3,
+      "pipeline_time_s": 3.248937729978934,
+      "pipeline_tokens": 1021,
+      "draft_time_s": 638.9499510405585,
+      "draft_accepted": false,
+      "learner_phase": "mature",
+      "learner_confidence": 0.9545454545454546,
+      "speedup": 3.6585806441907907,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    }
+  ]
+}

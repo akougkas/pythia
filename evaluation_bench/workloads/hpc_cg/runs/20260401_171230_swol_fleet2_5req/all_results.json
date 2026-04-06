@@ -1,0 +1,245 @@
+{
+  "summary": {
+    "run_dir": "/u/sislam3/pythia/evaluation_bench/workloads/hpc_cg/runs/20260401_171230_swol_fleet2_5req",
+    "baseline": "swol",
+    "config": {
+      "timestamp": "20260401_171230",
+      "baseline": "swol",
+      "prompt_mode": "original",
+      "n_requests": 5,
+      "fleet": [
+        {
+          "id": "gpt-oss-20b-gpu",
+          "model": "gpt-oss:20b",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator"
+          ],
+          "cost_rate": 0.01,
+          "latency": 2.0
+        },
+        {
+          "id": "gpt-oss-20b-gpu-fast",
+          "model": "gpt-oss:20b",
+          "capabilities": [
+            "planner",
+            "review",
+            "data_discovery",
+            "reporter",
+            "literature_reviewer",
+            "experiment_designer",
+            "experiment_runner",
+            "result_analyzer"
+          ],
+          "cost_rate": 0.005,
+          "latency": 0.5
+        }
+      ],
+      "solver": {
+        "type": "LLMAgentSelector",
+        "model": "gpt-oss:20b",
+        "provider": "ollama"
+      },
+      "speculator": {
+        "type": "frozen (SwoL)"
+      },
+      "learner": {
+        "type": "disabled",
+        "window_size": 50,
+        "n1": 2,
+        "n2": 6
+      },
+      "thresholds": {
+        "tau_2": 0.5,
+        "tau_3": 0.8
+      },
+      "reconciliation": {
+        "L_saved": 1.0,
+        "C_redirect": 0.3,
+        "C_flush": 0.5,
+        "C_spec": 0.1
+      }
+    },
+    "total_interactions": 5,
+    "mean_dispatch_latency_ms": 2996.8785565928556,
+    "mean_solver_ms": 2996.8785565928556,
+    "mean_speculator_ms": 568.5182258137502,
+    "mean_speedup": 125467.15086706898,
+    "mean_pipeline_s": 6.777346842619591,
+    "verdicts": {
+      "COMMIT": 3,
+      "PARTIAL": 2
+    },
+    "hit_rate": 1.0,
+    "mode_distribution": {
+      "1": 5
+    },
+    "N_conv": 3,
+    "total_tokens": 10191,
+    "total_cost": 217.5,
+    "net_benefit": 4.35,
+    "wasted_compute_ratio_W": 0.14285714285714285,
+    "mean_salvage_ratio": 0.9,
+    "phase_at_end": "cold_start",
+    "confidence_at_end": 0.0
+  },
+  "events": [
+    {
+      "interaction": 1,
+      "request_id": "omp_13_geometry_closest_pair_2d",
+      "baseline": "swol",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4195833333333333,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.5,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 2842.51036203932,
+      "solver_agents": [
+        "code_gen",
+        "tester"
+      ],
+      "solver_time_ms": 2354.837893974036,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 8.400060531042982,
+      "pipeline_tokens": 2655,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0.8284359928540734,
+      "agent_costs": {
+        "code_gen": 40.0,
+        "tester": 15.0
+      }
+    },
+    {
+      "interaction": 2,
+      "request_id": "mpi+omp_13_geometry_closest_pair_2d",
+      "baseline": "swol",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4745098039215686,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.5,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.021952029783278704,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 3169.8984800023027,
+      "verdict": "PARTIAL",
+      "reward": 0.35,
+      "salvage_ratio": 0.5,
+      "wasted_compute": 0.1,
+      "redirect_cost": 0.3,
+      "pipeline_time_s": 4.393197080993559,
+      "pipeline_tokens": 1272,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 144401.15612529268,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 3,
+      "request_id": "mpi_13_geometry_closest_pair_2d",
+      "baseline": "swol",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4706185567010309,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.5,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.018974998965859413,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 3296.4250299846753,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 4.032917027012445,
+      "pipeline_tokens": 1205,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 173724.6487294011,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 4,
+      "request_id": "omp_11_geometry_convex_hull_perimeter",
+      "baseline": "swol",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.42440476190476184,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.5,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.019871979020535946,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2289.031755004544,
+      "verdict": "COMMIT",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 7.38883617403917,
+      "pipeline_tokens": 1911,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 115188.91765329616,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 5,
+      "request_id": "mpi+omp_11_geometry_convex_hull_perimeter",
+      "baseline": "swol",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4725225225225226,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.5,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 0.019968021661043167,
+      "solver_agents": [
+        "planner",
+        "code_gen"
+      ],
+      "solver_time_ms": 3874.19962399872,
+      "verdict": "PARTIAL",
+      "reward": 1.0,
+      "salvage_ratio": 1.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 9.671723400009796,
+      "pipeline_tokens": 3148,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 194020.20339136216,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0
+      }
+    }
+  ]
+}

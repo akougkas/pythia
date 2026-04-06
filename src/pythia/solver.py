@@ -205,11 +205,13 @@ class LLMAgentSelector:
         provider: str = "ollama",
         base_url: str = "http://localhost:11434",
         timeout: float = 120.0,
+        temperature: float = 0.1,
     ) -> None:
         self._model = model
         self._provider = provider
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
+        self._temperature = temperature
         self._fallback = AgentSelector()
         self.last_call_time_ms: float = 0.0  # observable for metrics
         self.last_raw_response: str = ""  # raw LLM output for inspection
@@ -277,7 +279,7 @@ class LLMAgentSelector:
                 {"role": "user", "content": user_msg},
             ],
             "stream": False,
-            "options": {"temperature": 0.1, "num_predict": 1024},
+            "options": {"temperature": self._temperature, "num_predict": 1024},
         }).encode()
 
         req = urllib.request.Request(

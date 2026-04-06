@@ -1,0 +1,192 @@
+{
+  "setup": {
+    "original": {
+      "provider": "Ollama + Claude API",
+      "models": {
+        "code_gen": "qwen2.5:14b",
+        "planner": "llama3.1:8b",
+        "solver": "claude-sonnet-4-6",
+        "cloud": [
+          "claude-haiku-4-5-20251001",
+          "claude-sonnet-4-6",
+          "claude-opus-4-6"
+        ]
+      },
+      "fleet_size": 5,
+      "temperature": 0.3,
+      "hardware": "local GPU + cloud API",
+      "quantization": "varies",
+      "context_window": "varies (4K-200K)",
+      "license": "mixed"
+    },
+    "gptoss": {
+      "provider": "Ollama only",
+      "models": {
+        "code_gen": "gpt-oss:20b",
+        "planner": "gpt-oss:20b",
+        "solver": "gpt-oss:20b",
+        "cloud": []
+      },
+      "fleet_size": 2,
+      "temperature": 0.3,
+      "hardware": "NVIDIA GH200 120GB",
+      "quantization": "MXFP4 (4.25 bpw)",
+      "context_window": "128K",
+      "license": "Apache 2.0"
+    }
+  },
+  "baselines": {
+    "pythia": {
+      "original": {
+        "solver_ms": 26715.709052599956,
+        "pipeline_s": 285.5690637706,
+        "hit_rate": 1.0,
+        "verdicts": {
+          "PARTIAL": 5
+        },
+        "tokens": 15601,
+        "cost": 290.0,
+        "wasted_W": 0.20000000000000004,
+        "salvage": 0.8333333333333334,
+        "net_benefit": 3.9166666666666665,
+        "N_conv": 3
+      },
+      "gptoss": {
+        "solver_ms": 5102.641281404067,
+        "pipeline_s": 9.479971056000796,
+        "hit_rate": 1.0,
+        "verdicts": {
+          "COMMIT": 4,
+          "PARTIAL": 1
+        },
+        "tokens": 11550,
+        "cost": 227.5,
+        "wasted_W": 0.0,
+        "salvage": 1.0,
+        "net_benefit": 5.0,
+        "N_conv": 3
+      }
+    },
+    "ns": {
+      "original": {
+        "solver_ms": 27555.562889199926,
+        "pipeline_s": 308.203070817,
+        "hit_rate": 0.0,
+        "verdicts": {
+          "NONE": 5
+        },
+        "tokens": 15946,
+        "cost": 290.0,
+        "wasted_W": 0.0,
+        "salvage": 0.0,
+        "net_benefit": 0.0,
+        "N_conv": 5
+      },
+      "gptoss": {
+        "solver_ms": 9067.788005585317,
+        "pipeline_s": 5.630476288998034,
+        "hit_rate": 0.0,
+        "verdicts": {
+          "NONE": 5
+        },
+        "tokens": 8477,
+        "cost": 202.5,
+        "wasted_W": 0.0,
+        "salvage": 0.0,
+        "net_benefit": 0.0,
+        "N_conv": 5
+      }
+    },
+    "sh": {
+      "original": {
+        "solver_ms": 0.1189278001220373,
+        "pipeline_s": 417.8113546048001,
+        "hit_rate": 0.0,
+        "verdicts": {
+          "NONE": 5
+        },
+        "tokens": 21790,
+        "cost": 337.5,
+        "wasted_W": 0.0,
+        "salvage": 0.0,
+        "net_benefit": 0.0,
+        "N_conv": 5
+      },
+      "gptoss": {
+        "solver_ms": 0.07781520253047347,
+        "pipeline_s": 18.091292182006875,
+        "hit_rate": 0.0,
+        "verdicts": {
+          "NONE": 5
+        },
+        "tokens": 29565,
+        "cost": 337.5,
+        "wasted_W": 0.0,
+        "salvage": 0.0,
+        "net_benefit": 0.0,
+        "N_conv": 5
+      }
+    },
+    "swol": {
+      "original": {
+        "solver_ms": 29900.250760199742,
+        "pipeline_s": 316.2265125692,
+        "hit_rate": 1.0,
+        "verdicts": {
+          "PARTIAL": 5
+        },
+        "tokens": 17144,
+        "cost": 302.5,
+        "wasted_W": 0.17647058823529413,
+        "salvage": 0.8166666666666667,
+        "net_benefit": 3.8083333333333336,
+        "N_conv": 3
+      },
+      "gptoss": {
+        "solver_ms": 2996.8785565928556,
+        "pipeline_s": 6.777346842619591,
+        "hit_rate": 1.0,
+        "verdicts": {
+          "COMMIT": 3,
+          "PARTIAL": 2
+        },
+        "tokens": 10191,
+        "cost": 217.5,
+        "wasted_W": 0.14285714285714285,
+        "salvage": 0.9,
+        "net_benefit": 4.35,
+        "N_conv": 3
+      }
+    },
+    "oracle": {
+      "original": {
+        "solver_ms": 60387.59728260047,
+        "pipeline_s": 248.11747267840002,
+        "hit_rate": 1.0,
+        "verdicts": {
+          "COMMIT": 5
+        },
+        "tokens": 14150,
+        "cost": 285.0,
+        "wasted_W": 0.0,
+        "salvage": 1.0,
+        "net_benefit": 5.0,
+        "N_conv": 3
+      },
+      "gptoss": {
+        "solver_ms": 6978.581321216188,
+        "pipeline_s": 10.946369265019893,
+        "hit_rate": 1.0,
+        "verdicts": {
+          "COMMIT": 5
+        },
+        "tokens": 17601,
+        "cost": 252.5,
+        "wasted_W": 0.0,
+        "salvage": 1.0,
+        "net_benefit": 5.0,
+        "N_conv": 3
+      }
+    }
+  }
+}

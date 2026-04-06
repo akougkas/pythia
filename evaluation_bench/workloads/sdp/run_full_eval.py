@@ -37,7 +37,6 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "../../../src"))
-sys.path.insert(0, str(Path(__file__).parent / "../hpc_cg"))
 
 from pythia.contracts import FleetMember, ReconciliationConfig
 from pythia.fleet import Fleet
@@ -55,7 +54,7 @@ from agent_runner import (
 REQUESTS_FILE = Path(__file__).parent / "sdp_requests.json"
 
 
-def create_model_fleet(fleet_size: int = 5) -> Fleet:
+def create_model_fleet(fleet_size: int = 5, primary_local: str = "qwen2.5:14b", secondary_local: str = "llama3.1:8b") -> Fleet:
     """Each fleet member = specific model on specific hardware (§3.5).
 
     Heterogeneous fleet: local Ollama models + Claude tiers.
@@ -64,20 +63,22 @@ def create_model_fleet(fleet_size: int = 5) -> Fleet:
     all_members = [
         # --- Local Ollama models ---
         FleetMember(
-            member_id="qwen2.5-14b-gpu", compute=100.0, memory=64.0,
+            member_id="gpt-oss-20b-gpu" if primary_local == "gpt-oss:20b" else "qwen2.5-14b-gpu",
+            compute=100.0, memory=64.0,
             rate_limit=10, token_budget=100000, cost_rate=0.01, latency=2.0,
             capabilities=["code_gen", "tester", "analyst", "data_wrangler", "code_generator"],
             affinity_tags=["gpu", "local", "hpc", "code"],
-            model="qwen2.5:14b",
+            model=primary_local,
         ),
         FleetMember(
-            member_id="llama3.1-8b-gpu", compute=80.0, memory=32.0,
+            member_id="llama3.1-8b-gpu" if secondary_local == "llama3.1:8b" else f"{secondary_local.replace(':','-')}-gpu-fast",
+            compute=80.0, memory=32.0,
             rate_limit=20, token_budget=200000, cost_rate=0.005, latency=0.5,
             capabilities=["planner", "review", "data_discovery", "reporter",
                           "literature_reviewer", "experiment_designer",
                           "experiment_runner", "result_analyzer"],
             affinity_tags=["gpu", "local", "fast"],
-            model="llama3.1:8b",
+            model=secondary_local,
         ),
         # --- Claude Haiku (fast, cheap — planning, review, testing) ---
         FleetMember(
@@ -251,6 +252,20 @@ def main():
                              "oracle=perfect predictor")
     parser.add_argument("--fleet-size", type=int, choices=[2, 3, 5], default=5,
                         help="Fleet size for scalability sweep (§6.6)")
+    parser.add_argument("--primary-local", type=str, default="qwen2.5:14b",
+                        help="Primary local Ollama model for code_gen/tester/analyst roles "
+                             "(default: qwen2.5:14b, try: gpt-oss:20b)")
+    parser.add_argument("--secondary-local", type=str, default="llama3.1:8b",
+                        help="Secondary local Ollama model for planner/review roles "
+                             "(default: llama3.1:8b)")
+    parser.add_argument("--draft-model", type=str, default=None,
+                        help="Explicit draft model for speculator (default: same as secondary-local)")
+    parser.add_argument("--draft-provider", type=str, choices=["ollama", "claude"], default="ollama",
+                        help="Provider for draft model (default: ollama)")
+    parser.add_argument("--temperature", type=float, default=0.3,
+                        help="Temperature for agent execution (default: 0.3)")
+    parser.add_argument("--solver-temperature", type=float, default=0.1,
+                        help="Temperature for solver LLM selector (default: 0.1)")
     args = parser.parse_args()
 
     prompt_mode = args.prompt_mode
@@ -258,21 +273,31 @@ def main():
     fleet_size = args.fleet_size
     timestamp = time.strftime("%Y%m%d_%H%M%S")
 
-    fleet_tag = f"_fleet{fleet_size}" if fleet_size != 5 else ""
-    run_dir = Path(__file__).parent / f"runs/{timestamp}_{baseline}{fleet_tag}_{args.n_requests}req"
-    run_dir.mkdir(parents=True, exist_ok=True)
-
-    with open(REQUESTS_FILE) as f:
-        all_requests = json.load(f)
-    requests = all_requests[:args.n_requests]
-
     # --- Setup (varies by baseline) ---
     solver_provider = args.solver_provider
     solver_model = args.solver_model
     if solver_model is None:
         solver_model = "claude-sonnet-4-6" if solver_provider == "claude" else "llama3.1:8b"
 
-    fleet = create_model_fleet(fleet_size)
+    primary_local = args.primary_local
+    secondary_local = args.secondary_local
+    draft_model_name = args.draft_model or secondary_local
+    draft_provider = args.draft_provider
+    temperature = args.temperature
+    solver_temperature = args.solver_temperature
+
+    fleet_tag = f"_fleet{fleet_size}" if fleet_size != 5 else ""
+    solver_tag = solver_model.replace(":", "-").replace("/", "-")
+    draft_tag = draft_model_name.replace(":", "-").replace("/", "-")
+    temp_tag = f"_t{temperature}" if temperature != 0.3 else ""
+    run_dir = Path(__file__).parent / f"runs/{timestamp}_{baseline}_{solver_tag}_{draft_tag}{fleet_tag}{temp_tag}_{args.n_requests}req"
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(REQUESTS_FILE) as f:
+        all_requests = json.load(f)
+    requests = [r for r in all_requests if "original_prompt" in r or "request" in r][:args.n_requests]
+
+    fleet = create_model_fleet(fleet_size, primary_local=primary_local, secondary_local=secondary_local)
     detector = RuleBasedIntentDetector()
 
     # Solver setup — SH baseline uses rule-based, everything else uses LLM
@@ -283,7 +308,7 @@ def main():
         llm_selector = rule_selector  # for logging compatibility
         solver_model = "rule-based"
     else:
-        llm_selector = LLMAgentSelector(model=solver_model, provider=solver_provider)
+        llm_selector = LLMAgentSelector(model=solver_model, provider=solver_provider, temperature=solver_temperature)
         solver = DispatchSolver(fleet, llm_selector, alpha=0.5)
 
     cache = DispatchCache(max_history=64)
@@ -291,12 +316,15 @@ def main():
 
     # Clients for agent execution
     clients = {
-        "qwen2.5:14b": OllamaClient(model="qwen2.5:14b"),
-        "llama3.1:8b": OllamaClient(model="llama3.1:8b"),
+        primary_local: OllamaClient(model=primary_local),
+        secondary_local: OllamaClient(model=secondary_local) if secondary_local != primary_local else OllamaClient(model=primary_local),
         "claude-haiku-4-5-20251001": ClaudeClient(model="claude-haiku-4-5-20251001"),
         "claude-sonnet-4-6": ClaudeClient(model="claude-sonnet-4-6"),
         "claude-opus-4-6": ClaudeClient(model="claude-opus-4-6"),
     }
+    # Ensure judge model client exists (uses primary_local if qwen2.5:14b not available)
+    if "qwen2.5:14b" not in clients:
+        clients["qwen2.5:14b"] = clients[primary_local]
 
     # Speculator setup — NS and SH baselines have no speculator
     speculator = None
@@ -304,8 +332,10 @@ def main():
     draft_model = None
 
     if baseline in ("pythia", "swol", "oracle"):
-        draft_runner = AgentPipelineRunner(client=clients["llama3.1:8b"])
-        draft_model = create_llm_draft_model(model="llama3.1:8b", provider="ollama")
+        if draft_model_name not in clients:
+            clients[draft_model_name] = OllamaClient(model=draft_model_name)
+        draft_runner = AgentPipelineRunner(client=clients[draft_model_name], temperature=temperature)
+        draft_model = create_llm_draft_model(model=draft_model_name, provider=draft_provider)
 
         if baseline == "swol":
             # Frozen confidence — speculation but no learning
@@ -334,7 +364,10 @@ def main():
         "fleet": [{"id": m.member_id, "model": m.model, "capabilities": m.capabilities,
                     "cost_rate": m.cost_rate, "latency": m.latency} for m in fleet.members],
         "solver": {"type": "AgentSelector (rule-based)" if baseline == "sh"
-                   else "LLMAgentSelector", "model": solver_model, "provider": solver_provider},
+                   else "LLMAgentSelector", "model": solver_model, "provider": solver_provider,
+                   "temperature": solver_temperature},
+        "draft": {"model": draft_model_name, "provider": draft_provider},
+        "agent_temperature": temperature,
         "speculator": {"type": "disabled" if baseline in ("ns", "sh")
                        else "frozen (SwoL)" if baseline == "swol"
                        else "oracle" if baseline == "oracle"
@@ -563,7 +596,7 @@ def main():
             if model in clients:
                 role_clients[a.agent_type] = clients[model]
 
-        runner = AgentPipelineRunner(client=clients["qwen2.5:14b"], role_clients=role_clients)
+        runner = AgentPipelineRunner(client=clients[primary_local], role_clients=role_clients, temperature=temperature)
 
         print(f"  L4 EXECUTING {len(solver_agents)} agents...")
         target_result = runner.execute_pipeline(

@@ -1,0 +1,126 @@
+{
+  "summary": {
+    "run_dir": "/u/sislam3/pythia/evaluation_bench/workloads/hpc_cg/runs/20260404_012235_pythia_gpt-oss-20b_qwen3-4b_fleet2_1req",
+    "baseline": "pythia",
+    "config": {
+      "timestamp": "20260404_012235",
+      "baseline": "pythia",
+      "prompt_mode": "original",
+      "n_requests": 1,
+      "fleet": [
+        {
+          "id": "gpt-oss-20b-gpu",
+          "model": "gpt-oss:20b",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator"
+          ],
+          "cost_rate": 0.01,
+          "latency": 2.0
+        },
+        {
+          "id": "gpt-oss-20b-gpu-fast",
+          "model": "gpt-oss:20b",
+          "capabilities": [
+            "planner",
+            "review",
+            "data_discovery",
+            "reporter",
+            "literature_reviewer",
+            "experiment_designer",
+            "experiment_runner",
+            "result_analyzer"
+          ],
+          "cost_rate": 0.005,
+          "latency": 0.5
+        }
+      ],
+      "solver": {
+        "type": "LLMAgentSelector",
+        "model": "gpt-oss:20b",
+        "provider": "ollama",
+        "temperature": 0.1
+      },
+      "draft": {
+        "model": "qwen3:4b",
+        "provider": "ollama"
+      },
+      "agent_temperature": 0.3,
+      "speculator": {
+        "type": "DispatchCache + BayesianConfidence"
+      },
+      "learner": {
+        "type": "Bayesian Contextual Bandit",
+        "window_size": 50,
+        "n1": 2,
+        "n2": 6
+      },
+      "thresholds": {
+        "tau_2": 0.5,
+        "tau_3": 0.8
+      },
+      "reconciliation": {
+        "L_saved": 1.0,
+        "C_redirect": 0.3,
+        "C_flush": 0.5,
+        "C_spec": 0.1
+      }
+    },
+    "total_interactions": 1,
+    "mean_dispatch_latency_ms": 25941.780593944713,
+    "mean_solver_ms": 25941.780593944713,
+    "mean_speculator_ms": 27562.621283112094,
+    "mean_speedup": 0.941194247364256,
+    "mean_pipeline_s": 2.6030037719756365,
+    "verdicts": {
+      "PARTIAL": 1
+    },
+    "hit_rate": 1.0,
+    "mode_distribution": {
+      "1": 1
+    },
+    "N_conv": 1,
+    "total_tokens": 859,
+    "total_cost": 40.0,
+    "net_benefit": 0.025000000000000022,
+    "wasted_compute_ratio_W": 3.0000000000000004,
+    "mean_salvage_ratio": 0.25,
+    "phase_at_end": "cold_start",
+    "confidence_at_end": 0.6666666666666666
+  },
+  "events": [
+    {
+      "interaction": 1,
+      "request_id": "omp_13_geometry_closest_pair_2d",
+      "baseline": "pythia",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4195833333333333,
+      "speculator_mode": 1,
+      "speculator_confidence": 0.3,
+      "speculator_cache_hit": true,
+      "speculator_time_ms": 27562.621283112094,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 25941.780593944713,
+      "verdict": "PARTIAL",
+      "reward": 0.025000000000000022,
+      "salvage_ratio": 0.25,
+      "wasted_compute": 0.30000000000000004,
+      "redirect_cost": 0.8999999999999999,
+      "pipeline_time_s": 2.6030037719756365,
+      "pipeline_tokens": 859,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.6666666666666666,
+      "speedup": 0.941194247364256,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    }
+  ]
+}

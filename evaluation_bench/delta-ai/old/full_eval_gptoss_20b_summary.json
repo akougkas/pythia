@@ -1,0 +1,123 @@
+{
+  "setup": {
+    "model": "gpt-oss:20b",
+    "provider": "ollama",
+    "hardware": "NVIDIA GH200 120GB",
+    "fleet_size": 2,
+    "temperature": 0.3,
+    "quantization": "MXFP4",
+    "n_requests": 20
+  },
+  "baselines": {
+    "pythia": {
+      "solver_ms": 3996.427560900338,
+      "pipeline_s": 8.400098416453693,
+      "hit_rate": 1.0,
+      "verdicts": {
+        "COMMIT": 8,
+        "PARTIAL": 12
+      },
+      "tokens": 49010,
+      "cost": 927.5,
+      "wasted_W": 0.3125,
+      "salvage": 0.7958333333333333,
+      "net_benefit": 14.691666666666666,
+      "N_conv": 3,
+      "mode_dist": {
+        "1": 3,
+        "2": 3,
+        "3": 14
+      },
+      "confidence_end": 0.9545454545454546,
+      "phase_end": "mature"
+    },
+    "ns": {
+      "solver_ms": 4198.272600607015,
+      "pipeline_s": 8.782767935597803,
+      "hit_rate": 0.0,
+      "verdicts": {
+        "NONE": 20
+      },
+      "tokens": 52273,
+      "cost": 912.5,
+      "wasted_W": 0.0,
+      "salvage": 0.0,
+      "net_benefit": 0.0,
+      "N_conv": 20,
+      "mode_dist": {
+        "0": 20
+      },
+      "confidence_end": 0.0,
+      "phase_end": "cold_start"
+    },
+    "sh": {
+      "solver_ms": 0.07828260131645948,
+      "pipeline_s": 19.31905852430209,
+      "hit_rate": 0.0,
+      "verdicts": {
+        "NONE": 20
+      },
+      "tokens": 120187,
+      "cost": 1350.0,
+      "wasted_W": 0.0,
+      "salvage": 0.0,
+      "net_benefit": 0.0,
+      "N_conv": 20,
+      "mode_dist": {
+        "0": 20
+      },
+      "confidence_end": 0.0,
+      "phase_end": "cold_start"
+    },
+    "swol": {
+      "solver_ms": 4015.028177955537,
+      "pipeline_s": 7.867172333147027,
+      "hit_rate": 1.0,
+      "verdicts": {
+        "COMMIT": 8,
+        "PARTIAL": 12
+      },
+      "tokens": 47707,
+      "cost": 877.5,
+      "wasted_W": 0.16129032258064516,
+      "salvage": 0.875,
+      "net_benefit": 16.75,
+      "N_conv": 3,
+      "mode_dist": {
+        "1": 20
+      },
+      "confidence_end": 0.0,
+      "phase_end": "cold_start"
+    },
+    "oracle": {
+      "solver_ms": 3146.2025703513063,
+      "pipeline_s": 5.6828491028951245,
+      "hit_rate": 1.0,
+      "verdicts": {
+        "COMMIT": 20
+      },
+      "tokens": 32926,
+      "cost": 832.5,
+      "wasted_W": 0.0,
+      "salvage": 1.0,
+      "net_benefit": 20.0,
+      "N_conv": 3,
+      "mode_dist": {
+        "3": 20
+      },
+      "confidence_end": 0.0,
+      "phase_end": "cold_start"
+    }
+  },
+  "claims": {
+    "L_spec_ratio": 0.6752036946942732,
+    "hit_rate": 1.0,
+    "wasted_W": 0.3125,
+    "benefit_vs_ns": 14.691666666666666,
+    "benefit_vs_swol": -2.0583333333333336,
+    "oracle_gap": 5.308333333333334,
+    "N_conv": 3,
+    "mode2_activated": true,
+    "mode3_activated": true
+  }
+}

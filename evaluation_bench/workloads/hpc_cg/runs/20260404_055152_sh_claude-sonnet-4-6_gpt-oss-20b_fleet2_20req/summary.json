@@ -1,0 +1,92 @@
+{
+  "run_dir": "/u/sislam3/pythia/evaluation_bench/workloads/hpc_cg/runs/20260404_055152_sh_claude-sonnet-4-6_gpt-oss-20b_fleet2_20req",
+  "baseline": "sh",
+  "config": {
+    "timestamp": "20260404_055152",
+    "baseline": "sh",
+    "prompt_mode": "original",
+    "n_requests": 20,
+    "fleet": [
+      {
+        "id": "gpt-oss-20b-gpu",
+        "model": "gpt-oss:20b",
+        "capabilities": [
+          "code_gen",
+          "tester",
+          "analyst",
+          "data_wrangler",
+          "code_generator"
+        ],
+        "cost_rate": 0.01,
+        "latency": 2.0
+      },
+      {
+        "id": "gpt-oss-20b-gpu-fast",
+        "model": "gpt-oss:20b",
+        "capabilities": [
+          "planner",
+          "review",
+          "data_discovery",
+          "reporter",
+          "literature_reviewer",
+          "experiment_designer",
+          "experiment_runner",
+          "result_analyzer"
+        ],
+        "cost_rate": 0.005,
+        "latency": 0.5
+      }
+    ],
+    "solver": {
+      "type": "AgentSelector (rule-based)",
+      "model": "rule-based",
+      "provider": "claude",
+      "temperature": 0.1
+    },
+    "draft": {
+      "model": "gpt-oss:20b",
+      "provider": "ollama"
+    },
+    "agent_temperature": 0.3,
+    "speculator": {
+      "type": "disabled"
+    },
+    "learner": {
+      "type": "disabled",
+      "window_size": 50,
+      "n1": 2,
+      "n2": 6
+    },
+    "thresholds": {
+      "tau_2": 0.5,
+      "tau_3": 0.8
+    },
+    "reconciliation": {
+      "L_saved": 1.0,
+      "C_redirect": 0.3,
+      "C_flush": 0.5,
+      "C_spec": 0.1
+    }
+  },
+  "total_interactions": 20,
+  "mean_dispatch_latency_ms": 0.07231624913401902,
+  "mean_solver_ms": 0.07231624913401902,
+  "mean_speculator_ms": 0.0,
+  "mean_speedup": 0.0,
+  "mean_pipeline_s": 16.952288288943237,
+  "verdicts": {
+    "NONE": 20
+  },
+  "hit_rate": 0.0,
+  "mode_distribution": {
+    "0": 20
+  },
+  "N_conv": 20,
+  "total_tokens": 116199,
+  "total_cost": 1350.0,
+  "net_benefit": 0.0,
+  "wasted_compute_ratio_W": 0.0,
+  "mean_salvage_ratio": 0.0,
+  "phase_at_end": "cold_start",
+  "confidence_at_end": 0.0
+}

@@ -1,0 +1,712 @@
+{
+  "summary": {
+    "run_dir": "/u/sislam3/pythia/evaluation_bench/workloads/hpc_cg/runs/20260404_012925_ns_gpt-oss-20b_qwen3-4b_fleet2_20req",
+    "baseline": "ns",
+    "config": {
+      "timestamp": "20260404_012925",
+      "baseline": "ns",
+      "prompt_mode": "original",
+      "n_requests": 20,
+      "fleet": [
+        {
+          "id": "gpt-oss-20b-gpu",
+          "model": "gpt-oss:20b",
+          "capabilities": [
+            "code_gen",
+            "tester",
+            "analyst",
+            "data_wrangler",
+            "code_generator"
+          ],
+          "cost_rate": 0.01,
+          "latency": 2.0
+        },
+        {
+          "id": "gpt-oss-20b-gpu-fast",
+          "model": "gpt-oss:20b",
+          "capabilities": [
+            "planner",
+            "review",
+            "data_discovery",
+            "reporter",
+            "literature_reviewer",
+            "experiment_designer",
+            "experiment_runner",
+            "result_analyzer"
+          ],
+          "cost_rate": 0.005,
+          "latency": 0.5
+        }
+      ],
+      "solver": {
+        "type": "LLMAgentSelector",
+        "model": "gpt-oss:20b",
+        "provider": "ollama",
+        "temperature": 0.1
+      },
+      "draft": {
+        "model": "qwen3:4b",
+        "provider": "ollama"
+      },
+      "agent_temperature": 0.3,
+      "speculator": {
+        "type": "disabled"
+      },
+      "learner": {
+        "type": "disabled",
+        "window_size": 50,
+        "n1": 2,
+        "n2": 6
+      },
+      "thresholds": {
+        "tau_2": 0.5,
+        "tau_3": 0.8
+      },
+      "reconciliation": {
+        "L_saved": 1.0,
+        "C_redirect": 0.3,
+        "C_flush": 0.5,
+        "C_spec": 0.1
+      }
+    },
+    "total_interactions": 20,
+    "mean_dispatch_latency_ms": 2935.513939888915,
+    "mean_solver_ms": 2935.513939888915,
+    "mean_speculator_ms": 0.0,
+    "mean_speedup": 0.0,
+    "mean_pipeline_s": 6.824594639684074,
+    "verdicts": {
+      "NONE": 20
+    },
+    "hit_rate": 0.0,
+    "mode_distribution": {
+      "0": 20
+    },
+    "N_conv": 20,
+    "total_tokens": 43011,
+    "total_cost": 882.5,
+    "net_benefit": 0.0,
+    "wasted_compute_ratio_W": 0.0,
+    "mean_salvage_ratio": 0.0,
+    "phase_at_end": "cold_start",
+    "confidence_at_end": 0.0
+  },
+  "events": [
+    {
+      "interaction": 1,
+      "request_id": "omp_13_geometry_closest_pair_2d",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4195833333333333,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 1814.354454050772,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 2.3908266338985413,
+      "pipeline_tokens": 839,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 2,
+      "request_id": "mpi+omp_13_geometry_closest_pair_2d",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4745098039215686,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 3014.119138009846,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 4.959158298908733,
+      "pipeline_tokens": 1491,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 3,
+      "request_id": "mpi_13_geometry_closest_pair_2d",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4706185567010309,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen",
+        "tester"
+      ],
+      "solver_time_ms": 3242.9094429826364,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 8.027076295926236,
+      "pipeline_tokens": 3058,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0,
+        "tester": 15.0
+      }
+    },
+    {
+      "interaction": 4,
+      "request_id": "omp_11_geometry_convex_hull_perimeter",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.42440476190476184,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2573.4583199955523,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 4.620900864014402,
+      "pipeline_tokens": 1395,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 5,
+      "request_id": "mpi+omp_11_geometry_convex_hull_perimeter",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4725225225225226,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "planner",
+        "code_gen",
+        "tester"
+      ],
+      "solver_time_ms": 4198.226744891144,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 13.083661735989153,
+      "pipeline_tokens": 5069,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0,
+        "tester": 15.0
+      }
+    },
+    {
+      "interaction": 6,
+      "request_id": "mpi_11_geometry_convex_hull_perimeter",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.46886792452830195,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 8437.8229099093,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 8.203438141965307,
+      "pipeline_tokens": 2280,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 7,
+      "request_id": "omp_12_geometry_smallest_triangle",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.46176470588235297,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2666.5393230505288,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 2.9270413529593498,
+      "pipeline_tokens": 948,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 8,
+      "request_id": "mpi+omp_12_geometry_smallest_triangle",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4682291666666667,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2954.3529680231586,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 5.431126052048057,
+      "pipeline_tokens": 1577,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 9,
+      "request_id": "mpi_12_geometry_smallest_triangle",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.46373626373626375,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "planner",
+        "code_gen",
+        "tester"
+      ],
+      "solver_time_ms": 3282.86434605252,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 12.703637390048243,
+      "pipeline_tokens": 4612,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0,
+        "tester": 15.0
+      }
+    },
+    {
+      "interaction": 10,
+      "request_id": "omp_14_geometry_closest_pair_1d",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.35665816326530614,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 1843.4940840816125,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 2.8424502729903907,
+      "pipeline_tokens": 884,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 11,
+      "request_id": "mpi+omp_14_geometry_closest_pair_1d",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.3784110169491526,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 1933.2961100153625,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 7.4604297269834206,
+      "pipeline_tokens": 1996,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 12,
+      "request_id": "mpi_14_geometry_closest_pair_1d",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.36564814814814817,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen",
+        "tester"
+      ],
+      "solver_time_ms": 2340.649144956842,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 10.736945818993263,
+      "pipeline_tokens": 3163,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0,
+        "tester": 15.0
+      }
+    },
+    {
+      "interaction": 13,
+      "request_id": "omp_10_geometry_convex_hull",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.38748376623376624,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2765.7430139370263,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 8.317505732062273,
+      "pipeline_tokens": 2254,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 14,
+      "request_id": "mpi+omp_10_geometry_convex_hull",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.43677184466019414,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2696.5741019230336,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 8.817007726989686,
+      "pipeline_tokens": 2411,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 15,
+      "request_id": "mpi_10_geometry_convex_hull",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4329081632653061,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 1938.4478280553594,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 6.949121559970081,
+      "pipeline_tokens": 1928,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 16,
+      "request_id": "omp_59_transform_map_function",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.37266129032258066,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 1767.7710700081661,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 2.706582566956058,
+      "pipeline_tokens": 872,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 17,
+      "request_id": "mpi+omp_59_transform_map_function",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4427197802197802,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 2305.294200894423,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 6.023017420899123,
+      "pipeline_tokens": 1698,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 18,
+      "request_id": "mpi_59_transform_map_function",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.43866279069767444,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 3456.405700999312,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 6.424030530033633,
+      "pipeline_tokens": 1792,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 19,
+      "request_id": "omp_57_transform_inverse_offset",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.4645058139534884,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "code_gen"
+      ],
+      "solver_time_ms": 1820.0941500253975,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 2.222665930981748,
+      "pipeline_tokens": 693,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "code_gen": 40.0
+      }
+    },
+    {
+      "interaction": 20,
+      "request_id": "mpi+omp_57_transform_inverse_offset",
+      "baseline": "ns",
+      "intent_task_type": "hpc_code_gen",
+      "intent_complexity": 0.5482142857142858,
+      "speculator_mode": 0,
+      "speculator_confidence": 0.0,
+      "speculator_cache_hit": false,
+      "speculator_time_ms": 0.0,
+      "solver_agents": [
+        "planner",
+        "code_gen",
+        "tester"
+      ],
+      "solver_time_ms": 3657.861745916307,
+      "verdict": "NONE",
+      "reward": 0.0,
+      "salvage_ratio": 0.0,
+      "wasted_compute": 0.0,
+      "redirect_cost": 0.0,
+      "pipeline_time_s": 11.645268741063774,
+      "pipeline_tokens": 4051,
+      "draft_time_s": 0,
+      "draft_accepted": null,
+      "learner_phase": "cold_start",
+      "learner_confidence": 0.0,
+      "speedup": 0,
+      "agent_costs": {
+        "planner": 2.5,
+        "code_gen": 40.0,
+        "tester": 15.0
+      }
+    }
+  ]
+}
