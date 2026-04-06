@@ -1,0 +1,96 @@
+{
+  "run_dir": "/u/sislam3/pythia/evaluation_bench/workloads/sdp/runs/20260406_050543_pythia_gpt-oss-20b_qwen3-4b_fleet2_20req",
+  "baseline": "pythia",
+  "config": {
+    "timestamp": "20260406_050543",
+    "baseline": "pythia",
+    "prompt_mode": "original",
+    "n_requests": 20,
+    "fleet": [
+      {
+        "id": "gpt-oss-20b-gpu",
+        "model": "gpt-oss:20b",
+        "capabilities": [
+          "code_gen",
+          "tester",
+          "analyst",
+          "data_wrangler",
+          "code_generator"
+        ],
+        "cost_rate": 0.01,
+        "latency": 2.0
+      },
+      {
+        "id": "gpt-oss-20b-gpu-fast",
+        "model": "gpt-oss:20b",
+        "capabilities": [
+          "planner",
+          "review",
+          "data_discovery",
+          "reporter",
+          "literature_reviewer",
+          "experiment_designer",
+          "experiment_runner",
+          "result_analyzer"
+        ],
+        "cost_rate": 0.005,
+        "latency": 0.5
+      }
+    ],
+    "solver": {
+      "type": "LLMAgentSelector",
+      "model": "gpt-oss:20b",
+      "provider": "ollama",
+      "temperature": 0.1
+    },
+    "draft": {
+      "model": "qwen3:4b",
+      "provider": "ollama"
+    },
+    "agent_temperature": 0.3,
+    "speculator": {
+      "type": "DispatchCache + BayesianConfidence"
+    },
+    "learner": {
+      "type": "Bayesian Contextual Bandit",
+      "window_size": 50,
+      "n1": 2,
+      "n2": 6
+    },
+    "thresholds": {
+      "tau_2": 0.5,
+      "tau_3": 0.8
+    },
+    "reconciliation": {
+      "L_saved": 1.0,
+      "C_redirect": 0.3,
+      "C_flush": 0.5,
+      "C_spec": 0.1
+    }
+  },
+  "total_interactions": 20,
+  "mean_dispatch_latency_ms": 6618.316287791822,
+  "mean_solver_ms": 6618.316287791822,
+  "mean_speculator_ms": 4032.339797873283,
+  "mean_speedup": 48434.45139013622,
+  "mean_pipeline_s": 10.820486461790278,
+  "verdicts": {
+    "PARTIAL": 7,
+    "COMMIT": 11,
+    "FLUSH": 2
+  },
+  "hit_rate": 0.9,
+  "mode_distribution": {
+    "1": 4,
+    "2": 3,
+    "3": 13
+  },
+  "N_conv": 3,
+  "total_tokens": 86841,
+  "total_cost": 1035.0,
+  "net_benefit": 15.7,
+  "wasted_compute_ratio_W": 0.1095890410958904,
+  "mean_salvage_ratio": 0.85,
+  "phase_at_end": "mature",
+  "confidence_at_end": 0.7619047619047619
+}

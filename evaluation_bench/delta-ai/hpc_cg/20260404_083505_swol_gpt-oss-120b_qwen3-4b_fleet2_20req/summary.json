@@ -1,0 +1,93 @@
+{
+  "run_dir": "/u/sislam3/pythia/evaluation_bench/workloads/hpc_cg/runs/20260404_083505_swol_gpt-oss-120b_qwen3-4b_fleet2_20req",
+  "baseline": "swol",
+  "config": {
+    "timestamp": "20260404_083505",
+    "baseline": "swol",
+    "prompt_mode": "original",
+    "n_requests": 20,
+    "fleet": [
+      {
+        "id": "gpt-oss-20b-gpu",
+        "model": "gpt-oss:20b",
+        "capabilities": [
+          "code_gen",
+          "tester",
+          "analyst",
+          "data_wrangler",
+          "code_generator"
+        ],
+        "cost_rate": 0.01,
+        "latency": 2.0
+      },
+      {
+        "id": "gpt-oss-20b-gpu-fast",
+        "model": "gpt-oss:20b",
+        "capabilities": [
+          "planner",
+          "review",
+          "data_discovery",
+          "reporter",
+          "literature_reviewer",
+          "experiment_designer",
+          "experiment_runner",
+          "result_analyzer"
+        ],
+        "cost_rate": 0.005,
+        "latency": 0.5
+      }
+    ],
+    "solver": {
+      "type": "LLMAgentSelector",
+      "model": "gpt-oss:120b",
+      "provider": "ollama",
+      "temperature": 0.1
+    },
+    "draft": {
+      "model": "qwen3:4b",
+      "provider": "ollama"
+    },
+    "agent_temperature": 0.3,
+    "speculator": {
+      "type": "frozen (SwoL)"
+    },
+    "learner": {
+      "type": "disabled",
+      "window_size": 50,
+      "n1": 2,
+      "n2": 6
+    },
+    "thresholds": {
+      "tau_2": 0.5,
+      "tau_3": 0.8
+    },
+    "reconciliation": {
+      "L_saved": 1.0,
+      "C_redirect": 0.3,
+      "C_flush": 0.5,
+      "C_spec": 0.1
+    }
+  },
+  "total_interactions": 20,
+  "mean_dispatch_latency_ms": 8648.741332546342,
+  "mean_solver_ms": 8648.741332546342,
+  "mean_speculator_ms": 607.7855960174929,
+  "mean_speedup": 417902.2545813377,
+  "mean_pipeline_s": 14.667095082410379,
+  "verdicts": {
+    "PARTIAL": 15,
+    "COMMIT": 5
+  },
+  "hit_rate": 1.0,
+  "mode_distribution": {
+    "1": 20
+  },
+  "N_conv": 3,
+  "total_tokens": 100079,
+  "total_cost": 1252.5,
+  "net_benefit": 15.58,
+  "wasted_compute_ratio_W": 0.20588235294117646,
+  "mean_salvage_ratio": 0.8300000000000001,
+  "phase_at_end": "cold_start",
+  "confidence_at_end": 0.0
+}
