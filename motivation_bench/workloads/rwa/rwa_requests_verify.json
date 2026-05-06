@@ -1,0 +1,206 @@
+[
+  {
+    "id": "rwa_pinn",
+    "request": "Replicate the research paper 'Pinn': Reproduce the paper \"Challenges in Training PINNs: A Loss Landscape Perspective\" This involves 7 major phases and 2550 total subtasks. The workflow includes: The experiments described in section 2.2 have been run; The results of Figure 2 have been reproduced; The results of Figure 3 and Figure 7 have been reproduced.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "pinn",
+      "display_name": "Pinn",
+      "n_top_steps": 7,
+      "n_total_subtasks": 2550,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The experiments described in section 2.2 have been run",
+        "The results of Figure 2 have been reproduced",
+        "The results of Figure 3 and Figure 7 have been reproduced",
+        "The results of Figure 8 and Table 1 have been reproduced",
+        "The NysNewton-CG (abbreviated NNCG) optimizer has been implemented as outlined in Section 7.2 and Appendix E.",
+        "The results of Figure 4, Figure 5 and Table 2 have been reproduced",
+        "The results of Table 3 have been reproduced"
+      ],
+      "total_subtasks": 2550
+    }
+  },
+  {
+    "id": "rwa_lbcs",
+    "request": "Replicate the research paper 'Lbcs': The core contributions of the paper \"Refined Coreset Selection: Towards Minimal Coreset Size under Model Performance Constraints\" have been reproduced. This involves 7 major phases and 1470 total subtasks. The workflow includes: The relevant datasets necessary for the experiments in the paper have been setup such that they can be accessed and used; The results of Figure 1 have been reproduced; The relevant coreset selection methods have been implemented.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "lbcs",
+      "display_name": "Lbcs",
+      "n_top_steps": 7,
+      "n_total_subtasks": 1470,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The relevant datasets necessary for the experiments in the paper have been setup such that they can be accessed and used",
+        "The results of Figure 1 have been reproduced",
+        "The relevant coreset selection methods have been implemented",
+        "The results of Section 5.1 have been reproduced",
+        "The results of Section 5.2 have been reproduced",
+        "The results of Section 5.3 have been reproduced",
+        "The results of Section 6 have been reproduced"
+      ],
+      "total_subtasks": 1470
+    }
+  },
+  {
+    "id": "rwa_fre",
+    "request": "Replicate the research paper 'Fre': The paper \"Unsupervised Zero-Shot Reinforcement Learning via Functional Reward Encodings\" has been reproduced. This involves 6 major phases and 635 total subtasks. The workflow includes: The necessary agent datasets and environments have been setup; The necessary methods have been implemented; The necessary training and evaluation has been run.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "fre",
+      "display_name": "Fre",
+      "n_top_steps": 6,
+      "n_total_subtasks": 635,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The necessary agent datasets and environments have been setup",
+        "The necessary methods have been implemented",
+        "The necessary training and evaluation has been run",
+        "The evaluation outcome shows or implies results that reproduce those shown in the paper in section 5.2 and Table 1.",
+        "The evaluation outcome shows or implies results that reproduce those shown in the paper in section 5.3 and Table 4/Figure 5.",
+        "The outcome of the evaluation shows or implies that the FRE agent trained with the augmented FRE-hint prior reward distribution outperforms the FRE agent trained on the vanilla FRE prior reward distri"
+      ],
+      "total_subtasks": 635
+    }
+  },
+  {
+    "id": "rwa_rice",
+    "request": "Replicate the research paper 'Rice': The core contributions of the paper have been reproduced. This involves 9 major phases and 488 total subtasks. The workflow includes: The environments used for the experiments outlined in section 4.1 and Appendix C.2 have been setup; For each environment, a policy network agent compatible with PPO has been setup and pretrained. The policy networks may or may not have variants to ensure compatibility with each of the correctly setu; For each environment, the explanation methods used for the experiments are implemented as outlined in 3.3 and 4.1.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "rice",
+      "display_name": "Rice",
+      "n_top_steps": 9,
+      "n_total_subtasks": 488,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The environments used for the experiments outlined in section 4.1 and Appendix C.2 have been setup",
+        "For each environment, a policy network agent compatible with PPO has been setup and pretrained. The policy networks may or may not have variants to ensure compatibility with each of the correctly setu",
+        "For each environment, the explanation methods used for the experiments are implemented as outlined in 3.3 and 4.1",
+        "The results of Experiment I have been reproduced, as outlined in Sections 4.2 and 4.3",
+        "For each environment, the refining methods used in the paper experiments (Section 4) have been implemented",
+        "The results of Experiment II have been reproduced, as outlined in Sections 4.2 and 4.3",
+        "The results of Experiment III have been reproduced, as outlined in sections 4.2 and 4.3",
+        "The results of Experiment IV have been reproduced, as outlined in sections 4.2 and 4.3",
+        "The results of Experiment V have been reproduced, as outlined in sections 4.2 and 4.3"
+      ],
+      "total_subtasks": 488
+    }
+  },
+  {
+    "id": "rwa_sapg",
+    "request": "Replicate the research paper 'Sapg': The paper \"SAPG: Split and Aggregate Policy Gradients\" has been replicated. This involves 8 major phases and 278 total subtasks. The workflow includes: SAPG has been implemented.; The experimental setup has been replicated, as described in Section 5.; Figure 2 has been replicated..",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "sapg",
+      "display_name": "Sapg",
+      "n_top_steps": 8,
+      "n_total_subtasks": 278,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 3,
+      "pipeline": [
+        "experiment_designer",
+        "code_generator",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "SAPG has been implemented.",
+        "The experimental setup has been replicated, as described in Section 5.",
+        "Figure 2 has been replicated.",
+        "Figure 5 has been replicated.",
+        "Table 1 has been replicated.",
+        "Figure 6 has been replicated.",
+        "Figure 7 has been replicated.",
+        "Figure 8 has been replicated."
+      ],
+      "total_subtasks": 278
+    }
+  }
+]

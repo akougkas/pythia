@@ -1,6 +1,6 @@
-# 3. Speculative Dispatch
+# 3. Pythia Design
 
-This section presents the Speculative Dispatch framework: the five-layer architecture, the three progressive speculation modes, the reconciliation protocol, the formal cost model, and the resource-aware dispatch formulation.
+This section presents Pythia framework: §3.1 describes the five-layer architecture overview and each component's responsibility; §3.2 details the speculation mechanism, including the three progressive modes, reconciliation protocol, and cost model; §3.3 and §3.4 then zoom into the Solver's resource-aware dispatch formulation (§3.3) and the Learner (§3.4).
 
 ## 3.1 Architecture Overview
 
@@ -113,8 +113,8 @@ Notes:
 
 **Learner.**
 A reinforcement learning component that observes the full dispatch lifecycle of each request — intent, solver plan, speculation result, reconciliation decision, and execution outcome — and continuously updates the Speculative Dispatcher's prediction model. 
-The learner produces two outputs: 1) an updated policy for the Speculative Dispatcher to make prediction; and 2) a per-intent-class confidence scores that used to gate Spective Mode 2/3 activation. 
-The Learner is described in detail in Section §4.
+The learner produces two outputs: 1) an updated policy for the Speculative Dispatcher to make prediction; and 2) a per-intent-class confidence scores that used to gate Speculative Mode 2/3 activation. 
+The Learner is described in detail in Section §3.4.
 <!-- Question:
 1. what the Learner produces? that is its output?
    The Learner's output is a) an updated policy $\pi_\theta$ that the Speculative Dispatcher uses for prediction; b) confidence scores that gate Mode 2/3 activation, correct?
@@ -143,19 +143,20 @@ Show data contracts at each interface.]
 
 *Figure: Five-layer architecture of the Speculative Dispatch pipeline. A user request flows through the Intent Detector, which feeds classified intents in parallel to the Dispatch Solver (target) and Speculative Dispatcher (draft). The Orchestrator reconciles both plans (COMMIT, PARTIAL COMMIT, or FLUSH) before final execution. The Learner observes the full lifecycle and updates the Speculative Dispatcher's prediction model.*
 
+## 3.2 Speculative Dispatch
+
 The Speculative Dispatcher's predicted plan may diverge from the Solver's optimal plan. Since the Speculative Dispatcher acts on the prediction before the Solver finishes, all speculative pre-execution incurs misprediction risk.
 Acting more aggressively on the prediction will save more latency when the prediction is correct, but will waste more resources when the prediction is wrong. 
 To manage this tradeoff, we support three progressive speculation modes, with each committing additional speculative work at increasing potential cost.
 To determine which mode is active, the Speculative Dispatcher compares the per-intent-class confidence score provided by the Learner's feedback (i.e., the rolling reconciliation success rate) against the break-even mode activation thresholds derived from the cost-model. 
 This ensures that aggressive speculation is reserved for intent classes where the Speculative Dispatcher has a strong track record.
 
-
-## 3.2 Speculation Modes
+### 3.2.1 Speculation Modes
 
 We define three progressive speculation modes, each representing a deeper commitment of resources to the predicted dispatch plan.
 The modes form a hierarchy: each successive mode subsumes the previous and adds additional speculative work with higher potential reward but greater misprediction cost.
 
-### Mode 1: Speculative Context Preparation
+#### Mode 1: Speculative Context Preparation
 
 **Analogy:** CPU cache prefetching.
 
@@ -164,13 +165,13 @@ This work is useful regardless of the final dispatch plan because the same conte
 
 **Formal characterization.** Let $C_{prep}$ be the cost of context preparation and $C_{prep}^{waste}$ be the fraction of preparation wasted on a misprediction. For Mode 1, $C_{prep}^{waste} \approx 0$ because context is agent-agnostic. Mode 1 is therefore activated unconditionally — there is no confidence threshold because the downside is negligible.
 
-### Mode 2: Speculative Agent Pre-dispatch
+#### Mode 2: Speculative Agent Pre-dispatch
 
 **Analogy:** CPU speculative execution past a branch.
 
 The Speculative Dispatcher predicts which agents will be needed and begins provisioning them: allocating compute resources, initializing agent runtimes, establishing API connections, and loading agent-specific configurations.
 This mode is gated by a confidence threshold $\tau_2$ — the Speculative Dispatcher only activates Mode 2 when its prediction confidence for the intent class exceeds $\tau_2$.
-Prediction confidence is the Learner's rolling hit rate for the current intent class: the fraction of recent predictions for that class that received COMMIT or PARTIAL COMMIT at reconciliation (§4).
+Prediction confidence is the Learner's rolling hit rate for the current intent class: the fraction of recent predictions for that class that received COMMIT or PARTIAL COMMIT at reconciliation (§3.4).
 <!-- [TODO: §4] Define intent class grouping key: (task_type, domain_tags, complexity_level). Discuss domain_tags representation for grouping — sort-and-hash vs. primary tag vs. set similarity. Evaluate fragmentation risk empirically in §6. -->
 
 **Formal characterization.** Let $C_{init}$ be the cost of agent initialization and $p$ be the speculation accuracy (probability that the predicted agent set matches the Solver's optimal set). The expected cost of Mode 2 speculation is:
@@ -185,7 +186,7 @@ $$p > \frac{C_{init}}{L_{init} + C_{init}} = \tau_2^*$$
 
 This is the break-even accuracy threshold for Mode 2 — structurally identical to the break-even condition in CPU branch prediction.
 
-### Mode 3: Speculative Execution with Verification
+#### Mode 3: Speculative Execution with Verification
 
 **Analogy:** LLM speculative decoding.
 
@@ -217,7 +218,7 @@ Annotate with CPU/LLM analogy labels.]
 
 *Figure: Progressive speculation modes with confidence-gated activation. Mode 1 (context preparation) is unconditional. Mode 2 (agent pre-dispatch) activates when the Learner's rolling hit rate for the intent class exceeds τ₂. Mode 3 (speculative execution with verification) activates above τ₃. Each mode subsumes all lower modes. Thresholds τ₂ and τ₃ are break-even accuracies derived from the cost model (§3.4).*
 
-## 3.3 Reconciliation Protocol
+### 3.2.2 Reconciliation Protocol
 
 The Orchestrator performs reconciliation when the Solver's optimal plan $P^*$ arrives and speculative pre-execution based on predicted plan $\hat{P}$ is in progress.
 We define three reconciliation outcomes:
@@ -245,18 +246,71 @@ All pre-executed work is discarded.
 The Solver's plan executes from scratch.
 Effective latency equals the non-speculative baseline plus the wasted resources consumed by the flushed speculation.
 
-## 3.4 Cost Model
+### 3.2.3 Cost Model
 
-We now derive the unified cost model for Speculative Dispatch.
-Let $L_s$ be the Solver's latency, $L_{spec}$ be the Speculative Dispatcher's latency (where $L_{spec} \ll L_s$ by construction), and $p_c$, $p_{pc}$, $p_f$ be the probabilities of COMMIT, PARTIAL COMMIT, and FLUSH respectively ($p_c + p_{pc} + p_f = 1$).
+We derive a cost model for Speculative Dispatch which establishes the break-even thresholds for Speculation Mode 2 and Mode 3 and quantifies the expected per-request latency reduction and resource waste for a given intent class.
+
+Without speculative dispatch, the baseline latency is defined as:
+
+$$L_{baseline} = L_s + L_{init} + L_{exec}$$
+
+where $L_s$ is the Solver's latency (i.e., the wall-clock time from when receiving the request and its classified intent to outputting the optimal dispatch plan ($P^*$)), $L_{init}$ is the aggregate agent initialization latency of the Solver's optimal dispatch plan, and $L_{exec}$ is the aggregate execution latency. $L_{init}$ and $L_{exec}$ vary by intent class, here we suppress the class index $k$ for readability.
+
+Let $L_{spec\_pred}$ denote the wall-clock time for the Speculative Dispatcher to generate a draft plan, which satisfies $L_{spec\_pred} \ll L_s$ by construction due to the lightweight design mechanism. Moreover, since speculative pre-execution runs in parallel with the Solver and is terminated after the reconciliation verdict, the cleanup overhead does not appear on the critical path.
+
+As mentioned in §3.2.1, the break-even thresholds $\tau_2^*$ and $\tau_3^*$ used for gating the activation of Mode 2 and Mode 3 are determined by the cost model. 
+First, we derive how to get threshold $\tau_2^*$ for Mode 2 (i.e., speculative agent pre-dispatch). 
+We define $p_c$, $p_{pc}$, and $p_f$ as the probabilities of COMMIT, PARTIAL COMMIT, and FLUSH verdicts respectively ($p_c + p_{pc} + p_f = 1$). $\bar{\sigma}$ denotes the expected salvage ratio for the intent class. The Learner maintains rolling per-intent-class estimates of $p_c$, $p_{pc}$, $p_f$, and $\bar{\sigma}$ from historical reconciliation outcomes; the estimation mechanism is detailed in §4.
+When prediction is fully correct, the init latency was hidden by the Solver, thus its speculative latency will be:  $$L_{commit} = L_s + L_{exec}$$.
+When the prediction is partially correct, assume that a fraction $\bar{\sigma}$ of the pre-dispatched agents are correct while a fraction (1-$\bar{\sigma}$) are wrong. We will save time for the correct fraction but pay penalty for the wrong one for reasing resources. With this verdict, the speculative latency is 
+$$L_{partial} = L_s + (1-\bar{\sigma}) \cdot (C_{penalty} + L_{init}) + L_{exec}$$
+Where C_{penalty} is the cleanup time plus resource contentionn delay for releasing resources allocated to wrong agents. Here, We assume that cleaning up and re-provisioning mismatched agents contends for shared resources (e.g., GPU memory, rate limits), preventing correctly retained agents from beginning execution until all re-provisioning completes.
+When the prediction is totally wrong, all pre-dispatched agents need to be discarded, resulting full penalty for cleanup and re-initialization. So the speculative latency will be $$L_{flush} = L_s + C_{penalty} + L_{init} + L_{exec}$$
+Based on this analysis, we can derive that the expected speculative latency for Mode 2 is:
+$$L_{M2} = p_c \cdot L_{commit} + p_{pc} \cdot L_{partial} + p_f \cdot L_{flush} = L_s + L_{exec} + \bigl[p_{pc}(1-\bar{\sigma}) + p_f\bigr](C_{penalty} + L_{init})$$
+
+Mode 2 is profitable when its expected speculative latency is strictly less than the non-speculative baseline (i.e., $L_{M2} < L_{baseline}$), so we can get: 
+$$L_s + L_{exec} + [p_{pc}(1-\bar{\sigma}) + p_f](C_{penalty} + L_{init}) < L_s + L_{init} + L_{exec}$$
+$$[p_{pc}(1-\bar{\sigma}) + p_f] < \frac{L_{init}}{C_{penalty} + L_{init}}$$
+Since $p_c + p_{pc} + p_f = 1$, the left-hand side equals $1 - (p_c + p_{pc}\bar{\sigma})$.
+Equivalently, defining the effective hit rate $p_{eff} = p_c + p_{pc}\bar{\sigma}$, which denotes the fraction of speculative work that survives reconciliation. Then, Mode 2 speculation will be profitable when 
+$$p_{eff} > \frac{C_{penalty}}{C_{penalty} + L_{init}} = \tau_2^*$$
+
+Because $p_{eff}$ credits partial matches proportionally to their salvage ratio, a system with frequent partial matches can satisfy the activation condition $p_{eff} > \tau_2^*$ even when full COMMIT is rare.
+
+As mentioned in §3.2.1, Mode 3 subsumes Mode 2, in which the predicted agents are not only provisioned but begin executing the task before the Solver finishes. Same reconciliation verdicts are applied once Solver finished, but the stakes also increase: a correct prediction now saves both $L_{init}$ and $L_{exec}$, while a misprediction wastes active computation rather than idle provisioning. We define $C_{penalty}^{M3} \geq C_{penalty}^{M2}$ as the Mode 3 misprediction penalty, which is higher because actively executing agents consume more shared resources (rate limits, GPU cycles) than provisioned-but-idle agents.
+In COMMIT case, both $L_{init}$ and $L_{exec}$ were hidden behind the Solver, so the speculative latency is:
+$$L_{commit}^{M3} = L_s$$
+In PARTIAL COMMIT case, similarly, assume that a fraction $\bar{\sigma}$ of agents were correct and their execution output is ready, while a fraction $(1-\bar{\sigma})$ must be flushed, cleaned up, re-provisioned, and re-executed, then the speculative latency is:
+$$L_{partial}^{M3} = L_s + (1-\bar{\sigma})(C_{penalty}^{M3} + L_{init} + L_{exec})$$
+In FLUSH case, all predicted agents were wrong and their output should be discarded, needing to cleaned up wrong agents and re-provisioned and re-executed correct agents. So the speculative latency is:
+$$L_{flush}^{M3} = L_s + C_{penalty}^{M3} + L_{init} + L_{exec}$$
+Based on this analysis, we can derive that the expected speculative latency for Mode 3 is:
+$$L_{M3} = L_s + [p_{pc}(1-\bar{\sigma}) + p_f](C_{penalty}^{M3} + L_{init} + L_{exec})$$
+Similarly, Mode 3 is profitable when its expected speculative latency is strictly less than the non-speculative baseline (i.e., $L_{M3} < L_{baseline}$), so we can get: 
+$$p_{eff} > \frac{C_{penalty}^{M3}}{C_{penalty}^{M3} + L_{init} + L_{exec}} = \tau_3^*$$
+
+The thresholds $\tau_2^*$ and $\tau_3^*$ govern whether speculation reduces latency, but do not account for the resource cost of misprediction. Therefore, we define a separate metric, the wasted compute ratio $W$, to quantify the fraction of total resources consumed by discarded speculative work. 
+Let $R_{spec}$ denote the resource cost of speculative work per request (measured in tokens or compute-hours), and $R_{total}$ the total resource consumption including both speculative and non-speculative execution.
+Only the unsalvaged fraction of speculative work constitutes waste: COMMIT incurs no resource loss, while PARTIAL COMMIT and FLUSH waste resources proportionally to $(1-\bar{\sigma})$ and in full, respectively. Thus, the expected wasted compute ratio is:
+$$W = \frac{[p_{pc}(1-\bar{\sigma}) + p_f] \cdot R_{spec}}{R_{total}}$$
+
+where $[p_{pc}(1-\bar{\sigma}) + p_f]$ is the same effective misprediction rate that appears in the latency model. $W$ applies it to the resource dimension rather than the time dimension. $R_{total}$ includes both speculative and final execution costs, so $W < 1$ even under full flush — the denominator always contains the non-speculative execution that produces the final result.
+
+It is directly analogous to the wasted instruction ratio in CPU branch speculation, quantifying the resource price of misprediction independently of latency. A system may be latency-profitable ($p_{eff} > \tau^*$) while still incurring high resource waste; the Learner (§4) monitors both $p_{eff}$ and $W$ to balance this tradeoff per intent class.
+
+<!-- Let $L_s$ be the Solver's latency (i.e., the wall-clock time from when receiving the request and its classified intent to outputting the optimal dispatch plan ($P^*$)); $L_{spec_pred}$ be the wall-clock time for Speculative Dispatcher to produce the predicted dispatch plan ($\hat{P}$) (where $L_{spec_pred} \ll L_s$ by construction); $L_{cleanup}$ be the time to flush/cleanup mismatched specculative work.
+
+All of the following latency and probability variables are defined per intent class, thus we suppress the class index $k$ for readability. 
+Let $L_{init}$ and $L_{exec}$ be the agent initialization latency and the agent execution latency after initialization respectively; Let $p_c$, $p_{pc}$, $p_f$ be the probabilities of COMMIT, PARTIAL COMMIT, and FLUSH respectively ($p_c + p_{pc} + p_f = 1$).
 
 **Non-speculative baseline latency:**
 
 $$L_{baseline} = L_s + L_{exec}$$
 
-where $L_{exec}$ is the agent execution latency after dispatch.
+where $L_{exec}$ is the agent execution latency after dispatch. -->
 
-**Speculative dispatch latency:**
+<!-- **Speculative dispatch latency:**
 
 $$L_{spec\_dispatch} = L_s + p_c \cdot 0 + p_{pc} \cdot (1 - \bar{\sigma}) \cdot L_{redirect} + p_f \cdot L_{exec}$$
 
@@ -276,11 +330,11 @@ The break-even accuracy — the minimum COMMIT + weighted PARTIAL COMMIT rate �
 $$W = \frac{p_f \cdot C_{spec} + p_{pc} \cdot (1 - \bar{\sigma}) \cdot C_{spec}}{C_{total}}$$
 
 where $C_{spec}$ is the total resource cost of speculative pre-execution and $C_{total}$ is the total system resource consumption.
-$W$ is the primary cost metric — it quantifies the price of misprediction and is directly comparable to the wasted instruction ratio in CPU speculation.
+$W$ is the primary cost metric — it quantifies the price of misprediction and is directly comparable to the wasted instruction ratio in CPU speculation. -->
 
-## 3.5 Resource-Aware Dispatch
+## 3.3 Resource-Aware Dispatch
 
-Given agents with requirements produced by the planning stage, the Dispatch Solver assigns agents to execution resources drawn from a heterogeneous resource landscape.
+Given agents and their requirements determined by the Dispatch Solver's planning phase, the Solver then assigns each agent to an optimal resource drawn from a heterogeneous resource landscape to execute the corresponding task.
 We model the available infrastructure as a *fleet* $\mathcal{F} = \{f_1, \ldots, f_n\}$ where each fleet member is defined as a model endpoint optionally paired with tool servers. Each fleet member $f_i$ has a capability vector:
 
 $$f_i = (\text{compute}_i, \text{memory}_i, \text{rate\_limit}_i, \text{token\_budget}_i, \text{cost\_rate}_i, \text{latency}_i)$$

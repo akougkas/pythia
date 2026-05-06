@@ -27,6 +27,7 @@ from pythia.contracts import (
     Intent,
     PreExecutionManifest,
     SpeculationResult,
+    bucket,
 )
 from pythia.fleet import Fleet
 
@@ -41,20 +42,10 @@ def _intent_key(intent: Intent) -> str:
     a finer-grained key. This prevents all requests of the same task_type
     from colliding in the cache, producing a more realistic learning curve.
 
-    Complexity buckets: low (<0.3), medium (0.3-0.6), high (>0.6)
+    Bucketing lives in contracts.bucket() — single source of truth.
     """
-    # Complexity bucketing
-    if intent.complexity < 0.3:
-        complexity_bucket = "low"
-    elif intent.complexity < 0.6:
-        complexity_bucket = "med"
-    else:
-        complexity_bucket = "high"
-
-    # Primary domain tag (first sorted tag, or "general")
     primary_tag = sorted(intent.domain_tags)[0] if intent.domain_tags else "general"
-
-    return f"{intent.task_type}:{complexity_bucket}:{primary_tag}"
+    return f"{intent.task_type}:{bucket(intent.complexity)}:{primary_tag}"
 
 
 # --- Dispatch Cache (Task 1) ---

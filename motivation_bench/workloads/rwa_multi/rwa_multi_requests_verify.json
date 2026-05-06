@@ -1,0 +1,71 @@
+[
+  {
+    "id": "rwa_multi_sapg_fast",
+    "request": "Replicate the paper \"SAPG: Split and Aggregate Policy Gradients\" within a 5-minute wall-clock\nbudget.\n\nInputs (staged in your working directory):\n  - paper.md       the paper text\n  - addendum.md    author clarifications (read before scheduling)\n  - blacklist.txt  forbidden web sources\n  - config.yaml    paper id and title\n\nDeliver, in this order, a self-consistent set of artifacts:\n  - code/          working code that loads the datasets and pretrained models\n                   named in the paper, plus the baselines and the main method.\n  - runs/          logs and outputs from executing the experiments needed to\n                   test the paper's central numerical claims.\n  - REPORT.md      mapping each reproduced number to the corresponding paper\n                   claim, with explanation of any divergence.\n  - crosscheck/    one ablation or sanity run that would catch a silent\n                   pipeline bug (chosen by you, justified in REPORT.md).\n\nConstraints:\n- Stay within the wall-clock budget above.\n- Do not fetch from URLs listed in blacklist.txt.\n- When an artifact depends on an external service unavailable in this\n  environment, mark it \"skipped: <rationale>\" rather than failing silently.\n- Inconsistency between code, run logs, and REPORT.md is a failure even if\n  each in isolation looks correct.\n",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_id": "sapg",
+      "paper_title": "SAPG: Split and Aggregate Policy Gradients",
+      "stage_dir": "papers/sapg",
+      "staged_files": [
+        "addendum.md",
+        "blacklist.txt",
+        "config.yaml",
+        "paper.md"
+      ],
+      "paper_md_bytes": 55447,
+      "addendum_md_bytes": 989,
+      "wrap_version": "v1",
+      "budget": {
+        "tier": "fast",
+        "wall_clock_min": 5
+      }
+    }
+  },
+  {
+    "id": "rwa_multi_fre_fast",
+    "request": "Replicate the paper \"Unsupervised Zero-Shot Reinforcement Learning via Functional Reward Encodings\" within a 5-minute wall-clock\nbudget.\n\nInputs (staged in your working directory):\n  - paper.md       the paper text\n  - addendum.md    author clarifications (read before scheduling)\n  - blacklist.txt  forbidden web sources\n  - config.yaml    paper id and title\n\nDeliver, in this order, a self-consistent set of artifacts:\n  - code/          working code that loads the datasets and pretrained models\n                   named in the paper, plus the baselines and the main method.\n  - runs/          logs and outputs from executing the experiments needed to\n                   test the paper's central numerical claims.\n  - REPORT.md      mapping each reproduced number to the corresponding paper\n                   claim, with explanation of any divergence.\n  - crosscheck/    one ablation or sanity run that would catch a silent\n                   pipeline bug (chosen by you, justified in REPORT.md).\n\nConstraints:\n- Stay within the wall-clock budget above.\n- Do not fetch from URLs listed in blacklist.txt.\n- When an artifact depends on an external service unavailable in this\n  environment, mark it \"skipped: <rationale>\" rather than failing silently.\n- Inconsistency between code, run logs, and REPORT.md is a failure even if\n  each in isolation looks correct.\n",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_id": "fre",
+      "paper_title": "Unsupervised Zero-Shot Reinforcement Learning via Functional Reward Encodings",
+      "stage_dir": "papers/fre",
+      "staged_files": [
+        "addendum.md",
+        "blacklist.txt",
+        "config.yaml",
+        "paper.md"
+      ],
+      "paper_md_bytes": 57531,
+      "addendum_md_bytes": 12975,
+      "wrap_version": "v1",
+      "budget": {
+        "tier": "fast",
+        "wall_clock_min": 5
+      }
+    }
+  },
+  {
+    "id": "rwa_multi_mechanistic-understanding_fast",
+    "request": "Replicate the paper \"A Mechanistic Understanding of Alignment Algorithms: A Case Study on DPO and Toxicity\" within a 5-minute wall-clock\nbudget.\n\nInputs (staged in your working directory):\n  - paper.md       the paper text\n  - addendum.md    author clarifications (read before scheduling)\n  - blacklist.txt  forbidden web sources\n  - config.yaml    paper id and title\n\nDeliver, in this order, a self-consistent set of artifacts:\n  - code/          working code that loads the datasets and pretrained models\n                   named in the paper, plus the baselines and the main method.\n  - runs/          logs and outputs from executing the experiments needed to\n                   test the paper's central numerical claims.\n  - REPORT.md      mapping each reproduced number to the corresponding paper\n                   claim, with explanation of any divergence.\n  - crosscheck/    one ablation or sanity run that would catch a silent\n                   pipeline bug (chosen by you, justified in REPORT.md).\n\nConstraints:\n- Stay within the wall-clock budget above.\n- Do not fetch from URLs listed in blacklist.txt.\n- When an artifact depends on an external service unavailable in this\n  environment, mark it \"skipped: <rationale>\" rather than failing silently.\n- Inconsistency between code, run logs, and REPORT.md is a failure even if\n  each in isolation looks correct.\n",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_id": "mechanistic-understanding",
+      "paper_title": "A Mechanistic Understanding of Alignment Algorithms: A Case Study on DPO and Toxicity",
+      "stage_dir": "papers/mechanistic-understanding",
+      "staged_files": [
+        "addendum.md",
+        "blacklist.txt",
+        "config.yaml",
+        "paper.md"
+      ],
+      "paper_md_bytes": 64497,
+      "addendum_md_bytes": 2751,
+      "wrap_version": "v1",
+      "budget": {
+        "tier": "fast",
+        "wall_clock_min": 5
+      }
+    }
+  }
+]

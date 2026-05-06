@@ -15,6 +15,25 @@ Traceability:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
+
+
+BucketLabel = Literal["low", "med", "high"]
+
+
+def bucket(x: float) -> BucketLabel:
+    """Bucket a scalar in [0,1] into the canonical low/med/high label.
+
+    Thresholds: low (<0.3), med (0.3-0.6), high (>=0.6). Used wherever
+    the dispatch framework needs a categorical summary of complexity or
+    decomposability (cache keys, mode gating, logging). Single source of
+    truth — speculator and learner both call this instead of re-implementing.
+    """
+    if x < 0.3:
+        return "low"
+    if x < 0.6:
+        return "med"
+    return "high"
 
 
 def _validate_unit_interval(value: float, name: str) -> None:

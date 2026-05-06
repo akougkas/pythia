@@ -1,0 +1,425 @@
+[
+  {
+    "id": "wildfire-easy-1",
+    "request": "Analyze the following scientific data pipeline task: Find the 3-month period with the highest total acres burned since Jan 2000, according to NOAA. What was the total acres burned in that period? This requires working with 1 data source(s) and involves approximately 5 processing steps. Domain: environmental science.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "environmental_science",
+      "answer_type": "numeric_exact",
+      "n_subtasks": 5,
+      "n_data_sources": 1,
+      "complexity": "moderate",
+      "data_sources": [
+        "noaa_wildfires_monthly_stats.csv"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "environmental_science"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "7805421",
+      "answer_type": "numeric_exact",
+      "subtasks": [
+        "Load noaa_wildfires_monthly_stats.csv while skipping the first 3 non-data rows.",
+        "Sort the dataframe by the numeric yyyyMM 'Date' column to ensure chronological order.",
+        "Convert each yyyyMM value to an absolute month count (year*12 + month) to test whether two rows represent consecutive calendar months.",
+        "Slide a 3-row consecutive month window through the data, using the absolute month count method. For every valid 3-month window, sum the 'Acres Burned' values; keep track of the window that produces the largest sum.",
+        "After scanning all windows, report the start date, end date, and total acres burned for the window with the maximum three-month burn total (and optionally print the rows themselves)."
+      ]
+    }
+  },
+  {
+    "id": "environment-hard-10",
+    "request": "Analyze the following scientific data pipeline task: For Boston Harbor beaches located in communities with more than 90% environmental justice (EJ) populations, what is the Pearson correlation (to 3 decimal places) between rainfall in the past 3 days and Enterococcus levels? Estimate Enterococcus levels labeled as less than x as x/2, and those labeled as greater than x as x. This requires working with 3 data source(s) and involves approximately 11 processing steps. Domain: environmental science.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "environmental_science",
+      "answer_type": "numeric_exact",
+      "n_subtasks": 11,
+      "n_data_sources": 3,
+      "complexity": "complex",
+      "data_sources": [
+        "environmental-justice-populations.csv",
+        "water-body-testing-2023.csv",
+        "wollaston_beach_datasheet.csv"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "environmental_science"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "0.206",
+      "answer_type": "numeric_exact",
+      "subtasks": [
+        "Load environmental-justice-populations.csv",
+        "Filter the environmental-justice data for municipalities where the 'Percent of population in EJ BGs' column exceeds 90 %.",
+        "Load water-body-testing-2023.csv",
+        "Filter for rows whose 'Beach Type Description' is 'Marine'.",
+        "Clean beach names by dropping the text that follows the '@' character.",
+        "Load wollaston_beach_datasheet.csv. Skip the first row and use the next two rows as a multi-level header.",
+        "Clean that multi-level header, handling missing top-level entries, combining the two header levels to get column names, and stripping white-space.",
+        "Clean and transform the data: treat all columns that contain either 'Tag' or 'Enterococcus' as value columns, treat everything else as identifiers",
+        "Have separate records for 'Location' and 'Measure' or handle thid during filtering for Location",
+        "Clean and transform the data so that each record contains numeric columns such as '1-Day Rain', '2-Day Rain', '3-Day Rain', and 'Enterococcus', converting all non-identifier fields to numeric, handling potential bad values to NaN.",
+        "Compute the Pearson correlation between '3-Day Rain' and 'Enterococcus' for the EJ community beach data."
+      ]
+    }
+  },
+  {
+    "id": "legal-hard-14",
+    "request": "Analyze the following scientific data pipeline task: What are the top 5 distinct Metropolitan areas in New England that have the most Identity Theft reports in 2024? This requires working with 2 data source(s) and involves approximately 6 processing steps. Domain: legal analytics.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "legal_analytics",
+      "answer_type": "list_exact",
+      "n_subtasks": 6,
+      "n_data_sources": 2,
+      "complexity": "moderate",
+      "data_sources": [
+        "State MSA Identity Theft data/*.csv",
+        "new_england_states.csv"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "legal_analytics"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "['Boston-Cambridge-Newton, MA-NH Metropolitan Statistical Area', 'Providence-Warwick, RI-MA Metropolitan Statistical Area', 'Hartford-West Hartford-East Hartford, CT Metropolitan Statistical Area', 'Bridgeport-Stamford-Danbury, CT Metropolitan Statistical Area', 'Worcester, MA Metropolitan Statistical Area']",
+      "answer_type": "list_exact",
+      "subtasks": [
+        "Load new_england_states.csv to obtain the list of New-England state names.",
+        "Iterate over each state name, strip spaces, and read its corresponding State MSA Identity Theft data/<State>.csv file, skipping the first two header rows and dropping rows that are entirely NaN.",
+        "Clean the # of Reports column by removing thousands separators (commas) and casting the values to integers.",
+        "Sort the combined dataframe in descending order of # of Reports.",
+        "Remove duplicate Metropolitan Area entries, keeping the first (highest-report) occurrence for each metro area.",
+        "Select the first five rows after de-duplication and output their Metropolitan Area values as the top-5 list."
+      ]
+    }
+  },
+  {
+    "id": "legal-hard-23",
+    "request": "Analyze the following scientific data pipeline task: What state (including DC and PR) has the highest report density (reports per 100K population) considering all type of reports (identity theft, fraud and others)? This requires working with 2 data source(s) and involves approximately 7 processing steps. Domain: legal analytics.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "legal_analytics",
+      "answer_type": "string_approximate",
+      "n_subtasks": 7,
+      "n_data_sources": 2,
+      "complexity": "complex",
+      "data_sources": [
+        "2024_CSN_State_Rankings_Identity_Theft_Reports.csv",
+        "2024_CSN_State_Rankings_Fraud_and_Other_Reports.csv"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "legal_analytics"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "District of Columbia",
+      "answer_type": "string_approximate",
+      "subtasks": [
+        "Load the two raw CSV files that hold 'State Rankings' for Identity-Theft reports and for Fraud & Other reports.",
+        "Strips commas inside quoted strings,  \n- splits the file into separate embedded tables.",
+        "Extract from each parsed file the embedded table named 'State Rankings: Identity Theft Reports' and 'State Rankings: Fraud and Other Reports'.",
+        "Iterate over the rows of the identity-theft table; for every state pick out:  \n- the state name (row[1]),  \n- the total-reports column (row[2]),  \n- the 'reports-per-100 K' column (row[3]). Derive the state's population as  population = (reports-per-100 K) / (total reports).",
+        "Perform a join with the fraud/other table on state and pull the other table's 'reports-per-100 K' value (row2[3]).",
+        "Compute a combined density for the state: combined_density = (identity_theft_reports_per_100k + fraud_other_reports_per_100k) / population.",
+        "Keep track of the state whose combined_density is the highest; return that state name as the answer."
+      ]
+    }
+  },
+  {
+    "id": "biomedical-hard-5",
+    "request": "Analyze the following scientific data pipeline task: What is the median number of variants per Mbp for the serous tumor samples in the study? Round the result to 4 decimal places. This requires working with 2 data source(s) and involves approximately 5 processing steps. Domain: biomedical.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "biomedical",
+      "answer_type": "numeric_exact",
+      "n_subtasks": 5,
+      "n_data_sources": 2,
+      "complexity": "moderate",
+      "data_sources": [
+        "1-s2.0-S0092867420301070-mmc1.xlsx",
+        "1-s2.0-S0092867420301070-mmc7.xlsx"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "biomedical"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "2.6563",
+      "answer_type": "numeric_exact",
+      "subtasks": [
+        "Read clinical data from 1-s2.0-S0092867420301070-mmc1.xlsx.Read mutation burden data from sheet 'B-APM subtypes' in 1-s2.0-S0092867420301070-mmc7.xlsx.",
+        "Filter for rows where Case_excluded == 'No'. Filter data to histologic type 'Serous'",
+        "Subset the mutation-burden table to rows whose idx appears in that serous-case list.",
+        "Take the column Log2_variant_per_Mbp and convert it from log2 scale to linear scale with 2 ** value.",
+        "Compute the median of these converted variant-per-Mbp values."
+      ]
+    }
+  },
+  {
+    "id": "astronomy-easy-5",
+    "request": "Analyze the following scientific data pipeline task: Estimate the total count of satellite major altitude changes (change of altitude > 1000m within 12h) for satellite 48445 during 2024 using TLE history. Use skifield's itrf_xyz to estimate altitude from TLE. This requires working with 1 data source(s) and involves approximately 4 processing steps. Domain: astronomy.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "astronomy",
+      "answer_type": "numeric_exact",
+      "n_subtasks": 4,
+      "n_data_sources": 1,
+      "complexity": "moderate",
+      "data_sources": [
+        "TLE/48445.tle"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "astronomy"
+      ],
+      "min_agents": 3,
+      "pipeline": [
+        "data_discovery",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "2",
+      "answer_type": "numeric_exact",
+      "subtasks": [
+        "Locate and read the TLE file",
+        "Calculate satellite height for each epoch available in TLE, using skifield's itrf_xyz method",
+        "For each pair of consecutive altitude measurements, compute the absolute altitude change (delta_a) and the elapsed time in hours (delta_t).",
+        "Iterate through all changes and detect changes exceeding threshold within time window"
+      ]
+    }
+  },
+  {
+    "id": "astronomy-hard-11",
+    "request": "Analyze the following scientific data pipeline task: Using OMNI2 data, run the NRLMSISE-00 atmospheric model to predict neutral density values for Swarm-B throughout 2024. Derive model inputs (F10.7, F10.7A, daily Ap, 3-hour Ap vector) directly from the OMNI2 dataset. Compare predictions against measured neutral density from Swarm-B POD files and report RMSE over the entire year. Do not use external space weather feeds. OMNI2 data format specification can be found at omni2.text file. 3-hour AP defined according to https://www.mathworks.com/help/aeroblks/nrlmsise00atmospheremodel.html. This requires working with 4 data source(s) and involves approximately 5 processing steps. Domain: astronomy.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "astronomy",
+      "answer_type": "numeric_exact",
+      "n_subtasks": 5,
+      "n_data_sources": 4,
+      "complexity": "complex",
+      "data_sources": [
+        "swarmb/SB_DNS_POD_2024_*.txt",
+        "omni2_low_res/omni2_2024.dat",
+        "omni2_low_res/omni2_2023.dat",
+        "omni2_low_res/omni2.txt"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "astronomy"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "4.638e-13",
+      "answer_type": "numeric_exact",
+      "subtasks": [
+        "Read OMNI-2 hourly data files for 2023 and 2024 with fixed field-widths.",
+        "Convert the year, day-of-year and hour columns of OMNI-2 into a timezone-aware (UTC) DateTimeIndex, sort chronologically and use it as the time index.",
+        "Load every 2024 Swarm-B POD neutral-density text file: skip '#' comment lines, read whitespace-delimited fields, build a time index from the date & time columns (UTC). Keep only the Swarm-B records that occur exactly on the hour (minute = 0, second = 0, microsecond = 0) so they can be matched to the hourly OMNI-2 data.",
+        "For any requested model time, derive NRLMSISE-00 driving parameters directly from the indexed OMNI-2 dataframe:\n- daily Ap = mean of the 24 hourly Ap values of that day,\n- F10.7 = the 00:00 UT row of that day,\n- F10.7A = 81-day running mean of daily F10.7 ending the previous day (skip model run when the 81-day window is incomplete),\n- 3-hour Ap vector (length 7) generated from the mean Ap of consecutive 3-h bins according to the MATLAB/NRLMSISE specification.",
+        "After processing the full year, compute the root-mean-square error between the predicted and observed neutral density values over all timestampls."
+      ]
+    }
+  },
+  {
+    "id": "archeology-hard-12",
+    "request": "Analyze the following scientific data pipeline task: Count the number of human conflicts between 800 and 1400 AD, and attribute them as best you can to modern countries. Define a conflict as between two actors that lasts at least a year. This requires working with 2 data source(s) and involves approximately 6 processing steps. Domain: archeology.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "archeology",
+      "answer_type": "numeric_exact",
+      "n_subtasks": 6,
+      "n_data_sources": 2,
+      "complexity": "moderate",
+      "data_sources": [
+        "conflict_brecke.csv",
+        "worldcities.csv"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "archeology"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "409",
+      "answer_type": "numeric_exact",
+      "subtasks": [
+        "Read worldcities.csv to build a set of modern country names that will be used to detect actors' home countries.",
+        "Load conflict_brecke.csv",
+        "For each conflict, get the two actors by splitting the 'Conflict' text on '-' or 'and' (otherwise treat it as a single-party conflict).",
+        "Extract start and end years for the conflicts. Exclude conficts that start before 800 AD and end after 1400 AD.",
+        "Detect overlaps using data with clean records for actor-A, actor-B, start year, end year by comparing whether an end year proceeds a start year",
+        "Count the remaining non-overlapping conflict rows and print that count as the final answer."
+      ]
+    }
+  },
+  {
+    "id": "archeology-easy-4",
+    "request": "Analyze the following scientific data pipeline task: What is the amount of calcium in ppm when the dust proxy was the smallest, breaking ties by the minimum wet-dry index? Round your answer to 4 decimal places. This requires working with 1 data source(s) and involves approximately 8 processing steps. Domain: archeology.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "archeology",
+      "answer_type": "numeric_exact",
+      "n_subtasks": 8,
+      "n_data_sources": 1,
+      "complexity": "complex",
+      "data_sources": [
+        "climateMeasurements.xlsx"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "archeology"
+      ],
+      "min_agents": 3,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "207878.8774",
+      "answer_type": "numeric_exact",
+      "subtasks": [
+        "Load the Excel file `climateMeasurements.xlsx`, reading the first sheet while skipping the first 5 metadata rows so only data rows are retained.",
+        "Skip the first 5 metadata rows so only data rows are retained.",
+        "Remove any columns that are completely empty (all-NaN) to keep only informative variables.",
+        "Convert both chronologies to calendar years: for the radio-carbon table get the year as 1950 minus the 'date'",
+        "Convert both chronologies to calendar years: for the climate table get the year as 1950 minus the rounded 'Age_ky.1' (in thousands of years) multiplied by 1000.",
+        "Find the smallest value in the column `ODP 967 Dust proxy` and filter the dataframe to the rows that have exactly this minimum dust proxy value.",
+        "If multiple rows share the same minimum dust proxy, break the tie by selecting the row with the smallest `ODP 967 wet-dry index` among them.",
+        "Extract the value in the `Ca` (calcium) column, which gives the calcium concentration (ppm) at the time of minimum dust proxy."
+      ]
+    }
+  },
+  {
+    "id": "environment-easy-5",
+    "request": "Analyze the following scientific data pipeline task: Which region out of Boston, Chatham, Amherst, Ashburnham, had the most rainfall in June, July, August, in 2020? This requires working with 4 data source(s) and involves approximately 6 processing steps. Domain: environmental science.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "environmental_science",
+      "answer_type": "string_exact",
+      "n_subtasks": 6,
+      "n_data_sources": 4,
+      "complexity": "complex",
+      "data_sources": [
+        "monthly_precipitations_boston.csv",
+        "monthly_precipitations_chatham.csv",
+        "monthly_precipitations_amherst.csv",
+        "monthly_precipitations_ashburnham.csv"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "environmental_science"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "Ashburnham",
+      "answer_type": "string_exact",
+      "subtasks": [
+        "For each region, read the corresponding monthly_precipitations_<region>.csv file.",
+        "Filter the dataframe for the record whose Year equals 2020.",
+        "Convert the monthly columns from string to float so they can be summed numerically.",
+        "Compute the total rainfall for that region by summing the Jun, Jul, and Aug columns.",
+        "Track the maximum total rainfall encountered and the associated region over all four regions.",
+        "Find the corresponding rainfall amount for the region with the highest summed rainfall for June-August 2020."
+      ]
+    }
+  }
+]

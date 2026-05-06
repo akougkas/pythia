@@ -1,9 +1,11 @@
-# 4. Learner-Augmented Speculation
+<!-- This is §3.4 of the paper, part of §3 Pythia Design -->
+
+## 3.4 Learner-Augmented Speculation
 
 The Learner transforms Speculative Dispatch from a static prediction system into an adaptive one.
 This section formalizes the learning problem, describes the progressive activation strategy, and analyzes convergence behavior.
 
-## 4.1 Reinforcement Learning Formulation
+### 3.4.1 Reinforcement Learning Formulation
 
 We formulate the speculation policy as a contextual bandit problem, where each dispatch event is an independent decision with immediate reward.
 
@@ -39,7 +41,7 @@ We maintain a sliding window of the $k$ most recent dispatch events for each use
 This captures recurring patterns: a researcher who spends mornings on code review and afternoons on data analysis will exhibit strong temporal regularities in dispatch patterns.
 The fingerprint is encoded via a small recurrent network that compresses the history window into a fixed-dimensional vector.
 
-## 4.2 Progressive Activation
+### 3.4.2 Progressive Activation
 
 The Learner governs a staged activation strategy that mirrors the evolution of CPU branch predictors from static heuristics to adaptive algorithms to neural predictors.
 
@@ -64,7 +66,7 @@ This corresponds to TAGE-class neural branch predictors that achieve 95%+ accura
 The activation thresholds $N_1$ and $N_2$ are not fixed hyperparameters but emergent properties of the learning dynamics.
 They depend on the predictability of the user's workload: a user with highly regular patterns (e.g., a daily pipeline of code-review → test → deploy) will reach Mode 3 activation faster than a user with diverse, unpredictable requests.
 
-## 4.3 Convergence and Adaptation
+### 3.4.3 Convergence and Adaptation
 
 **Convergence.** For the contextual bandit formulation with a finite intent class space, the Learner's speculation accuracy converges to the Bayes-optimal policy at a rate bounded by $O(\sqrt{T \log |\mathcal{A}| / T})$, where $T$ is the number of interactions and $|\mathcal{A}|$ is the action space cardinality [CITE:agarwal2014].
 In practice, convergence is faster because the effective action space is small — most users invoke a handful of intent patterns repeatedly, and the dispatch plan for a given intent class has low entropy.

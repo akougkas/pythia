@@ -1,0 +1,92 @@
+[
+  {
+    "id": "rwa_single_sapg",
+    "request": "Reproduce the experiments in the paper \"SAPG: Split and Aggregate Policy Gradients\".\n\nInputs (staged in your working directory):\n  - paper.md       the paper text\n  - addendum.md    author clarifications (read before scheduling)\n  - blacklist.txt  forbidden web sources\n  - config.yaml    paper id and title\n",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_id": "sapg",
+      "paper_title": "SAPG: Split and Aggregate Policy Gradients",
+      "stage_dir": "papers/sapg",
+      "staged_files": [
+        "addendum.md",
+        "blacklist.txt",
+        "config.yaml",
+        "paper.md"
+      ],
+      "paper_md_bytes": 55447,
+      "addendum_md_bytes": 989
+    }
+  },
+  {
+    "id": "rwa_single_fre",
+    "request": "Reproduce the experiments in the paper \"Unsupervised Zero-Shot Reinforcement Learning via Functional Reward Encodings\".\n\nInputs (staged in your working directory):\n  - paper.md       the paper text\n  - addendum.md    author clarifications (read before scheduling)\n  - blacklist.txt  forbidden web sources\n  - config.yaml    paper id and title\n",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_id": "fre",
+      "paper_title": "Unsupervised Zero-Shot Reinforcement Learning via Functional Reward Encodings",
+      "stage_dir": "papers/fre",
+      "staged_files": [
+        "addendum.md",
+        "blacklist.txt",
+        "config.yaml",
+        "paper.md"
+      ],
+      "paper_md_bytes": 57531,
+      "addendum_md_bytes": 12975
+    }
+  },
+  {
+    "id": "rwa_single_mechanistic-understanding",
+    "request": "Reproduce the experiments in the paper \"A Mechanistic Understanding of Alignment Algorithms: A Case Study on DPO and Toxicity\".\n\nInputs (staged in your working directory):\n  - paper.md       the paper text\n  - addendum.md    author clarifications (read before scheduling)\n  - blacklist.txt  forbidden web sources\n  - config.yaml    paper id and title\n",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_id": "mechanistic-understanding",
+      "paper_title": "A Mechanistic Understanding of Alignment Algorithms: A Case Study on DPO and Toxicity",
+      "stage_dir": "papers/mechanistic-understanding",
+      "staged_files": [
+        "addendum.md",
+        "blacklist.txt",
+        "config.yaml",
+        "paper.md"
+      ],
+      "paper_md_bytes": 64497,
+      "addendum_md_bytes": 2751
+    }
+  },
+  {
+    "id": "rwa_single_stochastic-interpolants",
+    "request": "Reproduce the experiments in the paper \"Stochastic Interpolants with Data-Dependent Couplings\".\n\nInputs (staged in your working directory):\n  - paper.md       the paper text\n  - addendum.md    author clarifications (read before scheduling)\n  - blacklist.txt  forbidden web sources\n  - config.yaml    paper id and title\n",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_id": "stochastic-interpolants",
+      "paper_title": "Stochastic Interpolants with Data-Dependent Couplings",
+      "stage_dir": "papers/stochastic-interpolants",
+      "staged_files": [
+        "addendum.md",
+        "blacklist.txt",
+        "config.yaml",
+        "paper.md"
+      ],
+      "paper_md_bytes": 64670,
+      "addendum_md_bytes": 707
+    }
+  },
+  {
+    "id": "rwa_single_bridging-data-gaps",
+    "request": "Reproduce the experiments in the paper \"Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning\".\n\nInputs (staged in your working directory):\n  - paper.md       the paper text\n  - addendum.md    author clarifications (read before scheduling)\n  - blacklist.txt  forbidden web sources\n  - config.yaml    paper id and title\n",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_id": "bridging-data-gaps",
+      "paper_title": "Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning",
+      "stage_dir": "papers/bridging-data-gaps",
+      "staged_files": [
+        "addendum.md",
+        "blacklist.txt",
+        "config.yaml",
+        "paper.md"
+      ],
+      "paper_md_bytes": 66554,
+      "addendum_md_bytes": 3056
+    }
+  }
+]

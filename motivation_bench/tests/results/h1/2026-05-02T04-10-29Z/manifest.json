@@ -1,0 +1,46 @@
+{
+  "timestamp_utc": "2026-05-02T04:10:30+00:00",
+  "args": {
+    "workload": "mixed",
+    "limit": 10,
+    "detectors": "llm",
+    "llm_provider": "ollama",
+    "llm_model": "MoritzLaurer/deberta-v3-base-zeroshot-v2.0",
+    "llm_base_url": null,
+    "llm_sla": null,
+    "llm_num_predict": null,
+    "llm_temperature": null,
+    "llm_cache_size": null,
+    "semantic_model": null,
+    "semantic_domain_threshold": null,
+    "semantic_tau": null,
+    "repeats": 1,
+    "seed": 42,
+    "no_warmup": false,
+    "quiet": false,
+    "export_prompts": false,
+    "export_only": false,
+    "ingest": [],
+    "as_detector": [],
+    "output_dir": "motivation_bench/tests/results/h1/2026-05-02T04-10-29Z"
+  },
+  "detector_config": {
+    "llm": {
+      "provider": "ollama",
+      "model": "MoritzLaurer/deberta-v3-base-zeroshot-v2.0"
+    },
+    "semantic": {}
+  },
+  "git_sha": "a4762907e20b64256656217dcd7d7e90fb8eed5b",
+  "host": {
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.11.14",
+    "hostname": "JiePC"
+  },
+  "library_versions": {
+    "pythia": null,
+    "spacy": null,
+    "sentence_transformers": "5.4.1",
+    "torch": "2.11.0+cu130"
+  }
+}

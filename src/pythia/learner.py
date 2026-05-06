@@ -27,6 +27,7 @@ from pythia.contracts import (
     DispatchPlan,
     Intent,
     ReconciliationOutcome,
+    bucket,
 )
 
 
@@ -298,15 +299,13 @@ class DriftDetector:
 
 
 def _intent_key(intent: Intent) -> str:
-    """Extract cache key matching speculator._intent_key()."""
-    if intent.complexity < 0.3:
-        complexity_bucket = "low"
-    elif intent.complexity < 0.6:
-        complexity_bucket = "med"
-    else:
-        complexity_bucket = "high"
+    """Extract cache key matching speculator._intent_key().
+
+    Must stay in lockstep with speculator._intent_key (same thresholds, same
+    format). Delegates bucketing to contracts.bucket() — divergence is a bug.
+    """
     primary_tag = sorted(intent.domain_tags)[0] if intent.domain_tags else "general"
-    return f"{intent.task_type}:{complexity_bucket}:{primary_tag}"
+    return f"{intent.task_type}:{bucket(intent.complexity)}:{primary_tag}"
 
 
 # --- Learner (§4) ---

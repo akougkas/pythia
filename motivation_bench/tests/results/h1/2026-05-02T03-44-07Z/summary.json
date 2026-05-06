@@ -1,0 +1,66 @@
+{
+  "n_queries": 30,
+  "n_detectors": 3,
+  "per_detector": {
+    "rule": {
+      "n": 30,
+      "mean_ms": 0.5791506001211625,
+      "p50_ms": 0.5291290008244687,
+      "p95_ms": 0.8834480004225043,
+      "p99_ms": 1.0578769997664494,
+      "min_ms": 0.34773900006257463,
+      "max_ms": 1.0578769997664494,
+      "init_s": 0.002763313000286871
+    },
+    "semantic": {
+      "n": 30,
+      "mean_ms": 0.4837206998975792,
+      "p50_ms": 0.4631570000128704,
+      "p95_ms": 0.731567000002542,
+      "p99_ms": 0.9670220006228192,
+      "min_ms": 0.2626209998197737,
+      "max_ms": 0.9670220006228192,
+      "init_s": 2.201442562000011
+    },
+    "llm": {
+      "n": 30,
+      "mean_ms": 450.7308563333936,
+      "p50_ms": 450.7114280004316,
+      "p95_ms": 451.11492999967595,
+      "p99_ms": 451.1234579995289,
+      "min_ms": 450.4787910000232,
+      "max_ms": 451.1234579995289,
+      "init_s": 0.0014617910001106793,
+      "fallback_rate": 1.0
+    }
+  },
+  "agreement": {
+    "llm_vs_rule": {
+      "n": 30,
+      "task_type_match": 1.0,
+      "domain_jaccard_mean": 1.0,
+      "complexity_bucket_match": 1.0,
+      "decomposability_bucket_match": 1.0,
+      "complexity_mae": 0.0,
+      "decomposability_mae": 0.0
+    },
+    "llm_vs_semantic": {
+      "n": 30,
+      "task_type_match": 1.0,
+      "domain_jaccard_mean": 1.0,
+      "complexity_bucket_match": 1.0,
+      "decomposability_bucket_match": 1.0,
+      "complexity_mae": 0.0,
+      "decomposability_mae": 0.0
+    },
+    "rule_vs_semantic": {
+      "n": 30,
+      "task_type_match": 1.0,
+      "domain_jaccard_mean": 1.0,
+      "complexity_bucket_match": 1.0,
+      "decomposability_bucket_match": 1.0,
+      "complexity_mae": 0.0,
+      "decomposability_mae": 0.0
+    }
+  }
+}

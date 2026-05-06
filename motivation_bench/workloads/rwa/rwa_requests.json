@@ -1,0 +1,923 @@
+[
+  {
+    "id": "rwa_adaptive-pruning",
+    "request": "Replicate the research paper 'Adaptive Pruning': The paper \"APT: Adaptive Pruning and Tuning Pretrained Language Models for Efficient Training and Inference\" has been reproduced This involves 5 major phases and 171 total subtasks. The workflow includes: The required pre-trained models, datasets, and metrics are available; LoRA has correctly been setup; The baselines have been implemented.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "adaptive-pruning",
+      "display_name": "Adaptive Pruning",
+      "n_top_steps": 5,
+      "n_total_subtasks": 171,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The required pre-trained models, datasets, and metrics are available",
+        "LoRA has correctly been setup",
+        "The baselines have been implemented",
+        "APT has been implemented",
+        "The recorded metrics show that the results in section 5 have been reproduced"
+      ],
+      "total_subtasks": 171
+    }
+  },
+  {
+    "id": "rwa_all-in-one",
+    "request": "Replicate the research paper 'All In One': The paper \"All-in-one simulation-based inference\" has been reproduced. This involves 5 major phases and 233 total subtasks. The workflow includes: Variance Exploding SDE (VESDE) is implemented, as described in A2.1; The Simformer model, training process and inference process has been implemented; Baseline methods Neural Posterior Estimation (NPE), Neural Ratio Estimation (NRE), and Neural Likelihood Estimation (NLE) are implemented.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "all-in-one",
+      "display_name": "All In One",
+      "n_top_steps": 5,
+      "n_total_subtasks": 233,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "Variance Exploding SDE (VESDE) is implemented, as described in A2.1",
+        "The Simformer model, training process and inference process has been implemented",
+        "Baseline methods Neural Posterior Estimation (NPE), Neural Ratio Estimation (NRE), and Neural Likelihood Estimation (NLE) are implemented",
+        "The benchmark tasks are prepared",
+        "The recorded metrics show that the results from section 4 are replicated"
+      ],
+      "total_subtasks": 233
+    }
+  },
+  {
+    "id": "rwa_bam",
+    "request": "Replicate the research paper 'Bam': The core contributions of the paper \"Batch and match: black-box variational inference with a score-based divergence\" have been reproduced. This involves 4 major phases and 1020 total subtasks. The workflow includes: The core variational inference algorithms studied in the paper have been implemented; The results of section 5.1 have been replicated; The results of Figure 5.3 and of Figure E.6 from Section 5.2 have been replicated.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "bam",
+      "display_name": "Bam",
+      "n_top_steps": 4,
+      "n_total_subtasks": 1020,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 3,
+      "pipeline": [
+        "literature_reviewer",
+        "code_generator",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The core variational inference algorithms studied in the paper have been implemented",
+        "The results of section 5.1 have been replicated",
+        "The results of Figure 5.3 and of Figure E.6 from Section 5.2 have been replicated",
+        "The results of Figure 5.4 b) from Section 5.3 have been replicated"
+      ],
+      "total_subtasks": 1020
+    }
+  },
+  {
+    "id": "rwa_bbox",
+    "request": "Replicate the research paper 'Bbox': The BBOX-ADAPTER approach for adapting black-box LLMs has been reproduced completely. This involves 9 major phases and 421 total subtasks. The workflow includes: Algorithm 1 (Online Adaptation) has been implemented correctly.; The evaluation environments and datasets have been set up for GPT-3.5 Turbo and Mixtral-8x7B.; The baseline models have been implemented and/or configured for evaluations..",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "bbox",
+      "display_name": "Bbox",
+      "n_top_steps": 9,
+      "n_total_subtasks": 421,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "Algorithm 1 (Online Adaptation) has been implemented correctly.",
+        "The evaluation environments and datasets have been set up for GPT-3.5 Turbo and Mixtral-8x7B.",
+        "The baseline models have been implemented and/or configured for evaluations.",
+        "Table 2 has been reproduced.",
+        "Table 3 has been reproduced.",
+        "Figure 3 has been reproduced.",
+        "Table 4 has been reproduced.",
+        "Table 5 has been reproduced.",
+        "Table 6 has been reproduced."
+      ],
+      "total_subtasks": 421
+    }
+  },
+  {
+    "id": "rwa_bridging-data-gaps",
+    "request": "Replicate the research paper 'Bridging Data Gaps': The paper \"Bridging Data Gaps in Diffusion Models with Adversarial Noise-Based Transfer Learning\" has been reproduced. This involves 8 major phases and 206 total subtasks. The workflow includes: Algorithm 1 for training DPMs with Adversarial Noise-based Transfer has been implemented.; The experimental setup has been implemented, as described in Section 5.; Figure 2 has been replicated..",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "bridging-data-gaps",
+      "display_name": "Bridging Data Gaps",
+      "n_top_steps": 8,
+      "n_total_subtasks": 206,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "Algorithm 1 for training DPMs with Adversarial Noise-based Transfer has been implemented.",
+        "The experimental setup has been implemented, as described in Section 5.",
+        "Figure 2 has been replicated.",
+        "Figure 3 has been replicated.",
+        "Table 1 has been replicated.",
+        "Table 2 has been replicated.",
+        "Figure 4 has been replicated.",
+        "Table 3 has been replicated."
+      ],
+      "total_subtasks": 206
+    }
+  },
+  {
+    "id": "rwa_fre",
+    "request": "Replicate the research paper 'Fre': The paper \"Unsupervised Zero-Shot Reinforcement Learning via Functional Reward Encodings\" has been reproduced. This involves 6 major phases and 635 total subtasks. The workflow includes: The necessary agent datasets and environments have been setup; The necessary methods have been implemented; The necessary training and evaluation has been run.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "fre",
+      "display_name": "Fre",
+      "n_top_steps": 6,
+      "n_total_subtasks": 635,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The necessary agent datasets and environments have been setup",
+        "The necessary methods have been implemented",
+        "The necessary training and evaluation has been run",
+        "The evaluation outcome shows or implies results that reproduce those shown in the paper in section 5.2 and Table 1.",
+        "The evaluation outcome shows or implies results that reproduce those shown in the paper in section 5.3 and Table 4/Figure 5.",
+        "The outcome of the evaluation shows or implies that the FRE agent trained with the augmented FRE-hint prior reward distribution outperforms the FRE agent trained on the vanilla FRE prior reward distri"
+      ],
+      "total_subtasks": 635
+    }
+  },
+  {
+    "id": "rwa_ftrl",
+    "request": "Replicate the research paper 'Ftrl': The paper \"Fine-tuning Reinforcement Learning Models is Secretly a Forgetting Mitigation Problem\" has been reproduced This involves 2 major phases and 232 total subtasks. The workflow includes: The environments are setup correctly; The results have been replicated.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "ftrl",
+      "display_name": "Ftrl",
+      "n_top_steps": 2,
+      "n_total_subtasks": 232,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 3,
+      "pipeline": [
+        "experiment_designer",
+        "result_analyzer",
+        "literature_reviewer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The environments are setup correctly",
+        "The results have been replicated"
+      ],
+      "total_subtasks": 232
+    }
+  },
+  {
+    "id": "rwa_lbcs",
+    "request": "Replicate the research paper 'Lbcs': The core contributions of the paper \"Refined Coreset Selection: Towards Minimal Coreset Size under Model Performance Constraints\" have been reproduced. This involves 7 major phases and 1470 total subtasks. The workflow includes: The relevant datasets necessary for the experiments in the paper have been setup such that they can be accessed and used; The results of Figure 1 have been reproduced; The relevant coreset selection methods have been implemented.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "lbcs",
+      "display_name": "Lbcs",
+      "n_top_steps": 7,
+      "n_total_subtasks": 1470,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The relevant datasets necessary for the experiments in the paper have been setup such that they can be accessed and used",
+        "The results of Figure 1 have been reproduced",
+        "The relevant coreset selection methods have been implemented",
+        "The results of Section 5.1 have been reproduced",
+        "The results of Section 5.2 have been reproduced",
+        "The results of Section 5.3 have been reproduced",
+        "The results of Section 6 have been reproduced"
+      ],
+      "total_subtasks": 1470
+    }
+  },
+  {
+    "id": "rwa_lca-on-the-line",
+    "request": "Replicate the research paper 'Lca On The Line': The paper \"LCA-on-the-Line: Benchmarking Out-of-Distribution Generalization with Class Taxonomies\" has been replicated. This involves 13 major phases and 1047 total subtasks. The workflow includes: The LCA distance has been implemented, as described in Section 2.; The LCA alignment loss has been implemented, as described in Algorithm 1.; All 36 Vision Models (VMs) and 39 Vision-Language (VLMs) are available to be queried..",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "lca-on-the-line",
+      "display_name": "Lca On The Line",
+      "n_top_steps": 13,
+      "n_total_subtasks": 1047,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "literature_reviewer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The LCA distance has been implemented, as described in Section 2.",
+        "The LCA alignment loss has been implemented, as described in Algorithm 1.",
+        "All 36 Vision Models (VMs) and 39 Vision-Language (VLMs) are available to be queried.",
+        "The WordNet, in-distribution ImageNet and out-of-distribution ImageNet datasets are available.",
+        "All evaluation metrics have been implemented.",
+        "Figure 1 has been reproduced.",
+        "Table 1 has been reproduced.",
+        "Table 2 has been reproduced.",
+        "Table 3 has been reproduced.",
+        "Figure 5 has been reproduced.",
+        "Table 4 has been reproduced.",
+        "Table 5 has been reproduced.",
+        "Table 6 has been reproduced."
+      ],
+      "total_subtasks": 1047
+    }
+  },
+  {
+    "id": "rwa_mechanistic-understanding",
+    "request": "Replicate the research paper 'Mechanistic Understanding': The paper has been fully reproduced. This involves 12 major phases and 127 total subtasks. The workflow includes: Toxic vectors have been extracted from the GPT2-medium model.; Results in Table 1 have been reproduced.; The GPT2 model has been fine-tuned using DPO to reduce the likelihood of toxicity..",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "mechanistic-understanding",
+      "display_name": "Mechanistic Understanding",
+      "n_top_steps": 12,
+      "n_total_subtasks": 127,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 3,
+      "pipeline": [
+        "literature_reviewer",
+        "code_generator",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "Toxic vectors have been extracted from the GPT2-medium model.",
+        "Results in Table 1 have been reproduced.",
+        "The GPT2 model has been fine-tuned using DPO to reduce the likelihood of toxicity.",
+        "The results in figure 1 have been replicated.",
+        "The code for measuring toxicity, perplexity and F1 has been implemented.",
+        "Results in Table 2 have been reproduced.",
+        "Examples in Table 3 have been replicated.",
+        "The results discussed in Section 5.1 have been replicated.",
+        "The results in figure 2 have been replicated.",
+        "The results in figure 4 have been replicated.",
+        "The results in figure 5 have been replicated.",
+        "The results in table 4 have been replicated."
+      ],
+      "total_subtasks": 127
+    }
+  },
+  {
+    "id": "rwa_pinn",
+    "request": "Replicate the research paper 'Pinn': Reproduce the paper \"Challenges in Training PINNs: A Loss Landscape Perspective\" This involves 7 major phases and 2550 total subtasks. The workflow includes: The experiments described in section 2.2 have been run; The results of Figure 2 have been reproduced; The results of Figure 3 and Figure 7 have been reproduced.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "pinn",
+      "display_name": "Pinn",
+      "n_top_steps": 7,
+      "n_total_subtasks": 2550,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The experiments described in section 2.2 have been run",
+        "The results of Figure 2 have been reproduced",
+        "The results of Figure 3 and Figure 7 have been reproduced",
+        "The results of Figure 8 and Table 1 have been reproduced",
+        "The NysNewton-CG (abbreviated NNCG) optimizer has been implemented as outlined in Section 7.2 and Appendix E.",
+        "The results of Figure 4, Figure 5 and Table 2 have been reproduced",
+        "The results of Table 3 have been reproduced"
+      ],
+      "total_subtasks": 2550
+    }
+  },
+  {
+    "id": "rwa_rice",
+    "request": "Replicate the research paper 'Rice': The core contributions of the paper have been reproduced. This involves 9 major phases and 488 total subtasks. The workflow includes: The environments used for the experiments outlined in section 4.1 and Appendix C.2 have been setup; For each environment, a policy network agent compatible with PPO has been setup and pretrained. The policy networks may or may not have variants to ensure compatibility with each of the correctly setu; For each environment, the explanation methods used for the experiments are implemented as outlined in 3.3 and 4.1.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "rice",
+      "display_name": "Rice",
+      "n_top_steps": 9,
+      "n_total_subtasks": 488,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The environments used for the experiments outlined in section 4.1 and Appendix C.2 have been setup",
+        "For each environment, a policy network agent compatible with PPO has been setup and pretrained. The policy networks may or may not have variants to ensure compatibility with each of the correctly setu",
+        "For each environment, the explanation methods used for the experiments are implemented as outlined in 3.3 and 4.1",
+        "The results of Experiment I have been reproduced, as outlined in Sections 4.2 and 4.3",
+        "For each environment, the refining methods used in the paper experiments (Section 4) have been implemented",
+        "The results of Experiment II have been reproduced, as outlined in Sections 4.2 and 4.3",
+        "The results of Experiment III have been reproduced, as outlined in sections 4.2 and 4.3",
+        "The results of Experiment IV have been reproduced, as outlined in sections 4.2 and 4.3",
+        "The results of Experiment V have been reproduced, as outlined in sections 4.2 and 4.3"
+      ],
+      "total_subtasks": 488
+    }
+  },
+  {
+    "id": "rwa_robust-clip",
+    "request": "Replicate the research paper 'Robust Clip': The core contributions of the paper have been reproduced. This involves 6 major phases and 145 total subtasks. The workflow includes: The relevant visual and text encoders, as well as the relevant models, have been successfully configured and imported.; The models have been fine-tuned correctly, consistent with section 3 and Appendix B.; The experiments for evaluation on the common tasks from language model literature, listed in Section 4.1, have been correctly reproduced..",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "robust-clip",
+      "display_name": "Robust Clip",
+      "n_top_steps": 6,
+      "n_total_subtasks": 145,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The relevant visual and text encoders, as well as the relevant models, have been successfully configured and imported.",
+        "The models have been fine-tuned correctly, consistent with section 3 and Appendix B.",
+        "The experiments for evaluation on the common tasks from language model literature, listed in Section 4.1, have been correctly reproduced.",
+        "The experiments for evaluating robustness to targeted attacks from section 4.2 have been reproduced.",
+        "The experiments from section 4.3 for the evaluation of zero-shot classification have been reproduced.",
+        "LLaVA, with TeCoA and FARE as the backbone vision models, has been successfully evaluated on hallucinations, chain of thought, and jailbreaking, as in section 4.4."
+      ],
+      "total_subtasks": 145
+    }
+  },
+  {
+    "id": "rwa_sample-specific-masks",
+    "request": "Replicate the research paper 'Sample Specific Masks': The paper \"Sample-specific Masks for Visual Reprogramming-based Prompting\" has been replicated This involves 5 major phases and 395 total subtasks. The workflow includes: Code for making the required models and datasets available has been implemented; Iterative label mapping is implemented, following Chen et al. (2023); The baselines have been implemented.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "sample-specific-masks",
+      "display_name": "Sample Specific Masks",
+      "n_top_steps": 5,
+      "n_total_subtasks": 395,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "Code for making the required models and datasets available has been implemented",
+        "Iterative label mapping is implemented, following Chen et al. (2023)",
+        "The baselines have been implemented",
+        "SSM has been implemented",
+        "The results from section 5 have been replicated"
+      ],
+      "total_subtasks": 395
+    }
+  },
+  {
+    "id": "rwa_sapg",
+    "request": "Replicate the research paper 'Sapg': The paper \"SAPG: Split and Aggregate Policy Gradients\" has been replicated. This involves 8 major phases and 278 total subtasks. The workflow includes: SAPG has been implemented.; The experimental setup has been replicated, as described in Section 5.; Figure 2 has been replicated..",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "sapg",
+      "display_name": "Sapg",
+      "n_top_steps": 8,
+      "n_total_subtasks": 278,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 3,
+      "pipeline": [
+        "experiment_designer",
+        "code_generator",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "SAPG has been implemented.",
+        "The experimental setup has been replicated, as described in Section 5.",
+        "Figure 2 has been replicated.",
+        "Figure 5 has been replicated.",
+        "Table 1 has been replicated.",
+        "Figure 6 has been replicated.",
+        "Figure 7 has been replicated.",
+        "Figure 8 has been replicated."
+      ],
+      "total_subtasks": 278
+    }
+  },
+  {
+    "id": "rwa_self-composing-policies",
+    "request": "Replicate the research paper 'Self Composing Policies': The core contributions of the paper have been reproduced. This involves 6 major phases and 356 total subtasks. The workflow includes: A convolutional neural network (CNN) has been implemented to encode the state of the ALE environments, as described in Section 4.1 and Appendix E.1.; The CompoNet architecture has been implemented, as described in Section 4.; The evaluation metrics and experimental setup has been implemented, as described in Section 5..",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "self-composing-policies",
+      "display_name": "Self Composing Policies",
+      "n_top_steps": 6,
+      "n_total_subtasks": 356,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "A convolutional neural network (CNN) has been implemented to encode the state of the ALE environments, as described in Section 4.1 and Appendix E.1.",
+        "The CompoNet architecture has been implemented, as described in Section 4.",
+        "The evaluation metrics and experimental setup has been implemented, as described in Section 5.",
+        "Figure 3 has been reproduced.",
+        "Table 1 has been reproduced.",
+        "Figure 4 has been reproduced."
+      ],
+      "total_subtasks": 356
+    }
+  },
+  {
+    "id": "rwa_self-expansion",
+    "request": "Replicate the research paper 'Self Expansion': The paper 'Self-Expansion of Pre-trained Models with Mixture of Adapters for Continual Learning' has been reproduced This involves 7 major phases and 362 total subtasks. The workflow includes: Code has been implemented such that a ViT-B/16 model pretrained on ImageNet-1K can be loaded into memory; The datasets from Section 4.1 have been imported.; The LoRA, Convpass and ADAM adapters are available.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "self-expansion",
+      "display_name": "Self Expansion",
+      "n_top_steps": 7,
+      "n_total_subtasks": 362,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "Code has been implemented such that a ViT-B/16 model pretrained on ImageNet-1K can be loaded into memory",
+        "The datasets from Section 4.1 have been imported.",
+        "The LoRA, Convpass and ADAM adapters are available",
+        "The architecture and training loop of SEMA have been implemented correctly, as in Section 3.",
+        "The baseline methods have been implemented, as in Section 4.1.",
+        "The accuracy formulas are implemented correctly as in Section B.3.",
+        "All results from the paper have been replicated"
+      ],
+      "total_subtasks": 362
+    }
+  },
+  {
+    "id": "rwa_semantic-self-consistency",
+    "request": "Replicate the research paper 'Semantic Self Consistency': The core contributions of the paper have been reproduced. This involves 6 major phases and 99 total subtasks. The workflow includes: The datasets AQuA-RAT, StrategyQA, and SVAMP have been prepared for evaluation.; All Generators listed in Section 3.1 have been set up with the correct hyperparameters listed; All outlier removal methods have been set up correctly as specified in 4.2.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "semantic-self-consistency",
+      "display_name": "Semantic Self Consistency",
+      "n_top_steps": 6,
+      "n_total_subtasks": 99,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The datasets AQuA-RAT, StrategyQA, and SVAMP have been prepared for evaluation.",
+        "All Generators listed in Section 3.1 have been set up with the correct hyperparameters listed",
+        "All outlier removal methods have been set up correctly as specified in 4.2",
+        "All Featurizers listed in Section 3.2 are set up with correct hyperparameters to generate embeddings.",
+        "All methods described in Section 4 have been implemented.",
+        "The experiments and results of Section 5 have been reproduced."
+      ],
+      "total_subtasks": 99
+    }
+  },
+  {
+    "id": "rwa_sequential-neural-score-estimation",
+    "request": "Replicate the research paper 'Sequential Neural Score Estimation': The paper \"Sequential Neural Score Estimation: Likelihood-Free Inference with Conditional Score Based Diffusion Models\" have been reproduced This involves 7 major phases and 122 total subtasks. The workflow includes: The necessary tasks are implemented, as described in Appendix E.1; Both Variance-Exploding Stochastic Differential Equation (VESDE) and Variance-Preserving Stochastic Differential Equation (VPSDE) have been implemented following Appendix E.3; Baseline methods Neural Posterior Estimation (NPE), Sequential Neural Posterior Estimation (SNPE), and Truncated Sequential Neural Posterior Estimation (TSNPE) are implemented and can be trained.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "sequential-neural-score-estimation",
+      "display_name": "Sequential Neural Score Estimation",
+      "n_top_steps": 7,
+      "n_total_subtasks": 122,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The necessary tasks are implemented, as described in Appendix E.1",
+        "Both Variance-Exploding Stochastic Differential Equation (VESDE) and Variance-Preserving Stochastic Differential Equation (VPSDE) have been implemented following Appendix E.3",
+        "Baseline methods Neural Posterior Estimation (NPE), Sequential Neural Posterior Estimation (SNPE), and Truncated Sequential Neural Posterior Estimation (TSNPE) are implemented and can be trained",
+        "C2ST has been implemented using the default implementation from `sbibm`, using default hyperparameters",
+        "Neural Posterior Score Estimation (NPSE) has been implemented",
+        "Truncated SNPSE (TSNPSE) has been implemented",
+        "The results in Section 5 have been replicated"
+      ],
+      "total_subtasks": 122
+    }
+  },
+  {
+    "id": "rwa_stay-on-topic-with-classifier-free-guidance",
+    "request": "Replicate the research paper 'Stay On Topic With Classifier Free Guidance': The core contributions of the paper have been reproduced. This involves 6 major phases and 185 total subtasks. The workflow includes: The results of section 3.1 have been reproduced; The results of section 3.2 have been reproduced; The results of section 3.3 have been reproduced.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "stay-on-topic-with-classifier-free-guidance",
+      "display_name": "Stay On Topic With Classifier Free Guidance",
+      "n_top_steps": 6,
+      "n_total_subtasks": 185,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 3,
+      "pipeline": [
+        "literature_reviewer",
+        "result_analyzer",
+        "code_generator"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The results of section 3.1 have been reproduced",
+        "The results of section 3.2 have been reproduced",
+        "The results of section 3.3 have been reproduced",
+        "The FLOPs results of section 4 have been reproduced",
+        "The results of section 5 have been reproduced",
+        "The Table 4 results of Section 6 have been reproduced"
+      ],
+      "total_subtasks": 185
+    }
+  },
+  {
+    "id": "rwa_stochastic-interpolants",
+    "request": "Replicate the research paper 'Stochastic Interpolants': The core contributions of the paper \"Stochastic Interpolants with Data-Dependent Couplings\" have been replicated This involves 4 major phases and 93 total subtasks. The workflow includes: U-Net and ImageNet are available; The models introduced in the paper have been implemented; The Frechet Inception Distance (FID) metric has been implemented.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "stochastic-interpolants",
+      "display_name": "Stochastic Interpolants",
+      "n_top_steps": 4,
+      "n_total_subtasks": 93,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 3,
+      "pipeline": [
+        "literature_reviewer",
+        "code_generator",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "U-Net and ImageNet are available",
+        "The models introduced in the paper have been implemented",
+        "The Frechet Inception Distance (FID) metric has been implemented",
+        "The results from Section 4 have been replicated"
+      ],
+      "total_subtasks": 93
+    }
+  },
+  {
+    "id": "rwa_test-time-model-adaptation",
+    "request": "Replicate the research paper 'Test Time Model Adaptation': The paper 'Test-Time Model Adaptation with Only Forward Passes' has been reproduced This involves 8 major phases and 235 total subtasks. The workflow includes: All models and datasets required for test-time adaptation are downloaded and prepared in the correct formats ready for training.; The baseline methods specified in the paper are implemented or obtained for comparison.; The Forward-Optimization Adaptation (FOA) method is implemented with its core components.",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "test-time-model-adaptation",
+      "display_name": "Test Time Model Adaptation",
+      "n_top_steps": 8,
+      "n_total_subtasks": 235,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "All models and datasets required for test-time adaptation are downloaded and prepared in the correct formats ready for training.",
+        "The baseline methods specified in the paper are implemented or obtained for comparison.",
+        "The Forward-Optimization Adaptation (FOA) method is implemented with its core components",
+        "The evaluation metrics are implemented correctly.",
+        "The experiments with full precision (32-bit) ViT-Base models in Section 4.1 are reproduced",
+        "The experiments with quantized (8-bit and 6-bit) ViT models in Section 4.2 are reproduced on ImageNet-C.",
+        "The ablation studies in Section 4.3 are reproduced",
+        "The additional experiments in Section 4.4 are reproduced."
+      ],
+      "total_subtasks": 235
+    }
+  },
+  {
+    "id": "rwa_what-will-my-model-forget",
+    "request": "Replicate the research paper 'What Will My Model Forget': The paper \"What Will My Model Forget? Forecasting Forgotten Examples in Language Model Refinement\" has been replicated. This involves 6 major phases and 1145 total subtasks. The workflow includes: The pre-training dataset $D_{PT}$ has been created, as described in Section 4.1 Training and Evaluation Setup under the \"Base PTLMs and Datasets\" sub-header.; Table 1 has been replicated.; Figure 3 has been replicated..",
+    "metadata": {
+      "source": "PaperBench",
+      "paper_name": "what-will-my-model-forget",
+      "display_name": "What Will My Model Forget",
+      "n_top_steps": 6,
+      "n_total_subtasks": 1145,
+      "complexity": "very_complex",
+      "category": null,
+      "fine_category": null
+    },
+    "expected": {
+      "task_type": "research_workflow",
+      "domain_tags_should_include": [
+        "research",
+        "ml"
+      ],
+      "min_agents": 5,
+      "pipeline": [
+        "literature_reviewer",
+        "experiment_designer",
+        "code_generator",
+        "experiment_runner",
+        "result_analyzer"
+      ]
+    },
+    "ground_truth": {
+      "top_level_steps": [
+        "The pre-training dataset $D_{PT}$ has been created, as described in Section 4.1 Training and Evaluation Setup under the \"Base PTLMs and Datasets\" sub-header.",
+        "Table 1 has been replicated.",
+        "Figure 3 has been replicated.",
+        "Table 2 has been replicated.",
+        "Table 3 has been replicated.",
+        "Table 4 has been replicated."
+      ],
+      "total_subtasks": 1145
+    }
+  }
+]

@@ -56,3 +56,6 @@ htmlcov/
 .scratchpad/
 .scratch_src/
 evaluation_bench/benchmarks/
+sections_backup/
+
+motivation_bench/results/

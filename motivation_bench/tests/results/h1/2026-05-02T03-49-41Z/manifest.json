@@ -1,0 +1,32 @@
+{
+  "timestamp_utc": "2026-05-02T03:49:57+00:00",
+  "args": {
+    "workload": "mixed",
+    "limit": 50,
+    "detectors": "rule,semantic,llm",
+    "llm_provider": "ollama",
+    "llm_model": null,
+    "llm_sla": null,
+    "repeats": 1,
+    "seed": 42,
+    "no_warmup": false,
+    "quiet": false,
+    "export_prompts": false,
+    "export_only": false,
+    "ingest": [],
+    "as_detector": [],
+    "output_dir": "motivation_bench/tests/results/h1/2026-05-02T03-49-41Z"
+  },
+  "git_sha": "a4762907e20b64256656217dcd7d7e90fb8eed5b",
+  "host": {
+    "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.11.14",
+    "hostname": "JiePC"
+  },
+  "library_versions": {
+    "pythia": null,
+    "spacy": null,
+    "sentence_transformers": "5.4.1",
+    "torch": "2.11.0+cu130"
+  }
+}

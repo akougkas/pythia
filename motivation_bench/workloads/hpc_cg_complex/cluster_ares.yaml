@@ -1,0 +1,102 @@
+# Ares cluster — single source of truth.
+# Consumers: prompt template (inlined as YAML text into LLM prompt),
+#            ares_fixture.py (parsed via yaml.safe_load).
+
+cluster: ares
+description: |
+  IIT/SCS Ares cluster. One rack: 1 master node + 32 compute nodes.
+  All compute nodes share a 48 TB RAID-5 storage pool over 40 Gbps Ethernet with RoCE.
+
+master:
+  model: ThinkSystem SR650
+  count: 1
+  hostname: ares-master
+  cpu:
+    model: Xeon Silver 4114
+    sockets_per_node: 2
+    cores_per_socket: 10
+    threads_per_core: 2
+    base_ghz: 2.2
+    boost_ghz: 3.0
+  memory_gb: 96
+  memory_type: DDR4-2400
+  storage:
+    - role: os
+      capacity_gb: 128
+      type: M.2 SSD
+
+compute:
+  model: ThinkSystem SR630
+  count: 32
+  cpu:
+    model: Xeon Silver 4114
+    sockets_per_node: 2
+    cores_per_socket: 10
+    threads_per_core: 2
+    base_ghz: 2.2
+    boost_ghz: 3.0
+  memory_gb: 48
+  memory_type: DDR4-2400
+  storage:
+    - role: os
+      capacity_gb: 32
+      type: M.2 SSD
+  scratch_tiers:
+    - name: samsung_960_evo
+      capacity_gb: 250
+      type: M.2 NVMe
+      node_range: "compute-[001-024]"
+      node_count: 24
+    - name: toshiba_rd400
+      capacity_gb: 256
+      type: M.2 NVMe
+      node_range: "compute-[025-032]"
+      node_count: 8
+
+fabric:
+  type: ethernet
+  speed_gbps: 40
+  rdma: roce
+  notes: >
+    RoCE availability must be verified at discovery time
+    (ucx_info -d, ibstat). Default fabric falls back to TCP.
+
+shared_filesystem:
+  type: raid5
+  capacity_tb: 48
+  drives:
+    count: 8
+    capacity_tb: 8
+    rpm: 7200
+    interface: SAS
+  notes: >
+    Sequential writes are parity-amplified. Large intermediate writes
+    (>10 GB) should be staged to compute-scratch NVMe; final results
+    may be committed here.
+
+operational_notes:
+  - id: thermal_throttle
+    text: >
+      All-core boost (3.0 GHz) is not sustained under thermal load.
+      Expect roughly 2.4 GHz under sustained AVX-2 workloads.
+  - id: master_role
+    text: >
+      Master node has 96 GB RAM and can host serial pre- or
+      post-processing or data marshalling, but its scratch is OS-only —
+      bulk data must live on compute-scratch tiers or shared FS.
+  - id: per_compute_node_ceiling
+    text: >
+      Per compute node ceiling: 20 cores / 40 threads, 48 GB DDR4-2400.
+      Fully packing 20 ranks/node leaves only 2.4 GB/rank, usually too
+      tight without hybrid MPI+OpenMP.
+  - id: roce_verify
+    text: >
+      RoCE is supported but not guaranteed at runtime; default fabric
+      falls back to TCP. Verify with ucx_info -d / ibstat before
+      relying on UCX_TLS=rc,sm,self.
+  - id: storage_tier_split
+    text: >
+      The 24/8 split of compute scratch (Samsung 960 Evo vs.
+      Toshiba RD400) is heterogeneous in both vendor and capacity.
+      Placement decisions for I/O-heavy stages should pick a tier
+      explicitly and justify based on capacity and vendor IOPS profile.

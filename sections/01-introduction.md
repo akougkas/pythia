@@ -7,19 +7,19 @@ Recent efforts such as SWARM [balaprakash2025swarm], which decentralizes workflo
 This coordination, *the orchestration layer*, introduces significant overhead before any agent can begin productive work.
 When a request arrives, the orchestrator must 1) classify the intent of the request; 2) decompose the request into subtasks; 3) select appropriate agents for each subtask; 4) map agents to available resources; and 5) produce a dispatch plan, which is a pipeline well-established in the centralized multi-agent systems literature [shen2023hugginggpt,qiao2024tdag,li2025masrouter,balaprakash2025swarm]. 
 These stages form a data dependency chain. Each step requires its previous step's output, forcing strictly serial execution.
-Agent selection is nontrivial especially under heterogeneous constraints (e.g., API rate limits, token budgets, GPU memory, cost ceilings across multiple AI providers, and compute tiers), which is an optimization problem rather than a simple lookup problem.
+Agent selection is nontrivial especially under heterogeneous constraints (e.g., API rate limits, token budgets, GPU memory, and cost ceilings across multiple AI providers), which is an optimization problem rather than a simple lookup problem.
 Only after the dispatch plan is produced can downstream tasks start executing, which includes context assembly from domain-specific data, agent initialization, and finally task execution.
-We profile representative scientific computing workloads and observe that dispatch planning constitutes [PLACEHOLDER: X]\% of end-to-end latency for typical scientific computing requests.
+We benchmark three representative scientific computing workloads across different models and observe that dispatch planning alone takes **13–33** seconds for the strongest planner, while no downstream agent can begin execution until planning completes (§2.5).
 However, this overhead is reducible: scientific computing users repeatedly submit similar workloads [luo2021inferring], making dispatch decisions predictable.
-[OPTIONAL] Specifically, for the top-K intent classes (accounting for Z% of requests), the dispatch plan has low conditional entropy given the classified intent, making prediction tractable.
+<!-- [OPTIONAL] Specifically, for the top-K intent classes (accounting for Z% of requests), the dispatch plan has low conditional entropy given the classified intent, making prediction tractable. -->
 
 This pattern of a serial bottleneck with predictable outcomes is structurally analogous to latency problems solved by *speculative execution* in microprocessors [hennessy2017computer] and *speculative decoding* for LLM inference [leviathan2023fast,chen2023accelerating], where predicted work runs in parallel with the authoritative decision and commits if the prediction is correct.
 Both paradigms share a principle that generalizes: *when verification is cheaper than stalling, and prediction accuracy improves with observation, speculative execution amortizes latency*.
 Recent work has gradually begun applying speculative execution to agentic systems at different granularities, such as planning-step [hua2024isp,guan2025dsp], tool or API calls [ye2025specactions,paste2026], and workflow-node level [sherlock2025].
 However, these approaches share three limitations.
-First, all of them speculate within a single agent's execution trace after the dispatch decision is already made, and use binary accept/reject with no mechanism to salvage partially correct speculation.
+First, all of them speculate within a single agent's execution trace after the dispatch decision is already made. Most use binary accept/reject with no mechanism to salvage partially correct speculation except for SPAgent [spagent2025], which omits verification entirely for low-risk steps. However, SPAgent tolerates errors rather than recovering from them, and cannot selectively commit correct portions of a partial misprediction.
 Second, their learning mechanism targets either depth [guan2025dsp], tool-call patterns [paste2026], or verifier placement [sherlock2025], not dispatch-level predictions that refine progressively with accumulated confidence.
-Third, they manage resources at the execution level, but none model heterogeneous constraints as inputs to dispatch decisions.
+Third, they manage resources at the execution level, but none incorporate infrastructure-level heterogeneous constraints (e.g., GPU availability, API rate limits, memory pressure) as inputs to dispatch decisions, though some optimize for API cost as a soft penalty.
 *Multi-agent dispatch* (i.e., the decision of which agents to assign, with what resources, to which subtasks) satisfies the same two conditions (cheap verification and high predictability) for speculation but remains unexplored.
 
 To address this gap, we introduce **Pythia**, a speculative dispatch framework that lifts the draft-target speculation paradigm to the dispatch decision in multi-agent orchestration for scientific computing.
@@ -47,7 +47,7 @@ This paper makes the following contributions:
 
 3. **A Resource-Aware Dispatch Solver.** We treat the heterogeneous infrastructure constraints (e.g., compute capacity, memory, and API rate limits) as first-class inputs to dispatch decisions when mapping agents to resources in the optimization engine, bridging HPC scheduling with AI-specific resource dimensions.
 
-4. **Implementation and evaluation.** We implement a prototype integrated into the IOWarp scientific computing platform and evaluate on four HPC-adjacent workload suites across heterogeneous infrastructure, demonstrating [PLACEHOLDER: X]\% dispatch latency reduction under Mode 2 speculation, [PLACEHOLDER: Y]\% under Mode 3, and learner convergence within [PLACEHOLDER: N] interactions.
+4. **Implementation and evaluation.** We implement a prototype integrated into the IOWarp scientific computing platform and evaluate on three HPC-adjacent workloads across heterogeneous infrastructure, demonstrating [PLACEHOLDER: X]\% dispatch latency reduction under Mode 2 speculation, [PLACEHOLDER: Y]\% under Mode 3, and learner convergence within [PLACEHOLDER: N] interactions.
 
 <!-- The remainder of this paper is organized as follows.
 Section~2 provides background on speculative execution and characterizes the dispatch bottleneck.

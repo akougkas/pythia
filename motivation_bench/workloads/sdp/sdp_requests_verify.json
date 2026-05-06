@@ -1,0 +1,203 @@
+[
+  {
+    "id": "wildfire-easy-1",
+    "request": "Analyze the following scientific data pipeline task: Find the 3-month period with the highest total acres burned since Jan 2000, according to NOAA. What was the total acres burned in that period? This requires working with 1 data source(s) and involves approximately 5 processing steps. Domain: environmental science.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "environmental_science",
+      "answer_type": "numeric_exact",
+      "n_subtasks": 5,
+      "n_data_sources": 1,
+      "complexity": "moderate",
+      "data_sources": [
+        "noaa_wildfires_monthly_stats.csv"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "environmental_science"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "7805421",
+      "answer_type": "numeric_exact",
+      "subtasks": [
+        "Load noaa_wildfires_monthly_stats.csv while skipping the first 3 non-data rows.",
+        "Sort the dataframe by the numeric yyyyMM 'Date' column to ensure chronological order.",
+        "Convert each yyyyMM value to an absolute month count (year*12 + month) to test whether two rows represent consecutive calendar months.",
+        "Slide a 3-row consecutive month window through the data, using the absolute month count method. For every valid 3-month window, sum the 'Acres Burned' values; keep track of the window that produces the largest sum.",
+        "After scanning all windows, report the start date, end date, and total acres burned for the window with the maximum three-month burn total (and optionally print the rows themselves)."
+      ]
+    }
+  },
+  {
+    "id": "environment-easy-1",
+    "request": "Analyze the following scientific data pipeline task: What percentage (to 3 decimal places) of water samples collected from Massachusetts beaches during the 2013 bathing season exceeded bacterial standards, leading to temporary closures? This requires working with 1 data source(s) and involves approximately 4 processing steps. Domain: environmental science.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "environmental_science",
+      "answer_type": "numeric_exact",
+      "n_subtasks": 4,
+      "n_data_sources": 1,
+      "complexity": "moderate",
+      "data_sources": [
+        "water-body-testing-2013.csv"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "environmental_science"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "4.796",
+      "answer_type": "numeric_exact",
+      "subtasks": [
+        "Load the 2013 beach-sampling file (water-body-testing-2013.csv).",
+        "Filter to rows whose 'Violation' column equals 'yes', using a case-insensitive comparison to capture all positive violations.",
+        "Count the number of violating samples and divide by the total number of samples, then multiply by 100 to obtain the percentage of samples that exceeded bacterial standards.",
+        "Round (or format) the resulting percentage to three decimal places before displaying."
+      ]
+    }
+  },
+  {
+    "id": "legal-easy-3",
+    "request": "Analyze the following scientific data pipeline task: Give the ratio of identity theft reports in 2024 vs 2001? Round to 4 decimal places This requires working with 1 data source(s) and involves approximately 6 processing steps. Domain: legal analytics.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "legal_analytics",
+      "answer_type": "numeric_approximate",
+      "n_subtasks": 6,
+      "n_data_sources": 1,
+      "complexity": "moderate",
+      "data_sources": [
+        "2024_CSN_Number_of_Reports_by_Type.csv"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "legal_analytics"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "13.1628",
+      "answer_type": "numeric_approximate",
+      "subtasks": [
+        "Read the raw file 2024_CSN_Number_of_Reports_by_Type.csv line-by-line and strip empty/blank lines.",
+        "Identify the header row as the first row that contains at least two non-empty comma-separated cells.",
+        "Keep subsequent rows only as long as they also contain at least two non-empty cells, thereby discarding footnotes or other non-tabular text that may follow the data block.",
+        "Clean every value in every column with convert_value: \n- trim whitespace \n- remove thousands commas \n- drop leading $ \n- translate K and M suffixes into *1 000 or *1 000 000 \n- convert numeric strings to int/float while leaving non-numeric text unchanged \n- keep NaN for blanks.",
+        "From the cleaned data frame pick the 'Identity Theft ' column for rows where Year == 2001 and Year == 2024.",
+        "Compute and print the ratio id_theft_2024 / id_theft_2001."
+      ]
+    }
+  },
+  {
+    "id": "biomedical-easy-2",
+    "request": "Analyze the following scientific data pipeline task: What is the average age of patients with serous tumor samples analyzed in the study? This requires working with 1 data source(s) and involves approximately 4 processing steps. Domain: biomedical.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "biomedical",
+      "answer_type": "numeric_exact",
+      "n_subtasks": 4,
+      "n_data_sources": 1,
+      "complexity": "moderate",
+      "data_sources": [
+        "1-s2.0-S0092867420301070-mmc1.xlsx"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "biomedical"
+      ],
+      "min_agents": 4,
+      "pipeline": [
+        "data_discovery",
+        "data_wrangler",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "68.5",
+      "answer_type": "numeric_exact",
+      "subtasks": [
+        "Load the clinical information from the Excel file 1-s2.0-S0092867420301070-mmc1.xlsx.",
+        "Filter _out_ any rows whose Case_excluded value is not 'No' so that only non-excluded cases are considered. Filter for rows where Histologic_type is 'Serous'",
+        "Collect values of the Age column for the Serous subset, ignoring missing values.",
+        "Compute the arithmetic mean of the Age column for this Serous subset, ignoring missing values."
+      ]
+    }
+  },
+  {
+    "id": "astronomy-easy-1",
+    "request": "Analyze the following scientific data pipeline task: What is the estimation error, in terms of MAE, of NOAA SWPC's 3-day forecast of AP from March 9, 2025 for the period March 10-12, 2025? This requires working with 4 data source(s) and involves approximately 5 processing steps. Domain: astronomy.",
+    "metadata": {
+      "source": "KramaBench",
+      "domain": "astronomy",
+      "answer_type": "numeric_exact",
+      "n_subtasks": 5,
+      "n_data_sources": 4,
+      "complexity": "complex",
+      "data_sources": [
+        "geomag_forecast/0309geomag_forecast.txt",
+        "geomag_forecast/0311geomag_forecast.txt",
+        "geomag_forecast/0312geomag_forecast.txt",
+        "geomag_forecast/0313geomag_forecast.txt"
+      ]
+    },
+    "expected": {
+      "task_type": "data_pipeline",
+      "domain_tags_should_include": [
+        "data",
+        "astronomy"
+      ],
+      "min_agents": 3,
+      "pipeline": [
+        "data_discovery",
+        "analyst",
+        "reporter"
+      ]
+    },
+    "ground_truth": {
+      "answer": "15",
+      "answer_type": "numeric_exact",
+      "subtasks": [
+        "Read 0309geomag_forecast.txt to obtain the 3-day forecast bulletin issued on 09 Mar 2025.",
+        "",
+        "Use a regular-expression on the 'Predicted Ap ...' line to capture the three forecasted Ap values (for 10-, 11-, and 12-Mar).",
+        "For each of the following files -- 0311geomag_forecast.txt, 0312geomag_forecast.txt, 0313geomag_forecast.txt -- read the text and, with another regex, pull out the single 'Observed Ap' value that each bulletin reports for the previous day (yielding the observed Ap for 10-, 11-, and 12-Mar respectively).",
+        "Calculate the MAE between the observed and forecasted values."
+      ]
+    }
+  }
+]

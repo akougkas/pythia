@@ -1,0 +1,108 @@
+[
+  {
+    "id": "gen_omp_26_reduce_product_of_inverses",
+    "request": "Write a parallel OpenMP implementation for the following parallel reduction task: Return the product of the vector x with every odd indexed element inverted. i.e. x_0 * 1/x_1 * x_2 * 1/x_3 * x_4 . The code should be correct, efficient, and handle edge cases.",
+    "original_prompt": "#include <omp.h>\n\n/* Return the product of the vector x with every odd indexed element inverted.\n   i.e. x_0 * 1/x_1 * x_2 * 1/x_3 * x_4 ...\n   Use OpenMP to compute product in parallel.\n   Example:\n\n   input: [4, 2, 10, 4, 5]\n   output: 25\n*/\ndouble productWithInverses(std::vector<double> const& x) {",
+    "metadata": {
+      "source": "ParEval",
+      "prompt_type": "generation",
+      "problem_type": "reduce",
+      "parallelism_model": "omp",
+      "name": "26_reduce_product_of_inverses",
+      "original_prompt_length": 302
+    },
+    "expected": {
+      "task_type": "hpc_code_gen",
+      "domain_tags_should_include": [
+        "hpc",
+        "openmp"
+      ],
+      "min_agents": 2
+    }
+  },
+  {
+    "id": "gen_mpi_59_transform_map_function",
+    "request": "Write a parallel MPI implementation for the following element-wise transformation task: Apply the isPowerOfTwo function to every value in x and store the results in mask. The code should be correct, efficient, and handle edge cases.",
+    "original_prompt": "#include <mpi.h>\n\nbool isPowerOfTwo(int x) {\n\treturn (x > 0) && !(x & (x - 1));\n}\n\n/* Apply the isPowerOfTwo function to every value in x and store the results in mask.\n   Use MPI to compute in parallel. Assume MPI has already been initialized.\n   Every rank has a complete copy of x. The final result is stored in mask on rank 0.\n   Example:\n\n   input: [8, 0, 9, 7, 15, 64, 3]\n   output: [true, false, false, false, false, true, false]\n*/\nvoid mapPowersOfTwo(std::vector<int> const& x, std::vector<bool> &mask) {",
+    "metadata": {
+      "source": "ParEval",
+      "prompt_type": "generation",
+      "problem_type": "transform",
+      "parallelism_model": "mpi",
+      "name": "59_transform_map_function",
+      "original_prompt_length": 513
+    },
+    "expected": {
+      "task_type": "hpc_code_gen",
+      "domain_tags_should_include": [
+        "hpc",
+        "mpi"
+      ],
+      "min_agents": 2
+    }
+  },
+  {
+    "id": "gen_mpi+omp_41_sort_k-th_smallest_element",
+    "request": "Write a parallel MPI with OpenMP implementation for the following parallel sorting task: Find the k-th smallest element of the vector x. The code should be correct, efficient, and handle edge cases.",
+    "original_prompt": "#include <mpi.h>\n#include <omp.h>\n\n/* Find the k-th smallest element of the vector x.\n   Use MPI and OpenMP to compute in parallel. Assume MPI has already been initialized.\n   Every rank has a complete copy of x. Return the result on rank 0.\n   Example:\n   \n   input: x=[1, 7, 6, 0, 2, 2, 10, 6], k=4\n   output: 6\n*/\nint findKthSmallest(std::vector<int> const& x, int k) {",
+    "metadata": {
+      "source": "ParEval",
+      "prompt_type": "generation",
+      "problem_type": "sort",
+      "parallelism_model": "mpi+omp",
+      "name": "41_sort_k-th_smallest_element",
+      "original_prompt_length": 372
+    },
+    "expected": {
+      "task_type": "hpc_code_gen",
+      "domain_tags_should_include": [
+        "hpc",
+        "mpi",
+        "openmp"
+      ],
+      "min_agents": 2
+    }
+  },
+  {
+    "id": "gen_omp_39_search_xor_contains",
+    "request": "Write a parallel OpenMP implementation for the following parallel search task: Return true if `val` is only in one of vectors x or y. Return false if it is in both or neither.. Examples: input: x=[1,8,4,3,2], y=[3,4,4,1,1,7], val=7 output: true input: x=[1,8,4,3,2], y=[3,4,4,1,1,7], val=1 output: false. The code should be correct, efficient, and handle edge cases.",
+    "original_prompt": "#include <omp.h>\n\n/* Return true if `val` is only in one of vectors x or y.\n   Return false if it is in both or neither.\n   Use OpenMP to search in parallel.\n   Examples:\n\n   input: x=[1,8,4,3,2], y=[3,4,4,1,1,7], val=7\n   output: true\n\n   input: x=[1,8,4,3,2], y=[3,4,4,1,1,7], val=1\n   output: false\n*/\nbool xorContains(std::vector<int> const& x, std::vector<int> const& y, int val) {",
+    "metadata": {
+      "source": "ParEval",
+      "prompt_type": "generation",
+      "problem_type": "search",
+      "parallelism_model": "omp",
+      "name": "39_search_xor_contains",
+      "original_prompt_length": 386
+    },
+    "expected": {
+      "task_type": "hpc_code_gen",
+      "domain_tags_should_include": [
+        "hpc",
+        "openmp"
+      ],
+      "min_agents": 2
+    }
+  },
+  {
+    "id": "gen_mpi_20_histogram_pixel_histogram",
+    "request": "Write a parallel MPI implementation for the following histogram computation task: Count the number of pixels in image with each grayscale intensity. The vector `image` is a grayscale image with values 0-255. Store the results in `bins`. The code should be correct, efficient, and handle edge cases.",
+    "original_prompt": "#include <mpi.h>\n\n/* Count the number of pixels in image with each grayscale intensity.\n   The vector `image` is a grayscale image with values 0-255.\n   Store the results in `bins`.\n   Use MPI to count in parallel. Assume MPI has already been initialized.\n   Every rank has a complete copy of image. The result is stored in bins on rank 0.\n   Example:\n   \n   input: image=[2, 116, 201, 11, 92, 92, 201, 4, 2]\n   output: [0, 0, 2, 0, 1, ...]\n*/\n void pixelCounts(std::vector<int> const& image, std::array<size_t, 256> &bins) {",
+    "metadata": {
+      "source": "ParEval",
+      "prompt_type": "generation",
+      "problem_type": "histogram",
+      "parallelism_model": "mpi",
+      "name": "20_histogram_pixel_histogram",
+      "original_prompt_length": 525
+    },
+    "expected": {
+      "task_type": "hpc_code_gen",
+      "domain_tags_should_include": [
+        "hpc",
+        "mpi"
+      ],
+      "min_agents": 2
+    }
+  }
+]

@@ -1,0 +1,66 @@
+{
+  "n_queries": 30,
+  "n_detectors": 3,
+  "per_detector": {
+    "rule": {
+      "n": 30,
+      "mean_ms": 0.567290833654018,
+      "p50_ms": 0.5055380006524501,
+      "p95_ms": 0.8226690006267745,
+      "p99_ms": 1.0643820005498128,
+      "min_ms": 0.36030099909112323,
+      "max_ms": 1.0643820005498128,
+      "init_s": 0.001610895998965134
+    },
+    "semantic": {
+      "n": 30,
+      "mean_ms": 7.449199833293581,
+      "p50_ms": 8.016748999580159,
+      "p95_ms": 10.061982999104657,
+      "p99_ms": 10.296796999682556,
+      "min_ms": 4.091647000677767,
+      "max_ms": 10.296796999682556,
+      "init_s": 2.9887922879988764
+    },
+    "llm": {
+      "n": 30,
+      "mean_ms": 228.5494571332189,
+      "p50_ms": 227.53002799981914,
+      "p95_ms": 251.90056000064942,
+      "p99_ms": 253.90714700006356,
+      "min_ms": 202.9686949990719,
+      "max_ms": 253.90714700006356,
+      "init_s": 0.0015941929996188264,
+      "fallback_rate": 0.0
+    }
+  },
+  "agreement": {
+    "llm_vs_rule": {
+      "n": 30,
+      "task_type_match": 0.43333333333333335,
+      "domain_jaccard_mean": 0.43,
+      "complexity_bucket_match": 0.06666666666666667,
+      "decomposability_bucket_match": 0.06666666666666667,
+      "complexity_mae": 0.5492595147536375,
+      "decomposability_mae": 0.6233333333333333
+    },
+    "llm_vs_semantic": {
+      "n": 30,
+      "task_type_match": 0.3333333333333333,
+      "domain_jaccard_mean": 0.1611111111111111,
+      "complexity_bucket_match": 0.26666666666666666,
+      "decomposability_bucket_match": 0.6,
+      "complexity_mae": 0.4461099972714177,
+      "decomposability_mae": 0.33232347100473525
+    },
+    "rule_vs_semantic": {
+      "n": 30,
+      "task_type_match": 0.6,
+      "domain_jaccard_mean": 0.2388888888888889,
+      "complexity_bucket_match": 0.7,
+      "decomposability_bucket_match": 0.36666666666666664,
+      "complexity_mae": 0.14176572708327914,
+      "decomposability_mae": 0.36729640753327875
+    }
+  }
+}
