@@ -33,7 +33,7 @@ LOCAL_MODELS: list[ModelSpec] = [
         label="gpt-oss-20b (Ollama)",
         # Ollama's /v1/messages emits thinking blocks without signatures,
         # which the Claude Code CLI rejects. Disable thinking for this model.
-        disable_thinking=True,
+        # disable_thinking=True,
     ),
     ModelSpec(
         name="gemma4:26b",
@@ -42,7 +42,7 @@ LOCAL_MODELS: list[ModelSpec] = [
         label="gemma4-26b (Ollama)",
         # Ollama's /v1/messages emits thinking blocks without signatures,
         # which the Claude Code CLI rejects. Disable thinking for this model.
-        disable_thinking=True,
+        # disable_thinking=True,
     ),
     ModelSpec(
         name="mistral-small3.2:24b",
@@ -51,7 +51,7 @@ LOCAL_MODELS: list[ModelSpec] = [
         label="mistral-small3.2-24b (Ollama)",
         # Ollama's /v1/messages emits thinking blocks without signatures,
         # which the Claude Code CLI rejects. Disable thinking for this model.
-        disable_thinking=True,
+        # disable_thinking=True,
     ),
     ModelSpec(
         name="qwen3.5:9b",
@@ -60,7 +60,7 @@ LOCAL_MODELS: list[ModelSpec] = [
         label="qwen3.5-9b (Ollama)",
         # Ollama's /v1/messages emits thinking blocks without signatures,
         # which the Claude Code CLI rejects. Disable thinking for this model.
-        disable_thinking=True,
+        # disable_thinking=True,
     ),
     # Add more local models here. Example:
     # ModelSpec(name="qwen2.5-coder:14b", provider="ollama",

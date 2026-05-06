@@ -237,6 +237,10 @@ class AgentSDKPlanMode(PlanningProvider):
                 f"## Working directory\n\n"
                 f"The working directory is: {case.working_dir}\n"
                 f"Inspect it for context — staged files: {file_list}.\n\n"
+                f"Before drafting any subtask, you MUST issue a Read tool "
+                f"call on each staged file. Plans written from prior "
+                f"knowledge of the topic without first reading the staged "
+                f"files are ungrounded and will be rejected.\n\n"
             )
         else:
             workdir_block = (
